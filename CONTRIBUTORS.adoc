@@ -1,0 +1,9 @@
+= Eclipse uProtocol Contributors
+
+These are the contributors to Eclipse uProtocol Platform Simulator
+
+|===
+| GitHub username | Name
+
+|https://github.com/hostilechild007[hostilechild007] | Patrick Yang
+|===
