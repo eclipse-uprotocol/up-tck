@@ -40,4 +40,4 @@ $ python .\test_sender.py
 === Cleaning Up
 
 Clean up by running the command:
-`python clean_project.py`
+`python ulink-socket-python\clean_project.py`
