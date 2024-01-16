@@ -24,41 +24,35 @@
 #
 # -------------------------------------------------------------------------
 
+import logging
 
-
-from typing import Dict
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from uprotocol.proto.uattributes_pb2 import UAttributes
 from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.proto.uri_pb2 import UEntity, UUri
-from uprotocol.proto.ustatus_pb2 import UStatus
-from uprotocol.transport.ulistener import UListener
-from uprotocol.transport.utransport import UTransport
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.cloudevents_pb2 import CloudEvent
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.proto.uattributes_pb2 import UPriority
 
-from constants import HEADER, PORT, SERVER, ADDR, FORMAT, DISCONNECT_MESSAGE 
-from uprotocol.transport.socket.socket_utransport import SocketUTransport
+from ulink_socket_python.socket_utransport import SocketUTransport
 from google.protobuf.any_pb2 import Any
 
-import logging
+
+PORT = 44444
+IP = "127.0.0.1" 
+ADDR = (IP, PORT)
+
+uri: str = "/body.access//door.front_left#Door"
+
+
 logging.basicConfig(format='%(asctime)s %(message)s')
 # Create logger
 logger = logging.getLogger('simple_example')
 logger.setLevel(logging.INFO)
 
 
-client = SocketUTransport(SERVER, PORT, 64)
-uri: str = "/body.access//door.front_left#Door"
-topic = LongUriSerializer().deserialize(uri)
-
 def build_cloud_event():
-    """
-    
-    """
     return CloudEvent(spec_version="1.0", source="https://example.com", id="HARTLEY IS THE BEST")
 
 def build_upayload():
@@ -66,29 +60,19 @@ def build_upayload():
     any_obj.Pack(build_cloud_event())
     return UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=any_obj.SerializeToString())
 
-payload: UPayload = build_upayload()
-
 def build_uattributes():
     return UAttributesBuilder.publish(UPriority.UPRIORITY_CS4).build()
 
-attributes: UAttributes = build_uattributes()
-umsg = UMessage(source=topic, attributes=attributes, payload=payload)  # protobuf message
-logger.info("orig umsg:")
-logger.info(f"{umsg}")
+
+if __name__ == "__main__":
+    client = SocketUTransport(IP, PORT)
+    topic = LongUriSerializer().deserialize(uri)
+    payload: UPayload = build_upayload()
+
+    attributes: UAttributes = build_uattributes()
+    umsg = UMessage(source=topic, attributes=attributes, payload=payload)  # protobuf message
+    logger.info("orig umsg:")
+    logger.info(f"{umsg}")
 
 
-# binary: bytes = umsg.SerializeToString()
-# logger.info("binary of umsg:")
-# logger.info(f"{binary}")
-# to_str = binary.decode()
-# print(type(to_str))
-# to_byte = to_str.encode()
-# print(to_byte)
-
-
-client.send(topic, payload, attributes)
-# client.send(topic, payload, attributes)
-# client.send(topic, payload, attributes)
-# client.send(topic, payload, attributes)
-# client.send(topic, payload, attributes)
-
+    client.send(topic, payload, attributes)

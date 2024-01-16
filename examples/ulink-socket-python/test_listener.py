@@ -25,46 +25,34 @@
 # -------------------------------------------------------------------------
 
 
-from typing import Dict
-from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
-from uprotocol.proto.uattributes_pb2 import UAttributes
-from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.proto.uri_pb2 import UEntity, UUri
-from uprotocol.proto.ustatus_pb2 import UStatus
-from uprotocol.transport.ulistener import UListener
-from uprotocol.transport.utransport import UTransport
-from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.cloudevents_pb2 import CloudEvent
-from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
-from uprotocol.proto.uattributes_pb2 import UPriority
-
-import socket
-from threading import Thread
 import logging
 
-from uprotocol.transport.socket.listener import Listener
-from constants import HEADER, PORT, SERVER, ADDR, FORMAT, DISCONNECT_MESSAGE 
-from uprotocol.transport.socket.socket_utransport import SocketUTransport
-from google.protobuf.any_pb2 import Any
+from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from uprotocol.transport.ulistener import UListener
+from ulink_socket_python.socket_utransport import SocketUTransport
+
+from test_ulistener import SocketUListener
+
+
+PORT = 44444
+IP = "127.0.0.1" 
+ADDR = (IP, PORT)
+
+uri: str = "/body.access//door.front_left#Door"
+
 
 logging.basicConfig(format='%(asctime)s %(message)s')
-# create logger
+# Create logger
 logger = logging.getLogger('simple_example')
 logger.setLevel(logging.INFO)
 
 
-client = SocketUTransport(SERVER, PORT, HEADER)
-uri: str = "/body.access//door.front_left#Door"
-topic = LongUriSerializer().deserialize(uri)
+if __name__ == "__main__":
+    client = SocketUTransport(IP, PORT)
+    topic = LongUriSerializer().deserialize(uri)
 
-# to_str = binary.decode()
-# print(type(to_str))
-# to_byte = to_str.encode()
-# print(to_byte)
+    listener: UListener = SocketUListener()
+    client.register_listener(topic, listener)
 
-listener: UListener = Listener()
-client.register_listener(topic, listener)
-
-logger.info("registered to topic:")
-logger.info(f"{topic}")
+    logger.info("registered to topic:")
+    logger.info(f"{topic}")
