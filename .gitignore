@@ -1,3 +1,21 @@
-#ignore __pycache__ folder
-__pycache__
-
+# Distribution / packaging
+.Python
+__pycache__/
+build/
+develop-eggs/
+dist/
+downloads/
+testing/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST

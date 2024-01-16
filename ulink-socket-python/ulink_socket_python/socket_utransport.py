@@ -48,18 +48,15 @@ def unpack(recv_data: bytes, protobuf_data):
     return protobuf_data
 
 class SocketUTransport(UTransport):
-    def __init__(self, host_ip: str, port: int, header_len: int) -> None:
+    def __init__(self, host_ip: str, port: int) -> None:
         """
         Used to create uEntities with socket connection
         @param host_ip: IP address of Dispatcher.
         @param port: Port of Dispatcher.
-        @param header_len: Static number for registering immediately following messages
         """
         
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
         self.socket.connect((host_ip, port))  
-
-        self.header_len: int = header_len
 
         # Create a map: encoded uri/topic -> uListener
         self.topic_to_listener: Dict[bytes, UListener] = {} 
@@ -77,10 +74,10 @@ class SocketUTransport(UTransport):
 
         while True:
             try: 
-                msg_len: int = int(self.socket.recv(self.header_len))
-
+                msg_len: int = 32767
                 recv_data: bytes = self.socket.recv(msg_len) 
-
+                logger.info(f"recv_data {recv_data}")
+                
                 umsg: UMessage = unpack(recv_data , UMessage())
                 logger.info("listened umsg:")
                 logger.info(f"{umsg}")
@@ -120,16 +117,7 @@ class SocketUTransport(UTransport):
         umsg_serialized: bytes = umsg.SerializeToString()
 
         try:
-            umsg_len: int = len(umsg_serialized)
-            umsg_len: bytes = str(umsg_len).encode()
-
-            # Add padding
-            umsg_len += b' ' * (self.header_len - len(umsg_len))
-
-            umsg_bytes_sent: int = self.socket.send(umsg_len)
-            if umsg_bytes_sent == 0:
-                return UStatus(code=UCode.INTERNAL, message="socket connection broken")
-
+        
             num_bytes_sent: int = self.socket.send(umsg_serialized)
             if num_bytes_sent == 0:
                 return UStatus(code=UCode.INTERNAL, message="socket connection broken")
