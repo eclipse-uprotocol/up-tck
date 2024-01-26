@@ -49,7 +49,7 @@ class SocketUListener(UListener):
         # on_receive_items.append((topic, payload, attributes))
         # evt.set()
         # evt.clear()
-        self.tm_socket.send()
+        #self.tm_socket.send()
 
         return UStatus(code=UCode.OK, message="all good") 
     

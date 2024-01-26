@@ -8,3 +8,5 @@ How to Run Test Manager/Test Agent Example:
 5. After, enter "python" for "SDK Name" and "send" for command. These two commands together will test the operation of sending from a test manager to a registered test agent. Logs will go into further detail on messaging. 
 
 TODO: Handle registerlistener response from Test Agent to Test Manager.
+
+Next Step: Support InvokeMethod and integrate Behave Test Framework.
