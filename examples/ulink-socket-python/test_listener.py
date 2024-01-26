@@ -38,18 +38,17 @@ PORT = 44444
 IP = "127.0.0.1" 
 ADDR = (IP, PORT)
 
-uri: str = "/body.access//door.front_left#Door"
+uURI: str = "/body.access//door.front_left#Door"
 
 
 logging.basicConfig(format='%(asctime)s %(message)s')
-# Create logger
 logger = logging.getLogger('simple_example')
 logger.setLevel(logging.INFO)
 
 
 if __name__ == "__main__":
     client = SocketUTransport(IP, PORT)
-    topic = LongUriSerializer().deserialize(uri)
+    topic = LongUriSerializer().deserialize(uURI)
 
     listener: UListener = SocketUListener()
     listener_reply: UListener = SocketUListenerReply(client)
@@ -57,5 +56,4 @@ if __name__ == "__main__":
     # client.register_listener(topic, listener)
     client.register_listener(topic, listener_reply)
 
-    logger.info("registered to topic:")
-    logger.info(f"{topic}")
+    logger.info(f"Registered to topic: {topic}")

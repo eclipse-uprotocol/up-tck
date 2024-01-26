@@ -27,6 +27,8 @@
 
 from typing import Dict
 import socket
+import logging
+
 from threading import Thread
 from uprotocol.proto.uattributes_pb2 import UAttributes
 from uprotocol.proto.upayload_pb2 import UPayload
@@ -36,9 +38,7 @@ from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
 from uprotocol.proto.umessage_pb2 import UMessage
 
-import logging
 logging.basicConfig(format='%(asctime)s %(message)s')
-# Create logger
 logger = logging.getLogger('simple_example')
 logger.setLevel(logging.INFO)
 
@@ -50,7 +50,7 @@ def unpack(recv_data: bytes, protobuf_data):
 class SocketUTransport(UTransport):
     def __init__(self, host_ip: str, port: int) -> None:
         """
-        Used to create uEntities with socket connection
+        Creates a uEntity with Socket Connection, as well as a map of registered topics.
         @param host_ip: IP address of Dispatcher.
         @param port: Port of Dispatcher.
         """
@@ -58,10 +58,7 @@ class SocketUTransport(UTransport):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
         self.socket.connect((host_ip, port))  
 
-        # Create a map: encoded uri/topic -> uListener
         self.topic_to_listener: Dict[bytes, UListener] = {} 
-
-        # Create a thread to listen on the socket
         thread = Thread(target = self.__listen)  
         thread.start()
 
@@ -80,11 +77,10 @@ class SocketUTransport(UTransport):
                 if recv_data == b"":
                     continue
                 
-                logger.info(f"recv_data {recv_data}")
+                logger.info(f"Received Data: {recv_data}")
 
                 umsg: UMessage = unpack(recv_data , UMessage())
-                logger.info("listened umsg:")
-                logger.info(f"{umsg}")
+                logger.info(f"Received uMessage: {umsg}")
 
                 uuri: UUri = umsg.source
                 payload: UPayload = umsg.payload
@@ -97,7 +93,7 @@ class SocketUTransport(UTransport):
                     listener: UListener = self.topic_to_listener[topic]
                     listener.on_receive(uuri, payload, attributes)
                 else:
-                    logger.info("NO URI MATCHES, DISCARDING!")
+                    logger.info("Topic not found in Listener Map, discarding...")
 
             except socket.error:
                 self.socket.close()
@@ -107,31 +103,26 @@ class SocketUTransport(UTransport):
 
     def send(self, topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
         """
-        Transmit UPayload to the topic using the attributes defined in UTransportAttributes.<br><br>
+        Transmits UPayload to the topic using the attributes defined in UTransportAttributes.<br><br>
         @param topic:Resolved UUri topic to send the payload to.
         @param payload:Actual payload.
         @param attributes:Additional transport attributes.
         @return:Returns OKSTATUS if the payload has been successfully sent (ACK'ed), otherwise it returns FAILSTATUS
         with the appropriate failure.
         """
-        # Protobuf message
+        
         umsg = UMessage(source=topic, attributes=attributes, payload=payload) 
-
-        # Now serialized (assume data isnt that big and fits in 1 send) then send
         umsg_serialized: bytes = umsg.SerializeToString()
 
         try:
-        
             num_bytes_sent: int = self.socket.send(umsg_serialized)
             if num_bytes_sent == 0:
-                return UStatus(code=UCode.INTERNAL, message="socket connection broken")
-            
-            logger.info("sent msg")
-
+                return UStatus(code=UCode.INTERNAL, message="INTERNAL ERROR: Socket Connection Broken")
+            logger.info("uMessage Sent")
         except OSError:
-            return UStatus(code=UCode.INTERNAL, message="OSError sending UMessage")
+            return UStatus(code=UCode.INTERNAL, message="INTERNAL ERROR: OSError sending UMessage")
 
-        return UStatus(code=UCode.OK, message="all good") 
+        return UStatus(code=UCode.OK, message="OK") 
 
     def register_listener(self, topic: UUri, listener: UListener) -> UStatus:
         """
@@ -145,7 +136,7 @@ class SocketUTransport(UTransport):
         topic_serialized: bytes = topic.SerializeToString()
         self.topic_to_listener[topic_serialized] = listener
 
-        return UStatus(code=UCode.OK, message="all good") 
+        return UStatus(code=UCode.OK, message="OK") 
     
     def authenticate(self, u_entity: UEntity) -> UStatus:
         pass
@@ -154,7 +145,7 @@ class SocketUTransport(UTransport):
         
         del self.topic_to_listener[topic.SerializeToString()]
 
-        return UStatus(code=UCode.OK, message="all good")  
+        return UStatus(code=UCode.OK, message="OK")  
     
     
 
