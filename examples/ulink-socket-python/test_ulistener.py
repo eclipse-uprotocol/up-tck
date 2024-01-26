@@ -33,7 +33,6 @@ from uprotocol.transport.ulistener import UListener
 import logging 
 
 logging.basicConfig(format='%(asctime)s %(message)s')
-# Create logger
 logger = logging.getLogger('simple_example')
 logger.setLevel(logging.INFO)
 
@@ -58,4 +57,4 @@ class SocketUListener(UListener):
         # logger.info(f"{attributes}")
         # logger.info(f"--END--")
 
-        return UStatus(code=UCode.OK, message="all good") 
+        return UStatus(code=UCode.OK, message="OK") 

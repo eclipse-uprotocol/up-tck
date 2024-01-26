@@ -46,7 +46,6 @@ uri: str = "/body.access//door.front_left#Door"
 
 
 logging.basicConfig(format='%(asctime)s %(message)s')
-# Create logger
 logger = logging.getLogger('simple_example')
 logger.setLevel(logging.INFO)
 
@@ -69,13 +68,7 @@ if __name__ == "__main__":
     payload: UPayload = build_upayload()
 
     attributes: UAttributes = build_uattributes()
-    umsg = UMessage(source=topic, attributes=attributes, payload=payload)  # protobuf message
-    print(topic)
-    print("---")
-    print(attributes)
-    print("---")
-    print(payload)
-    print("-----")
+    umsg = UMessage(source=topic, attributes=attributes, payload=payload)
     logger.info("orig umsg:")
     logger.info(f"{umsg}")
 
