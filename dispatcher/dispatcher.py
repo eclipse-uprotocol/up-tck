@@ -31,6 +31,7 @@ from threading import Thread
 from threading import Lock
 import uuid
 import logging 
+import sys
 
 
 PORT = 44444
@@ -58,6 +59,9 @@ def handle_client(clientsocket: socket.socket, client_id: str, locket: Lock):
         
         try: 
             recv_data: bytes = clientsocket.recv(32767) 
+
+            if recv_data == b"":
+                continue
 
             logger.info (f"received data: {recv_data}")
             
@@ -101,6 +105,7 @@ def run_server():
     while True:
         # Establish connection with client. 
         clientsocket, addr = server.accept()   
+        print(clientsocket)
         client_id: str = str(uuid.uuid4())
         clients[client_id] = clientsocket
 
@@ -109,4 +114,6 @@ def run_server():
     
 
 if __name__ == '__main__':
+
+    print(sys.byteorder)
     run_server()

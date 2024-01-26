@@ -76,8 +76,12 @@ class SocketUTransport(UTransport):
             try: 
                 msg_len: int = 32767
                 recv_data: bytes = self.socket.recv(msg_len) 
-                logger.info(f"recv_data {recv_data}")
+
+                if recv_data == b"":
+                    continue
                 
+                logger.info(f"recv_data {recv_data}")
+
                 umsg: UMessage = unpack(recv_data , UMessage())
                 logger.info("listened umsg:")
                 logger.info(f"{umsg}")

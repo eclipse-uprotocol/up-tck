@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------
-#
-# Copyright (c) 2023 General Motors GTO LLC
+
+# Copyright (c) 2024 General Motors GTO LLC
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -19,36 +19,32 @@
 # specific language governing permissions and limitations
 # under the License.
 # SPDX-FileType: SOURCE
-# SPDX-FileCopyrightText: 2023 General Motors GTO LLC
+# SPDX-FileCopyrightText: 2024 General Motors GTO LLC
 # SPDX-License-Identifier: Apache-2.0
-#
+
 # -------------------------------------------------------------------------
 
-import logging
 
-from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+
 from uprotocol.proto.uattributes_pb2 import UAttributes
+from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.upayload_pb2 import UPayload
+from uprotocol.rpc.rpcclient import RpcClient
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.cloudevents_pb2 import CloudEvent
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.proto.uattributes_pb2 import UPriority
-
-from ulink_socket_python.socket_utransport import SocketUTransport
+from uprotocol.proto.uuid_pb2 import UUID
 from google.protobuf.any_pb2 import Any
 
-PORT = 44444
-IP = "127.0.0.1" 
-ADDR = (IP, PORT)
+from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
+from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from ulink_socket_python.socket_rpcclient import SocketRPCClient
 
-uri: str = "/body.access//door.front_left#Door"
+import time
+from concurrent.futures import Future
 
-
-logging.basicConfig(format='%(asctime)s %(message)s')
-# Create logger
-logger = logging.getLogger('simple_example')
-logger.setLevel(logging.INFO)
+from multipledispatch import dispatch
 
 
 def build_cloud_event():
@@ -59,25 +55,36 @@ def build_upayload():
     any_obj.Pack(build_cloud_event())
     return UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=any_obj.SerializeToString())
 
+@dispatch(UUID)
+def build_uattributes(req: UUID):
+    return UAttributesBuilder.publish(UPriority.UPRIORITY_CS4).withReqId(req).build()
+
+@dispatch()
 def build_uattributes():
     return UAttributesBuilder.publish(UPriority.UPRIORITY_CS4).build()
 
-
 if __name__ == "__main__":
-    client = SocketUTransport(IP, PORT)
+    uri: str = "/body.access//door.front_left#Door"
+
     topic = LongUriSerializer().deserialize(uri)
     payload: UPayload = build_upayload()
-
+    req: UUID = UUID(msb=1234, lsb=4321)
     attributes: UAttributes = build_uattributes()
-    umsg = UMessage(source=topic, attributes=attributes, payload=payload)  # protobuf message
-    print(topic)
-    print("---")
-    print(attributes)
-    print("---")
-    print(payload)
-    print("-----")
-    logger.info("orig umsg:")
-    logger.info(f"{umsg}")
+
+    
+    client = SocketRPCClient("127.0.0.1", 44444)
+    response: Future = client.invoke_method(topic, payload, attributes)
+
+    print(response.done())
+    print("---sleeping---")
+    print(response)
+
+    print(response.done())
+
+    print(response.result())
 
 
-    client.send(topic, payload, attributes)
+# test w/ dispatcher
+# 1. move test code into here
+# replace request ID w/ UUID id in attributes
+# comment
