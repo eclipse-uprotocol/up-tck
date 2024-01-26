@@ -22,7 +22,6 @@ from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from ulink_socket_python.socket_utransport import SocketUTransport
-from test_ulistener import SocketUListener
 from uprotocol.transport.utransport import UTransport
 import logging 
 
