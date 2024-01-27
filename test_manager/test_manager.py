@@ -1,3 +1,29 @@
+# -------------------------------------------------------------------------
+#
+# Copyright (c) 2023 General Motors GTO LLC
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# SPDX-FileType: SOURCE
+# SPDX-FileCopyrightText: 2023 General Motors GTO LLC
+# SPDX-License-Identifier: Apache-2.0
+#
+# -------------------------------------------------------------------------
+
 import socket
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -21,7 +47,7 @@ from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
-from ulink_socket_python.socket_utransport import SocketUTransport
+from up_client_socket_python.socket_utransport import SocketUTransport
 from uprotocol.transport.utransport import UTransport
 import logging 
 
@@ -48,12 +74,7 @@ class SocketUListener(UListener):
         logger.info("Listener onreceived")
         logger.info("MATTHEW is awesome!!!")
 
-        # logger.info(f"{topic}")
-        # logger.info(f"----")
         logger.info(f"{payload}")
-        # logger.info(f"----")
-        # logger.info(f"{attributes}")
-        # logger.info(f"--END--")
 
         return UStatus(code=UCode.OK, message="all good") 
 
@@ -61,7 +82,7 @@ class TestManager:
     def __init__(self, ip_addr: str, port: int, utransport: UTransport) -> None:
         """
         The test server that the Test Agent will connect to
-        Idea: acts as validator to validate data sent in ulink-socket-xxx
+        Idea: acts as validator to validate data sent in up-client-socket-xxx
 
         """
 
