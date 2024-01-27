@@ -29,7 +29,7 @@ import logging
 
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from uprotocol.transport.ulistener import UListener
-from ulink_socket_python.socket_utransport import SocketUTransport
+from up_client_socket_python.socket_utransport import SocketUTransport
 
 from test_ulistener import SocketUListener
 from test_ulistener_reply import SocketUListenerReply
