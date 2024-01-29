@@ -34,4 +34,4 @@ class TestAgent(ABC):
         Receives commands from Test Manager and processes it..
         @param listener: Callback that is called when data is received from Test Manager.
         '''
-        None
+        pass

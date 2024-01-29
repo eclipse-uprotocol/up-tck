@@ -81,7 +81,6 @@ with ThreadPoolExecutor(max_workers=1) as executor:
         payload: UPayload = build_upayload(sdk)
         attributes: UAttributes = build_uattributes()
 
-        print(sdk, command_name)
         if command_name == "send": 
             print("SEND COMMAND")
             status: UStatus = manager.send_command(sdk, command_name, topic, payload, attributes)
@@ -89,7 +88,7 @@ with ThreadPoolExecutor(max_workers=1) as executor:
             status: UStatus = manager.register_listener_command(sdk, command_name, topic, listener)
         else:
             print("in exception!")
-            raise Exception("none other commands ")
+            continue
         print("sdk:", sdk)
         print("status:", status)
         print("---------------")

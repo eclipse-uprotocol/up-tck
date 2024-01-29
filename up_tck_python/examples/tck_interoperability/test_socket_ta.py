@@ -26,6 +26,7 @@
 
 from typing import Dict
 import json
+import socket
 from google.protobuf.any_pb2 import Any
 
 from uprotocol.proto.uattributes_pb2 import UAttributes
@@ -39,18 +40,21 @@ from up_tck_python.up_test_agent_socket_python.socket_test_agent import SocketTe
 from uprotocol.transport.ulistener import UListener
 
 from uprotocol.proto.cloudevents_pb2 import CloudEvent
+from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 
 class SocketUListener(UListener):
-    def __init__(self) -> None:
-        pass
+    def __init__(self, test_agent_conn: socket.socket) -> None:
+        # Connection to Test Manager
+        self.test_agent_conn: socket.socket = test_agent_conn
 
     def on_receive(self, topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
         """
         Method called to handle/process events.<br><br>
+        Sends UMessage data directly to Test Manager
         @param topic: Topic the underlying source of the message.
         @param payload: Payload of the message.
         @param attributes: Transportation attributes.
@@ -58,7 +62,6 @@ class SocketUListener(UListener):
         """
         # global on_receive_items
         print("Listener onreceived")
-        print("MATTHEW is awesome!!!")
         print(f"{payload}")
 
         # TODO: on_receive response
@@ -67,9 +70,12 @@ class SocketUListener(UListener):
         # evt.clear()
         #self.tm_socket.send()
 
+        umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
+        umsg_serialized: bytes = umsg.SerializeToString()
+        print("Sending to Test Manager Directly!")
+        self.test_agent_conn.send(umsg_serialized)
         return UStatus(code=UCode.OK, message="all good") 
     
-listener: UListener = SocketUListener()
 
 uri: str = "/body.access//door.front_left#Door"
 
@@ -85,24 +91,20 @@ def build_uattributes():
     return UAttributesBuilder.publish(UPriority.UPRIORITY_CS4).build()
 
 
-# def process_on_receive(agent):
-#     while True:
-#         print("MADe it inside")
-#         evt.wait()
-#         if len(on_receive_items) > 0:
-#             print("item to send...")
-#             for on_rec_item in on_receive_items:
-#                 agent.on_receive_command_TA_to_TM("on_receive", on_rec_item[0], on_rec_item[1], on_rec_item[2])
-
-
-
 if __name__ == "__main__":
-    socket_utransport = SocketUTransport("127.0.0.1", 44444)
-    agent = SocketTestAgent("127.0.0.5", 12345, socket_utransport, listener)
+    dispatcher_IP: str = "127.0.0.1"
+    dispatcher_PORT: int = 44444
+    socket_utransport = SocketUTransport(dispatcher_IP, dispatcher_PORT)
+    
+    test_manager_IP: str = "127.0.0.5"
+    test_manager_PORT: int = 12345
+    test_agent_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    test_agent_socket.connect((test_manager_IP, test_manager_PORT))  
 
-    # thread = Thread(target = process_on_receive, args = (agent,))
-    # thread.start()
-    #thread.join()
+    listener: UListener = SocketUListener(test_agent_socket)
+
+    agent = SocketTestAgent(test_agent_socket, socket_utransport, listener)
+
 
     topic = LongUriSerializer().deserialize(uri)
     payload: UPayload = build_upayload()
