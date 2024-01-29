@@ -55,20 +55,20 @@ class TestManager(ABC):
         '''
         pass
     
-    @abstractmethod
-    def send_to_client(self, client: socket.socket, json_message: Dict[str, str]) -> None:
-        '''
-        Calls socket.send() for the client socket associated with the SDK Name.
-        @param client:Socket that message is being sent to.
-        @param json_message: Message to be sent.
-        '''
+    # @abstractmethod
+    # def send_to_client(self, client: socket.socket, json_message: Dict[str, str]) -> None:
+    #     '''
+    #     Calls socket.send() for the client socket associated with the SDK Name.
+    #     @param client:Socket that message is being sent to.
+    #     @param json_message: Message to be sent.
+    #     '''
     
-    @abstractmethod
-    def send_msg_to_test_agent(self, sdk_name:str, command: str, umsg: UMessage) -> UStatus:
-        '''
-        Sends the built UMessage to the client socket specified by the sdk_name.
-        @param sdk_name:Language associated with the connected test agent.
-        @param command:Command that will be sent to the test agent(s).
-        @param umsg: constructed UMessage that will be sent to test agent.
-        '''
-        pass
+    # @abstractmethod
+    # def send_msg_to_test_agent(self, sdk_name:str, command: str, umsg: UMessage) -> UStatus:
+    #     '''
+    #     Sends the built UMessage to the client socket specified by the sdk_name.
+    #     @param sdk_name:Language associated with the connected test agent.
+    #     @param command:Command that will be sent to the test agent(s).
+    #     @param umsg: constructed UMessage that will be sent to test agent.
+    #     '''
+    #     pass

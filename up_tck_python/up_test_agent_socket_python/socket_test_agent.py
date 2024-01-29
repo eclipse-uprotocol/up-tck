@@ -47,28 +47,26 @@ from uprotocol.transport.ulistener import UListener
 # on_receive_items = []
 # evt = threading.Event()
     
+
 def serialize_protobuf_to_base64(obj: Any):
     return base64.b64encode(obj.SerializeToString()).decode('ASCII')
 
 class SocketTestAgent:
-    def __init__(self, ip_addr: str, port: int, utransport: UTransport, listener: UListener) -> None:
+    def __init__(self, test_clientsocket: socket.socket, utransport: UTransport, listener: UListener) -> None:
         """
         The test server that the Test Agent will connect to
         Idea: acts as validator to validate data sent in up-client-socket-xxx
 
         """
-
+        # Socket Connection to Dispatcher
         self.utransport: SocketUTransport = utransport
-
-        self.connections : Dict[str, str] = defaultdict(str)
-        self.port_to_client : Dict[str, socket.socket] = defaultdict(None)
 
         self.possible_received_protobufs = [UMessage()]
 
-        self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
-        self.clientsocket.connect((ip_addr, port))  
+        # Client Socket connection to Test Manager
+        self.clientsocket: socket.socket = test_clientsocket
 
+        # Listening thread to receive messages from Test Manager
         thread = threading.Thread(target=self.receive_from_tm, args=(listener,))
         thread.start()
 
