@@ -8,32 +8,32 @@ This library implements the ......
 
 == Getting Started
 
-=== Importing the up-client-socket-python
+=== Importing the up-tck-python
  
 Setup upclient-socket-python local repository and install
 [source]
 ----
-$ git clone https://github.com/eclipse-uprotocol/uprotocol-tck.git
-$ cd uprotocol-tck
+$ git clone https://github.com/eclipse-uprotocol/up-tck.git
+$ cd up-tck
 $ pip install .
 ----
-*This will install the up-client-socket-python, making its classes and modules available for import in your python code.*
+*This will install the up-tck-python, making its classes and modules available for import in your python code.*
 
 
-=== Running up-client-socket-python examples
+=== Running up-tck-python examples
 
-To run the up-client-socket-python examples, run:
+To run the up-tck-python examples, run:
 
 ----
-$ cd .\uprotocol-tck\dispatcher\
+$ cd .\up-tck\dispatcher\
 $ python .\dispatcher.py
 ----
 ----
-$ cd .\uprotocol-tck\examples\up-client-socket-python\
+$ cd .\up-tck\examples\up-client-socket-python\
 $ python .\test_listener.py
 ----
 ----
-$ cd .\uprotocol-tck\examples\up-client-socket-python\
+$ cd .\up-tck\examples\up-client-socket-python\
 $ python .\test_sender.py
 ----
 
