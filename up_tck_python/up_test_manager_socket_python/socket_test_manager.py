@@ -29,8 +29,6 @@ import threading
 import logging
 from collections import defaultdict
 from typing import Dict
-import json
-import base64
 from google.protobuf.any_pb2 import Any
 
 from uprotocol.proto.uattributes_pb2 import UAttributes
@@ -39,10 +37,10 @@ from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.transport.ulistener import UListener
 from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.transport.utransport import UTransport
+from uprotocol.rpc.rpcmapper import RpcMapper
 
-from up_tck_python.test_manager.testmanager import TestManager
-from up_tck_python.up_client_socket_python.socket_utransport import SocketUTransport
+from up_tck_python.up_client_socket_python.transport_layer import TransportLayer
+from up_tck_python.utils.socket_message_processing_utils import receive_socket_data, convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, protobuf_to_base64, base64_to_protobuf_bytes, send_socket_data
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 # Create logger
@@ -50,29 +48,7 @@ logger = logging.getLogger('simple_example')
 logger.setLevel(logging.DEBUG)
 
 
-def send_socket_data(s: socket.socket , msg: bytes):
-    s.send(msg)
-
-def receive_socket_data(s: socket.socket) -> bytes:
-    bytes_mesg_len: int = 32767
-    return s.recv(bytes_mesg_len)
-
-def serialize_protobuf_to_base64(obj: Any):
-    return base64.b64encode(obj.SerializeToString()).decode('ASCII')
-
-def convert_bytes_to_string(data: bytes) -> str:
-    return data.decode()
-
-def convert_jsonstring_to_json(jsonstring: str) -> Dict[str, str]:
-    return json.loads(jsonstring) 
-
-def convert_json_to_jsonstring(j: Dict[str, str]) -> str:
-    return json.dumps(j)
-
-def convert_str_to_bytes(string: str) -> bytes:
-    return str.encode(string) 
-
-class SocketTestManager(TestManager):
+class SocketTestManager():
     """
     Validates data received from Test Agent 
     Example: can validate different message-passing mediums (ex: up-client-socket-xxx, zenoh, ...) 
@@ -84,7 +60,7 @@ class SocketTestManager(TestManager):
     message passing is blocking/sychronous 
 
     """
-    def __init__(self, ip_addr: str, port: int, utransport: UTransport) -> None:
+    def __init__(self, ip_addr: str, port: int, utransport: TransportLayer) -> None:
         """
         @param ip_addr: Test Manager's ip address
         @param port: Test Manager's port number
@@ -92,7 +68,7 @@ class SocketTestManager(TestManager):
         """
         
         # Real lowlevel implementation (ex: Ulink's UTransport, Zenoh, etc).
-        self.utransport: SocketUTransport = utransport
+        self.utransport: TransportLayer = utransport
 
         # Bc every sdk connection is unqiue, map the socket connection.
         self.sdk_to_test_agent_socket: Dict[str, socket.socket] = defaultdict(None)
@@ -107,6 +83,9 @@ class SocketTestManager(TestManager):
         self.server.listen(5)  
     
     def listen_for_client_connections(self):
+        """
+        Listens for Test Agent Connections and creates a thread to start the init process
+        """
         while True:
             print("Waiting on Test Agent connection ...")
             clientsocket, _ = self.server.accept()
@@ -137,40 +116,16 @@ class SocketTestManager(TestManager):
         
         print("Initialized new client socket!")
         print(self.sdk_to_test_agent_socket)
-    '''
-    def send_to_client(self, test_agent_socket: socket.socket, json_message: Dict[str, str]):
-        # convert a dictionary/map -> JSON string
-        json_message_str: str = convert_json_to_jsonstring(json_message) # json.dumps(json_message)
-
-        print("sending", json_message)
-
-        # to send data over a socket, we have to send in bytes --> convert JSON STRING into bytes
-        message: bytes = convert_str_to_bytes(json_message_str)  #str.encode(json_message_str)   # send this to socket in bytes
-        
-        send_socket_data(test_agent_socket, message)  # client.send(message)
-    '''
-
-    '''
-    def __parse_socket_received_data(self, recv_data: bytes) -> bytes:
-        json_str: str = recv_data.decode() # decode bytes -> str like JSON 
-        json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str)  ##json.loads(json_str)  # conver JSON Str -> JSON/Dictionary/Map
-
-        umsg_base64: str = json_msg["message"]
-        protobuf_serialized_data: bytes = base64.b64decode(umsg_base64)  # decode base64 encoding --> serialized protobuf 
-
-        return protobuf_serialized_data
-    '''
 
     def __send_to_test_agent(self, test_agent_socket: socket.socket, command: str, umsg: UMessage):
         """
         Contains data preprocessing and sending UMessage steps to Test Agent
-        ## NOTE: refrain from writing your own logic for serialization or deserialization instead you should use sdk methods to do these tasks.
         @param test_agent_socket: Test Agent Socket
         @param command: message's action-type
         """
         json_message = {
             "action": command,
-            "message": serialize_protobuf_to_base64(umsg)  # NOTE NEEDs fixing
+            "message": protobuf_to_base64(umsg) 
         }
 
         print("SENDING...")
@@ -181,47 +136,22 @@ class SocketTestManager(TestManager):
         send_socket_data(test_agent_socket, message) 
         print("SENT!")
 
-    def __receive_from_test_agent(self, test_agent_socket: socket.socket):
+    def __receive_from_test_agent(self, test_agent_socket: socket.socket) -> UStatus:
         """
         Contains UStatus receiving data preprocessing and sending UMessage steps to Test Agent
         @param test_agent_socket: Test Agent Socket
         """
         response_data: bytes = receive_socket_data(test_agent_socket)
-
         json_str: str = convert_bytes_to_string(response_data)
-
         json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str) 
 
         umsg_base64: str = json_msg["message"]
-        protobuf_serialized_data: bytes = base64.b64decode(umsg_base64)  # decode base64 encoding --> serialized protobuf 
+        
+        protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)  
 
-        status = UStatus()
-        status.ParseFromString(protobuf_serialized_data)
-        return status
-    
-    '''
-    def send_msg_to_test_agent(self, sdk_name:str, command: str, umsg: UMessage):
-        # Send to Test Agent
-        ## NOTE: refrain from writing your own logic for serialization or deserialization instead you should use sdk methods to do these tasks.
-        json_message = {
-            "action": command,
-            "message": serialize_protobuf_to_base64(umsg)
-        }
-
-        print("SENDING...")
-        clientsocket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
-        self.send_to_client(clientsocket, json_message)
-        print("SENT...")
-
-        response_data: bytes = clientsocket.recv(32767)
-
-        protobuf_serialized_data: bytes = self.__parse_socket_received_data(response_data)
-
-        status = UStatus()
-        status.ParseFromString(protobuf_serialized_data)
+        status: UStatus = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), UStatus)
 
         return status
-    '''
 
     def send_command(self, sdk_name: str, command: str,  topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
         """
@@ -242,9 +172,8 @@ class SocketTestManager(TestManager):
 
             response_data: bytes = receive_socket_data(test_agent_socket)
 
-            #unpack
-            resp_umsg: UMessage = UMessage()
-            resp_umsg.ParseFromString(response_data)
+            resp_umsg: UMessage = RpcMapper.unpack_payload(Any(value=response_data), UMessage)
+            
             print("---------------------------------OnReceive response from Test Agent!---------------------------------")
             print(resp_umsg)
             print("-----------------------------------------------------------------------------------------------------")

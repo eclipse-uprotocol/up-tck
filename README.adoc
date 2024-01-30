@@ -19,21 +19,47 @@ $ pip install .
 ----
 *This will install the up-tck-python, making its classes and modules available for import in your python code.*
 
-
-=== Running up-tck-python examples
+=== Running Test Manager and Test Agent Examples
 
 To run the up-tck-python examples, run:
 
 ----
-$ cd .\up-tck\dispatcher\
+$ cd .\up_tck_python\dispatcher\
 $ python .\dispatcher.py
 ----
 ----
-$ cd .\up-tck\examples\up-client-socket-python\
+$ cd .\up_tck_python\examples\tck_interoperability\
+$ python .\test_socket_tm.py
+----
+----
+$ cd .\up_tck_python\examples\tck_interoperability\
+$ python .\test_socket_ta.py
+----
+
+In the test_manager terminal ...
+1. Enter "java" for "SDK Language" and "registerlistener" for "Command Name".
+2. Press Enter and prints will appear 
+3. Enter "python" for "SDK Language" and "send" for "Command Name". 
+4. Press Enter and prints will appear 
+
+These two commands together will test the operation of sending from a test manager to a registered test agent. 
+Logs will go into further detail on messaging. 
+
+
+=== Running up-tck-python examples
+
+To run the examples...
+
+----
+$ cd .\up_tck_python\dispatcher\
+$ python .\dispatcher.py
+----
+----
+$ cd .\up_tck_python\examples\up-client-socket-python\
 $ python .\test_listener.py
 ----
 ----
-$ cd .\up-tck\examples\up-client-socket-python\
+$ cd .\up_tck_python\examples\up-client-socket-python\
 $ python .\test_sender.py
 ----
 

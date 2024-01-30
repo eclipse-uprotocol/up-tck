@@ -28,6 +28,8 @@
 from typing import Dict
 import socket
 import logging
+from google.protobuf.any_pb2 import Any
+from concurrent.futures import Future
 
 from threading import Thread
 from uprotocol.proto.uattributes_pb2 import UAttributes
@@ -37,15 +39,15 @@ from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
 from uprotocol.proto.umessage_pb2 import UMessage
+from uprotocol.rpc.rpcmapper import RpcMapper
+from uprotocol.rpc.rpcclient import RpcClient
+
+from up_tck_python.up_client_socket_python.socket_rpcclient import SocketRPCClient
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 logger = logging.getLogger('simple_example')
 logger.setLevel(logging.INFO)
 
-
-def unpack(recv_data: bytes, protobuf_data):
-    protobuf_data.ParseFromString(recv_data)
-    return protobuf_data
 
 class SocketUTransport(UTransport):
     def __init__(self, host_ip: str, port: int) -> None:
@@ -57,6 +59,8 @@ class SocketUTransport(UTransport):
         
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
         self.socket.connect((host_ip, port))  
+
+        self.rpcclient: RpcClient = SocketRPCClient(None, None, socket=socket)
 
         self.topic_to_listener: Dict[bytes, UListener] = {} 
         thread = Thread(target = self.__listen)  
@@ -79,7 +83,9 @@ class SocketUTransport(UTransport):
                 
                 logger.info(f"Received Data: {recv_data}")
 
-                umsg: UMessage = unpack(recv_data , UMessage())
+                logger.info(f"!!!USING RpcMapper unpack_payload!!!")
+
+                umsg: UMessage = RpcMapper.unpack_payload(Any(value=recv_data), UMessage ) # unpack(recv_data , UMessage())
                 logger.info(f"Received uMessage: {umsg}")
 
                 uuri: UUri = umsg.source
@@ -147,5 +153,16 @@ class SocketUTransport(UTransport):
 
         return UStatus(code=UCode.OK, message="OK")  
     
+
+    def invoke_method(self, topic: UUri, payload: UPayload, attributes: UAttributes) -> Future:
+        """
+        Support for RPC method invocation.<br><br>
+
+        @param topic: topic of the method to be invoked (i.e. the name of the API we are calling).
+        @param payload:The request message to be sent to the server.
+        @param attributes: metadata for the method invocation (i.e. priority, timeout, etc.)
+        @return: Returns the CompletableFuture with the result or exception.
+        """
+        return self.rpcclient.invoke_method(topic, payload, attributes)
     
 

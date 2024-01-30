@@ -1,8 +1,5 @@
 import time
 
-
-from up_tck_python.up_client_socket_python.socket_utransport import SocketUTransport
-from up_tck_python.up_test_manager_socket_python.socket_test_manager import SocketTestManager
 from google.protobuf.any_pb2 import Any
 from concurrent.futures import ThreadPoolExecutor
 
@@ -11,13 +8,15 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.transport.ulistener import UListener
-from up_tck_python.up_client_socket_python.socket_utransport import SocketUTransport
 
 from uprotocol.proto.cloudevents_pb2 import CloudEvent
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from up_tck_python.up_client_socket_python.transport_layer import TransportLayer
+from up_tck_python.up_test_manager_socket_python.socket_test_manager import SocketTestManager
+
 import logging 
 
 logging.basicConfig(format='%(asctime)s %(message)s')
@@ -25,10 +24,9 @@ logging.basicConfig(format='%(asctime)s %(message)s')
 logger = logging.getLogger('simple_example')
 logger.setLevel(logging.DEBUG)
 
-socket_utransport = SocketUTransport("127.0.0.1", 44444)
-print("starting socket_utransport")
-manager = SocketTestManager("127.0.0.5", 12345, socket_utransport)
-print("starting TestManager")
+transport = TransportLayer()
+transport.set_socket_config("127.0.0.1", 44444)
+manager = SocketTestManager("127.0.0.5", 12345, transport)
 
 
 uri: str = "/body.access//door.front_left#Door"
@@ -70,7 +68,7 @@ with ThreadPoolExecutor(max_workers=1) as executor:
     # submit the task
     future = executor.submit(manager.listen_for_client_connections)
     time.sleep(10)
-    # manager.send_to_all_ports(topic, payload, attributes)
+
     while True:
         sdk: str = input("Enter SDK Language[java/python]: ")
         sdk = sdk.strip()
