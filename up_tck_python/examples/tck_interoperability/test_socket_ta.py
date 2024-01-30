@@ -34,9 +34,8 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.proto.upayload_pb2 import UPayload
 
-from up_tck_python.up_client_socket_python.socket_utransport import SocketUTransport
 from up_tck_python.up_client_socket_python.transport_layer import TransportLayer
-from up_tck_python.up_test_agent_socket_python.socket_test_agent import SocketTestAgent
+from up_tck_python.test_agent.testagent import SocketTestAgent
 
 from uprotocol.transport.ulistener import UListener
 

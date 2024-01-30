@@ -15,7 +15,7 @@ from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from up_tck_python.up_client_socket_python.transport_layer import TransportLayer
-from up_tck_python.up_test_manager_socket_python.socket_test_manager import SocketTestManager
+from up_tck_python.test_manager.testmanager import SocketTestManager
 
 import logging 
 
