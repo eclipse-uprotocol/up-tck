@@ -51,16 +51,19 @@ class SocketRPCClient(RpcClient):
     <a href=https://github.com/eclipse-uprotocol/uprotocol-spec/blob/main/up-l2/README.adoc>[RpcClient
     Specifications]</a>
     """
-
-    def __init__(self, host_ip: str, port: int) -> None:
+    def __init__(self, host_ip: str, port: int, socket: socket.socket = None) -> None:
         '''
         @param host_ip: the ip address for the socket to connect to
         @param port: the port for the socket to connect to
-        '''
+        @param socket: already connected socket
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-        self.socket.connect((host_ip, port))  
-    
+        '''
+        if socket is not None:
+            self.socket = socket
+        else:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
+            self.socket.connect((host_ip, port))  
+
     def __send_to_service_socket(self, topic: UUri, payload: UPayload, attributes: UAttributes):
         """
         Sends the using the provided UMessage data then waits until it gets a response message.

@@ -35,6 +35,7 @@ from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.proto.upayload_pb2 import UPayload
 
 from up_tck_python.up_client_socket_python.socket_utransport import SocketUTransport
+from up_tck_python.up_client_socket_python.transport_layer import TransportLayer
 from up_tck_python.up_test_agent_socket_python.socket_test_agent import SocketTestAgent
 
 from uprotocol.transport.ulistener import UListener
@@ -48,6 +49,9 @@ from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 
 class SocketUListener(UListener):
     def __init__(self, test_agent_conn: socket.socket) -> None:
+        """
+        @param test_agent_conn: Connection to Test Agent
+        """
         # Connection to Test Manager
         self.test_agent_conn: socket.socket = test_agent_conn
 
@@ -64,14 +68,10 @@ class SocketUListener(UListener):
         print("Listener onreceived")
         print(f"{payload}")
 
-        # TODO: on_receive response
-        # on_receive_items.append((topic, payload, attributes))
-        # evt.set()
-        # evt.clear()
-        #self.tm_socket.send()
 
         umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
         umsg_serialized: bytes = umsg.SerializeToString()
+
         print("Sending to Test Manager Directly!")
         self.test_agent_conn.send(umsg_serialized)
         return UStatus(code=UCode.OK, message="all good") 
@@ -94,7 +94,9 @@ def build_uattributes():
 if __name__ == "__main__":
     dispatcher_IP: str = "127.0.0.1"
     dispatcher_PORT: int = 44444
-    socket_utransport = SocketUTransport(dispatcher_IP, dispatcher_PORT)
+
+    transport = TransportLayer()
+    transport.set_socket_config(dispatcher_IP, dispatcher_PORT)
     
     test_manager_IP: str = "127.0.0.5"
     test_manager_PORT: int = 12345
@@ -103,7 +105,7 @@ if __name__ == "__main__":
 
     listener: UListener = SocketUListener(test_agent_socket)
 
-    agent = SocketTestAgent(test_agent_socket, socket_utransport, listener)
+    agent = SocketTestAgent(test_agent_socket, transport, listener)
 
 
     topic = LongUriSerializer().deserialize(uri)
@@ -111,4 +113,4 @@ if __name__ == "__main__":
     attributes: UAttributes = build_uattributes()
 
 
-    agent.send_to_TM(json.dumps({'SDK_name': "java"}))
+    agent.send_to_TM({'SDK_name': "java"})
