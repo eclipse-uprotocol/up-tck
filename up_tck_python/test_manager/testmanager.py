@@ -91,6 +91,7 @@ class SocketTestManager():
             clientsocket, _ = self.server.accept()
 
             thread = threading.Thread(target=self.__initialize_new_client_connection, args=(clientsocket, ))
+            print(clientsocket)
             thread.start()
 
     def __initialize_new_client_connection(self, test_agent_socket: socket.socket):
@@ -136,7 +137,7 @@ class SocketTestManager():
         send_socket_data(test_agent_socket, message) 
         print("SENT!")
 
-    def __receive_from_test_agent(self, test_agent_socket: socket.socket) -> UStatus:
+    def __receive_from_test_agent(self, test_agent_socket: socket.socket, message_protobuf_class):
         """
         Contains UStatus receiving data preprocessing and sending UMessage steps to Test Agent
         @param test_agent_socket: Test Agent Socket
@@ -144,14 +145,18 @@ class SocketTestManager():
         response_data: bytes = receive_socket_data(test_agent_socket)
         json_str: str = convert_bytes_to_string(response_data)
         json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str) 
+        
+        print("-----------------------json_msg----------------------")
+        print(json_msg)
+        print("-----------------------------------------")
 
         umsg_base64: str = json_msg["message"]
         
         protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)  
 
-        status: UStatus = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), UStatus)
+        filled_protobuf_obj = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), message_protobuf_class)
 
-        return status
+        return filled_protobuf_obj
 
     def send_command(self, sdk_name: str, command: str,  topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
         """
@@ -170,13 +175,15 @@ class SocketTestManager():
 
             test_agent_socket: socket.socket = self.sdk_to_test_agent_socket["java"]  ## NOTE: NEED fixings
 
-            response_data: bytes = receive_socket_data(test_agent_socket)
+            # response_data: bytes = receive_socket_data(test_agent_socket)
 
-            resp_umsg: UMessage = RpcMapper.unpack_payload(Any(value=response_data), UMessage)
+            # resp_umsg: UMessage = RpcMapper.unpack_payload(Any(value=response_data), UMessage)
             
+            onreceive_umsg: UMessage = self.__receive_from_test_agent(test_agent_socket, UMessage)
             print("---------------------------------OnReceive response from Test Agent!---------------------------------")
-            print(resp_umsg)
+            print(onreceive_umsg)
             print("-----------------------------------------------------------------------------------------------------")
+
         else:
             # Send message to Test Agent
             umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
@@ -184,7 +191,7 @@ class SocketTestManager():
             test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
 
             self.__send_to_test_agent(test_agent_socket, command, umsg)
-            status: UStatus = self.__receive_from_test_agent(test_agent_socket)
+            status: UStatus = self.__receive_from_test_agent(test_agent_socket, UStatus)
         
         return status
 
@@ -209,6 +216,6 @@ class SocketTestManager():
             test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
 
             self.__send_to_test_agent(test_agent_socket, command, umsg)
-            status: UStatus = self.__receive_from_test_agent(test_agent_socket)
+            status: UStatus = self.__receive_from_test_agent(test_agent_socket, UStatus)
 
         return status

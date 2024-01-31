@@ -46,6 +46,8 @@ from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 
+from up_tck_python.utils.socket_message_processing_utils import convert_json_to_jsonstring, convert_str_to_bytes, protobuf_to_base64, send_socket_data
+
 class SocketUListener(UListener):
     def __init__(self, test_agent_conn: socket.socket) -> None:
         """
@@ -67,12 +69,22 @@ class SocketUListener(UListener):
         print("Listener onreceived")
         print(f"{payload}")
 
-
+        #NOTE: Need to send as JSON!!!
         umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
-        umsg_serialized: bytes = umsg.SerializeToString()
+        
+        json_message = {
+            "action": "onReceive",
+            "message": protobuf_to_base64(umsg) 
+        }
+
+        print("SENDING onReceive...")
+        json_message_str: str = convert_json_to_jsonstring(json_message) 
+
+        message: bytes = convert_str_to_bytes(json_message_str) 
 
         print("Sending to Test Manager Directly!")
-        self.test_agent_conn.send(umsg_serialized)
+        send_socket_data(test_agent_socket, message) 
+
         return UStatus(code=UCode.OK, message="all good") 
     
 
