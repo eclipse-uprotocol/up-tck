@@ -3,34 +3,52 @@ package org.tck;
 import org.eclipse.uprotocol.cloudevent.serialize.Base64ProtobufSerializer;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.v1.*;
+import org.eclipse.uprotocol.v1.UMessage;
+import org.eclipse.uprotocol.rpc.RpcMapper;
 import org.json.JSONObject;
+
+import com.google.protobuf.CodedOutputStream;
+import com.google.protobuf.Any;
+import com.google.protobuf.ByteString;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TestAgent {
-    SocketUTransport socketUTransport;
-    JSONObject obj;
-    Socket clientSocket;
-    private ConcurrentMap<String, String> connections = new ConcurrentHashMap<>();
-    private ConcurrentMap<String, Socket> portToClient = new ConcurrentHashMap<>();
+    private SocketUTransport socketUTransport;
+    private JSONObject obj;
+    private Socket clientSocket;
 
     public TestAgent(Socket socket, SocketUTransport utransport, SocketUListener listener) {
         try {
-            this.socketUTransport = (SocketUTransport) utransport;
-            clientSocket = new Socket();
-            portToClient.put(Integer.toString(ThreadLocalRandom.current().nextInt(1, 10000)), clientSocket);
+        	// Socket Connection to Dispatcher
+            this.socketUTransport = utransport;
+            
+            // Client Socket connection to Test Manager
+            clientSocket = socket;
+            
+            // Listening thread to receive messages from Test Manager
             Thread receiveThread = new Thread(() -> receiveFromTM(listener));
             receiveThread.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    
+    private byte[] base64ToProtobufBytes(String base64) {
+    	return Base64ProtobufSerializer.serialize(base64);
+    }
+    
+    private String protoboufToBase64(UStatus status) {
+    	return Base64ProtobufSerializer.deserialize(status.toByteArray());
     }
 
     private void receiveFromTM(UListener listener) {
@@ -43,26 +61,37 @@ public class TestAgent {
                 if (bytesRead > 0) {
                     String jsonStr = new String(recvData, 0, bytesRead, StandardCharsets.UTF_8);
                     System.out.println("jsonMsg from TM: " + jsonStr);
+                    
                     obj = new JSONObject(jsonStr);
-                    System.out.println("json obj ->" + obj);
+                    System.out.println("json obj:" + obj);
 
                     String action = obj.getString("action");
                     System.out.println("action ->" + obj);
+                    
                     String message = obj.getString("message");
-                    byte[] base64 = Base64ProtobufSerializer.serialize(message);
-                    System.out.println("message ->" + base64);
-                    /*UMessage responseProto = RpcMapper.unpackPayload(new Any(base64), org.eclipse.uprotocol.v1.UMessage.class);
+                    byte[] protobuf_bytes = base64ToProtobufBytes(message);
+                    System.out.println("message ->" + protobuf_bytes);
+                    
+//                    Any any = Any.newBuilder().setValue(ByteString.copyFrom(protobuf_bytes)).build();
+//                    Any any = Any.parseFrom(protobuf_bytes);
+//                    System.out.println("any:");
+//                    System.out.println(any);
+
+//                    UMessage umsg = RpcMapper.unpackPayload(any, UMessage.class);
+                    UMessage umsg = UMessage.parseFrom(protobuf_bytes);
+
+                    System.out.println(umsg);
 
                     UStatus status = null;
                     switch (action) {
                         case "send":
-                            status = socketUTransport.send(responseProto.getSource(), responseProto.getPayload(), responseProto.getAttributes());
+                            status = socketUTransport.send(umsg.getSource(), umsg.getPayload(), umsg.getAttributes());
                             break;
                         case "registerlistener":
-                            status = socketUTransport.registerListener(responseProto.getSource(), listener);
+                            status = socketUTransport.registerListener(umsg.getSource(), listener);
                             break;
                     }
-                    this.send(status);*/
+                    this.send(status);
                 }
             }
         } catch (IOException e) {
@@ -85,11 +114,10 @@ public class TestAgent {
     }
 
     public void send(UStatus status) {
-        System.out.println("status ->" + status);
-        byte[] base64status = status.toByteArray();
-        obj.put("action", "uStatus");
-        obj.put("message", Base64ProtobufSerializer.deserialize(base64status));
-        sendToTM(obj);
+    	JSONObject json = new JSONObject();
+        json.put("action", "uStatus");
+        json.put("message", protoboufToBase64(status));
+        sendToTM(json);
     }
 
     void sendToTM(JSONObject jsonObject) {
@@ -98,6 +126,7 @@ public class TestAgent {
             String jsonString = jsonObject.toString();
             byte[] messageBytes = jsonString.getBytes(StandardCharsets.UTF_8);
             clientOutputStream.write(messageBytes);
+            clientOutputStream.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
