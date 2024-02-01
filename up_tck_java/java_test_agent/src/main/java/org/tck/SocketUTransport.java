@@ -17,7 +17,7 @@ import org.eclipse.uprotocol.v1.UMessage;
 public class SocketUTransport implements UTransport {
 
     private final Socket socket;
-    private final Map<byte[], UListener> topicToListener = new ConcurrentHashMap<>();
+    private final Map<UUri, UListener> topicToListener = new ConcurrentHashMap<>();
     private static final int MSG_LEN = 32767;
     private static final Logger logger = Logger.getLogger("simple_example");
 
@@ -86,8 +86,7 @@ public class SocketUTransport implements UTransport {
 
     @Override
     public UStatus registerListener(UUri topic, UListener listener) {
-        byte[] topicSerialized = topic.toByteArray();
-        topicToListener.put(topicSerialized, listener);
+        topicToListener.put(topic, listener);
 
         return UStatus.newBuilder()
                 .setCode(UCode.OK)
@@ -97,8 +96,7 @@ public class SocketUTransport implements UTransport {
 
     @Override
     public UStatus unregisterListener(UUri topic, UListener listener) {
-        byte[] topicSerialized = topic.toByteArray();
-        topicToListener.remove(topicSerialized);
+        topicToListener.remove(topic);
 
         return UStatus.newBuilder()
                 .setCode(UCode.OK)
