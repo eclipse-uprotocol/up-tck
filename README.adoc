@@ -3,7 +3,8 @@
 
 == Overview
 
-This library implements the ......
+This library implements the uProtocol Test Compatibility Kit for the use of a Test Manager and Test Agents. A Test Manager will be responsible for sending commands to multiple connected Test Agents. The Test Agents, in turn, will carry out the tests specified in the commands, and return results back to the Test Manager for validation and processing.
+
 
 
 == Getting Started
@@ -37,10 +38,10 @@ $ python .\test_socket_ta.py
 ----
 
 In the test_manager terminal ...
-1. Enter "java" for "SDK Language" and "registerlistener" for "Command Name".
-2. Press Enter and prints will appear 
-3. Enter "python" for "SDK Language" and "send" for "Command Name". 
-4. Press Enter and prints will appear 
+. Enter "java" for "SDK Language" and "registerlistener" for "Command Name".
+. Press Enter and prints will appear 
+. Enter "python" for "SDK Language" and "send" for "Command Name". 
+. Press Enter and prints will appear 
 
 These two commands together will test the operation of sending from a test manager to a registered test agent. 
 Logs will go into further detail on messaging. 
