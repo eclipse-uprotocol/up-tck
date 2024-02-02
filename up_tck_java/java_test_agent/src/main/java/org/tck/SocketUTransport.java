@@ -6,20 +6,19 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.logging.Logger;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.eclipse.uprotocol.rpc.CallOptions;
+import org.eclipse.uprotocol.rpc.RpcClient;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.UTransport;
 import org.eclipse.uprotocol.v1.*;
-import org.eclipse.uprotocol.v1.UMessage;
 
-public class SocketUTransport implements UTransport {
-
+public class SocketUTransport implements UTransport, RpcClient {
     private final Socket socket;
+    SocketRPCClient socketRPCClient;
     private final Map<UUri, UListener> topicToListener = new ConcurrentHashMap<>();
-    private static final int MSG_LEN = 32767;
-    private static final Logger logger = Logger.getLogger("simple_example");
 
     public SocketUTransport(String hostIp, int port) throws IOException {
         socket = new Socket(hostIp, port);
@@ -31,7 +30,7 @@ public class SocketUTransport implements UTransport {
         try {
             while (true) {
                 InputStream inputStream = socket.getInputStream();
-                byte[] buffer = new byte[32767];  //new byte[174];
+                byte[] buffer = new byte[32767];
                 int readSize = inputStream.read(buffer);
                 System.out.println(readSize);
 
@@ -87,7 +86,6 @@ public class SocketUTransport implements UTransport {
     @Override
     public UStatus registerListener(UUri topic, UListener listener) {
         topicToListener.put(topic, listener);
-
         return UStatus.newBuilder()
                 .setCode(UCode.OK)
                 .setMessage("OK")
@@ -97,10 +95,16 @@ public class SocketUTransport implements UTransport {
     @Override
     public UStatus unregisterListener(UUri topic, UListener listener) {
         topicToListener.remove(topic);
-
         return UStatus.newBuilder()
                 .setCode(UCode.OK)
                 .setMessage("OK")
                 .build();
+    }
+
+
+    @Override
+    public CompletionStage<UMessage> invokeMethod(UUri topic, UPayload payload, CallOptions callOptions) {
+        CompletionStage<UMessage> response = socketRPCClient.invokeMethod(topic, payload, callOptions);
+        return response;
     }
 }
