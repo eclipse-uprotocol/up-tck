@@ -1,9 +1,11 @@
-package org.tck;
+package org.tck.testagent;
 
 import org.eclipse.uprotocol.cloudevent.serialize.Base64ProtobufSerializer;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.v1.*;
 import org.json.JSONObject;
+import org.tck.up_client_socket_java.SocketUListener;
+import org.tck.up_client_socket_java.SocketUTransport;
 
 import java.io.IOException;
 import java.io.InputStream;
