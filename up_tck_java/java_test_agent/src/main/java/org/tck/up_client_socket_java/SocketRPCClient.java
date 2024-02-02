@@ -1,7 +1,6 @@
-package org.tck;
+package org.tck.up_client_socket_java;
 
 import org.eclipse.uprotocol.rpc.CallOptions;
-import org.eclipse.uprotocol.rpc.RpcClient;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
 import org.eclipse.uprotocol.v1.*;
 
@@ -37,6 +36,7 @@ public class SocketRPCClient {
                 .setAttributes(attributes)
                 .setPayload(payload)
                 .build();
+        System.out.println("UMessage: \n" + umsg);
         byte[] umsg_bytes = umsg.toByteArray();
 
         socket.getOutputStream().write(umsg_bytes);

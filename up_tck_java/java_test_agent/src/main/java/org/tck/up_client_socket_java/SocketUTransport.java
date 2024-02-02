@@ -1,4 +1,4 @@
-package org.tck;
+package org.tck.up_client_socket_java;
 
 import java.io.IOException;
 import java.io.InputStream;
