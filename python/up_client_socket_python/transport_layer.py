@@ -33,7 +33,7 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.transport.ulistener import UListener
 
-from up_tck_python.up_client_socket_python.socket_utransport import SocketUTransport
+from up_client_socket_python.socket_utransport import SocketUTransport
 
 
 

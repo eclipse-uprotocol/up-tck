@@ -14,8 +14,8 @@ from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
-from python.up_client_socket_python.transport_layer import TransportLayer
-from python.test_manager.testmanager import SocketTestManager
+from up_client_socket_python.transport_layer import TransportLayer
+from test_manager.testmanager import SocketTestManager
 
 import logging 
 
