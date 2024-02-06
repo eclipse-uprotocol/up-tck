@@ -5,12 +5,20 @@ from typing import Dict
 
 from uprotocol.cloudevent.serialize.base64protobufserializer import Base64ProtobufSerializer
 
+BYTES_MSG_LENGTH: int = 32767
+
 def send_socket_data(s: socket.socket , msg: bytes):
-    s.send(msg)
+    """_summary_
+
+    filler =  b' ' * (recv_size - len(message))
+    test_agent_socket1.send(message + filler)
+    """
+    filler =  b' ' * (BYTES_MSG_LENGTH - len(msg))
+    # test_agent_socket1.send(message + filler)
+    s.send(msg + filler)
 
 def receive_socket_data(s: socket.socket) -> bytes:
-    bytes_mesg_len: int = 32767
-    return s.recv(bytes_mesg_len)
+    return s.recv(BYTES_MSG_LENGTH)
 
 def protobuf_to_base64(obj: Any) -> str:
     serial_proto: bytes = obj.SerializeToString()
