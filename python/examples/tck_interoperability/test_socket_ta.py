@@ -34,8 +34,8 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.proto.upayload_pb2 import UPayload
 
-from python.up_client_socket_python.transport_layer import TransportLayer
-from python.test_agent.testagent import SocketTestAgent
+from up_client_socket_python.transport_layer import TransportLayer
+from test_agent.testagent import SocketTestAgent
 
 from uprotocol.transport.ulistener import UListener
 
@@ -46,7 +46,7 @@ from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 
-from python.utils.socket_message_processing_utils import convert_json_to_jsonstring, convert_str_to_bytes, protobuf_to_base64, send_socket_data
+from up_client_socket_python.utils.socket_message_processing_utils import convert_json_to_jsonstring, convert_str_to_bytes, protobuf_to_base64, send_socket_data
 
 class SocketUListener(UListener):
     def __init__(self, test_agent_conn: socket.socket) -> None:

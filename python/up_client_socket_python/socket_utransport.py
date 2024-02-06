@@ -42,7 +42,7 @@ from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.rpc.rpcmapper import RpcMapper
 from uprotocol.rpc.rpcclient import RpcClient
 
-from python.up_client_socket_python.socket_rpcclient import SocketRPCClient
+from up_client_socket_python.socket_rpcclient import SocketRPCClient
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 logger = logging.getLogger('simple_example')
@@ -60,7 +60,7 @@ class SocketUTransport(UTransport):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
         self.socket.connect((dipatcher_ip, dipatcher_port))  
 
-        self.rpcclient: RpcClient = SocketRPCClient(None, None, socket=self.socket)
+        self.rpcclient: RpcClient = SocketRPCClient(None, None, server_conn=self.socket)
 
         self.topic_to_listener: Dict[bytes, UListener] = {} 
         thread = Thread(target = self.__listen)  

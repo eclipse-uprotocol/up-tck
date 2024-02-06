@@ -25,15 +25,15 @@ $ pip install .
 To run the up-tck-python examples, run:
 
 ----
-$ cd .\up_tck_python\dispatcher\
+$ cd .\python\dispatcher\
 $ python .\dispatcher.py
 ----
 ----
-$ cd .\up_tck_python\examples\tck_interoperability\
+$ cd .\python\examples\tck_interoperability\
 $ python .\test_socket_tm.py
 ----
 ----
-$ cd .\up_tck_python\examples\tck_interoperability\
+$ cd .\python\examples\tck_interoperability\
 $ python .\test_socket_ta.py
 ----
 
@@ -52,15 +52,15 @@ Logs will go into further detail on messaging.
 To run the examples...
 
 ----
-$ cd .\up_tck_python\dispatcher\
+$ cd .\python\dispatcher\
 $ python .\dispatcher.py
 ----
 ----
-$ cd .\up_tck_python\examples\up-client-socket-python\
+$ cd .\python\examples\up-client-socket-python\
 $ python .\test_listener.py
 ----
 ----
-$ cd .\up_tck_python\examples\up-client-socket-python\
+$ cd .\python\examples\up-client-socket-python\
 $ python .\test_sender.py
 ----
 
