@@ -51,18 +51,18 @@ class SocketRPCClient(RpcClient):
     <a href=https://github.com/eclipse-uprotocol/uprotocol-spec/blob/main/up-l2/README.adoc>[RpcClient
     Specifications]</a>
     """
-    def __init__(self, host_ip: str, port: int, socket: socket.socket = None) -> None:
+    def __init__(self, server_ip: str, server_port: int, server_conn: socket.socket = None) -> None:
         '''
-        @param host_ip: the ip address for the socket to connect to
+        @param server_ip: the ip address for the socket to connect to
         @param port: the port for the socket to connect to
-        @param socket: already connected socket
+        @param socket: cli_socket connected socket
 
         '''
         if socket is not None:
-            self.socket = socket
+            self.socket = server_conn
         else:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-            self.socket.connect((host_ip, port))  
+            self.socket.connect((server_ip, server_port))  
 
     def __send_to_service_socket(self, topic: UUri, payload: UPayload, attributes: UAttributes):
         """

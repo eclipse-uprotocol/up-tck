@@ -42,7 +42,7 @@ from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.rpc.rpcmapper import RpcMapper
 from uprotocol.rpc.rpcclient import RpcClient
 
-from up_tck_python.up_client_socket_python.socket_rpcclient import SocketRPCClient
+from python.up_client_socket_python.socket_rpcclient import SocketRPCClient
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 logger = logging.getLogger('simple_example')
@@ -50,17 +50,17 @@ logger.setLevel(logging.INFO)
 
 
 class SocketUTransport(UTransport):
-    def __init__(self, host_ip: str, port: int) -> None:
+    def __init__(self, dipatcher_ip: str, dipatcher_port: int) -> None:
         """
         Creates a uEntity with Socket Connection, as well as a map of registered topics.
-        @param host_ip: IP address of Dispatcher.
-        @param port: Port of Dispatcher.
+        @param dipatcher_ip: IP address of Dispatcher.
+        @param dipatcher_port: Port of Dispatcher.
         """
         
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-        self.socket.connect((host_ip, port))  
+        self.socket.connect((dipatcher_ip, dipatcher_port))  
 
-        self.rpcclient: RpcClient = SocketRPCClient(None, None, socket=socket)
+        self.rpcclient: RpcClient = SocketRPCClient(None, None, socket=self.socket)
 
         self.topic_to_listener: Dict[bytes, UListener] = {} 
         thread = Thread(target = self.__listen)  
@@ -82,8 +82,6 @@ class SocketUTransport(UTransport):
                     continue
                 
                 logger.info(f"Received Data: {recv_data}")
-
-                logger.info(f"!!!USING RpcMapper unpack_payload!!!")
 
                 umsg: UMessage = RpcMapper.unpack_payload(Any(value=recv_data), UMessage ) # unpack(recv_data , UMessage())
                 logger.info(f"Received uMessage: {umsg}")

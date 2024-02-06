@@ -1,5 +1,5 @@
 import time
-
+from threading import Thread
 from google.protobuf.any_pb2 import Any
 from concurrent.futures import ThreadPoolExecutor
 
@@ -14,8 +14,8 @@ from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
-from up_tck_python.up_client_socket_python.transport_layer import TransportLayer
-from up_tck_python.test_manager.testmanager import SocketTestManager
+from python.up_client_socket_python.transport_layer import TransportLayer
+from python.test_manager.testmanager import SocketTestManager
 
 import logging 
 
@@ -43,11 +43,14 @@ def build_uattributes():
     return UAttributesBuilder.publish(UPriority.UPRIORITY_CS4).build()
 
 class SocketUListener(UListener):
-    def __init__(self) -> None:
+    def __init__(self, sdk_name: str ="python") -> None:
         pass
 
     def on_receive(self, topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
         """
+        ULIstener is for each TA
+        ADD SDK NAME in constructor or something
+        
         Method called to handle/process events.<br><br>
         @param topic: Topic the underlying source of the message.
         @param payload: Payload of the message.
@@ -63,30 +66,34 @@ class SocketUListener(UListener):
 
 
 listener: UListener = SocketUListener()
+# with ThreadPoolExecutor(max_workers=1) as executor:
+#     # submit the task
+#     future = executor.submit(manager.listen_for_client_connections)
+thread = Thread(target = manager.listen_for_client_connections)  
+thread.start()
+time.sleep(10)
 
-with ThreadPoolExecutor(max_workers=1) as executor:
-    # submit the task
-    future = executor.submit(manager.listen_for_client_connections)
-    time.sleep(10)
+while True:
+    sdk: str = input("Enter SDK Language[java/python]: ")
+    sdk = sdk.strip()
+    command_name = input("Enter Command Name[send/registerlistener]: ")
+    command_name = command_name.strip().lower()
 
-    while True:
-        sdk: str = input("Enter SDK Language[java/python]: ")
-        sdk = sdk.strip()
-        command_name = input("Enter Command Name[send/registerlistener]: ")
-        command_name = command_name.strip().lower()
+    topic = LongUriSerializer().deserialize(uri)
+    payload: UPayload = build_upayload(sdk)
+    attributes: UAttributes = build_uattributes()
 
-        topic = LongUriSerializer().deserialize(uri)
-        payload: UPayload = build_upayload(sdk)
-        attributes: UAttributes = build_uattributes()
+    if command_name == "send": 
+        print("SEND COMMAND")
+        status: UStatus = manager.send_command(sdk, command_name, topic, payload, attributes)
+    elif command_name == "registerlistener":
+        print("RegisterListener COMMAND")
 
-        if command_name == "send": 
-            print("SEND COMMAND")
-            status: UStatus = manager.send_command(sdk, command_name, topic, payload, attributes)
-        elif command_name == "registerlistener":
-            status: UStatus = manager.register_listener_command(sdk, command_name, topic, listener)
-        else:
-            print("in exception!")
-            continue
-        print("sdk:", sdk)
-        print("status:", status)
-        print("---------------")
+        status: UStatus = manager.register_listener_command(sdk, command_name, topic, listener)
+    else:
+        print("in exception!")
+        continue
+    print("sdk:", sdk)
+    print("status:", status)
+    print("---------------")
+    time.sleep(1)
