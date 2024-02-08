@@ -52,17 +52,7 @@ $ cd .\python\examples\tck_interoperability\
 $ python .\test_socket_ta.py
 ----
 
-In the test_manager terminal ...
-. Enter "java" for "SDK Language" and "registerlistener" for "Command Name".
-. Press Enter and prints will appear 
-. Enter "python" for "SDK Language" and "send" for "Command Name". 
-. Press Enter and prints will appear 
-
-These two commands together will test the operation of sending from a test manager to a registered test agent. 
-Logs will go into further detail on messaging. 
-
-
-=== Running up-tck-python examples
+=== Running up-tck-python Socket-UTransport examples
 
 To run the examples...
 
