@@ -75,8 +75,9 @@ Clean up by running the command:
 `python clean_project.py`
 
 === Appendix: Test Manager grammar 
-grammar:
+
     <stmt-seq> := <stmt> | <stmt><stmt-seq>
+
     <stmt> := <register_listener> | <send> | <responds_ustatus>
     
     <register_listener> := "enactor" register_listener_command "receiver" | 
@@ -98,11 +99,11 @@ grammar:
         }
 
     <param-list> := <param> | <param><param-list> 
+    
     <param> := <variable> = "string" | 
         <variable> = { 
             <param-list> 
         }
 
-    * Note: not case case sensitive
     <variable> := UUrI | UPAYLOAD | CLOUDEVENT | UAttributes | id | source
     
