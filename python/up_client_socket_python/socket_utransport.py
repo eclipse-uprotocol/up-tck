@@ -81,10 +81,8 @@ class SocketUTransport(UTransport):
                 if recv_data == b"":
                     continue
                 
-                logger.info(f"Received Data: {recv_data}")
-
                 umsg: UMessage = RpcMapper.unpack_payload(Any(value=recv_data), UMessage ) # unpack(recv_data , UMessage())
-                logger.info(f"Received uMessage: {umsg}")
+                logger.info(f"{self.__class__.__name__} Received uMessage: {umsg}")
 
                 uuri: UUri = umsg.source
                 payload: UPayload = umsg.payload
@@ -92,12 +90,12 @@ class SocketUTransport(UTransport):
 
                 topic: bytes = uuri.SerializeToString()
                 if topic in self.topic_to_listener:
-                    logger.info("Handle Topic")
+                    logger.info(f"{self.__class__.__name__} Handle Topic")
 
                     listener: UListener = self.topic_to_listener[topic]
                     listener.on_receive(uuri, payload, attributes)
                 else:
-                    logger.info("Topic not found in Listener Map, discarding...")
+                    logger.info(f"{self.__class__.__name__} Topic not found in Listener Map, discarding...")
 
             except socket.error:
                 self.socket.close()

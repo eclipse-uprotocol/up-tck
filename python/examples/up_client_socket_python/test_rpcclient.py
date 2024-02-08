@@ -39,7 +39,7 @@ from google.protobuf.any_pb2 import Any
 
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
-from ulink_socket_python.socket_rpcclient import SocketRPCClient
+from up_client_socket_python.socket_rpcclient import SocketRPCClient
 
 import time
 from concurrent.futures import Future
