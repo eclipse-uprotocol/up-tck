@@ -18,6 +18,7 @@ from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from up_client_socket_python.transport_layer import TransportLayer
 from test_manager.testmanager import SocketTestManager
 
+from multipledispatch import dispatch
 import logging 
 import re
 
@@ -77,21 +78,90 @@ def get_uri_value(uri_line: str) -> str:
 
 def print_action(action: str):
     print(f">>>>> {action.upper()} >>>>>")
-    
-def parse_command_arguments() -> Dict[str, UUri or UPayload or UAttributes]:
+
+
+def get_next_string(token: str) -> str:
+    words_wrapped_between_quotes: List[str] = re.findall('"([^"]*)"', token)
+    return words_wrapped_between_quotes[0]
+
+def check_variable_initialization(parameters: dict, param: str):
+    if param not in parameters:
+        raise Exception(f"{param} parameter not initialized")
+        
+def parse_param(parameters: dict, progress_commands: List[str], step_i: int) -> int:
     """
-    txt file:
-    test_manager register_listener_command java_test_agent
-    {
-        URI = "/body.access//door.front_left#Door"
-    }
-    URI = "/body.access//door.front_left#Door"
-    # add payload and Attributes as params
-    
-    Returns:
-        Dict[str, UUri or UPayload or UAttributes]: _description_
+    <param> := <variable> = "string" | <variable> = { <param-list> }
     """
-    pass
+    # RETURNS STEP Index!!
+    
+    # ex: URI = "/body.access//door.front_left#Door" | UPAYLOAD = {
+    command_ordered_tokens = progress_commands[step_i].split(" ")  
+    
+    # get variable
+    variable_id: str = command_ordered_tokens[0].upper()
+    
+    assigned_value: str = command_ordered_tokens[-1]
+    
+    # check which branch to go: " " or {<param-list>} 
+    # check first character of next token
+    token: str = progress_commands[step_i]
+    if assigned_value == "{":
+        step_i += 1
+
+        # all params parsed in recursion should be saved in Dict parameters
+        step_i = parse_param_list(parameters, progress_commands, step_i)
+        
+        # skip "}"
+        step_i += 1
+    elif assigned_value[-1][0] == "\"":
+        value = get_next_string(token)
+        
+        # save value
+        parameters[variable_id] = value
+        step_i += 1
+    else:
+        raise Exception("Only accept \"strings\" wrapped in quotes OR inner parameter brackets \{ \}")
+        
+    # put arguments into variable
+    if variable_id == "UURI":
+        check_variable_initialization(parameters, "UURI")
+        
+        topic: UUri = LongUriSerializer().deserialize(parameters["UURI"])
+        parameters["UURI"] = topic
+        
+    elif variable_id == "UPAYLOAD":   
+        check_variable_initialization(parameters, "UPAYLOAD")
+
+        
+        payload: UPayload = build_upayload(parameters["CLOUDEVENT"])
+
+        parameters["UPAYLOAD"] = payload
+    elif variable_id == "CLOUDEVENT":   
+        check_variable_initialization(parameters, "ID")
+        check_variable_initialization(parameters, "SOURCE")
+        cloud_event: CloudEvent = build_cloud_event(parameters["ID"], parameters["SOURCE"])
+
+        parameters["CLOUDEVENT"] = cloud_event
+    elif variable_id == "UATTRIBUTES":   
+        
+        if parameters["UATTRIBUTES"] == "5":
+            parameters["UATTRIBUTES"] = build_uattributes()
+        else:
+            raise Exception("Cant handling other UAttributes yet")
+
+    return step_i
+    
+def parse_param_list(parameters: dict, progress_commands: List[str], step_i: int) -> int:
+    # RETURNS STEP Index!!
+
+    # Checks if more arguments created
+    while step_i < len(progress_commands) and progress_commands[step_i] != "}":
+        step_i = parse_param(parameters, progress_commands, step_i)
+    
+    if step_i == len(progress_commands) and progress_commands[step_i - 1] != "}":
+        raise Exception(" Need to end block with }")
+    
+    return step_i
  
 def handle_progress_commands(progress_commands: List[str], tm: SocketTestManager):
     step_i = 0
@@ -126,16 +196,21 @@ def handle_progress_commands(progress_commands: List[str], tm: SocketTestManager
             
             if not tm.has_sdk_connection(sdk_name):
                 raise Exception(f"{sdk} Test Agent was never connected!")
+            step_i += 1
+            
+            # enter params bracket "{"
+            step_i += 1
+            
+            parameters = dict()
+            step_i = parse_param_list(parameters, progress_commands, step_i)
+            
+            # exit params bracket "}"
+            step_i += 1
+            
+            check_variable_initialization(parameters, "UURI")
 
-            step_i += 1
-            
-            # get uri
-            uri_line = progress_commands[step_i]   
-            uri: str = get_uri_value(uri_line)
-            step_i += 1
-            
-            topic = LongUriSerializer().deserialize(uri)
-            register_listener_status: UStatus = tm.register_listener_command(sdk, "registerlistener", topic, listener)
+
+            register_listener_status: UStatus = tm.register_listener_command(sdk, "registerlistener", parameters["UURI"], listener)
             
 
         elif action == "send_command":
@@ -149,14 +224,21 @@ def handle_progress_commands(progress_commands: List[str], tm: SocketTestManager
                 raise Exception(f"{sdk} Test Agent was never connected!")
             step_i += 1
             
-            uri_line = progress_commands[step_i]   
-            uri: str = get_uri_value(uri_line)
+            # enter params bracket "{"
             step_i += 1
             
-            topic = LongUriSerializer().deserialize(uri)
-            payload: UPayload = build_upayload(sdk)
-            attributes: UAttributes = build_uattributes()
-            send_status: UStatus = tm.send_command(sdk, "send", topic, payload, attributes)
+            parameters = dict()
+            step_i = parse_param_list(parameters, progress_commands, step_i)
+            
+            # exit params bracket "}"
+            step_i += 1
+            
+            check_variable_initialization(parameters, "UURI")
+            check_variable_initialization(parameters, "UPAYLOAD")
+            check_variable_initialization(parameters, "UATTRIBUTES")
+
+            send_status: UStatus = tm.send_command(sdk, "send", parameters["UURI"], parameters["UPAYLOAD"], parameters["UATTRIBUTES"])
+            
             
         elif action == "responds_ustatus":
             print_action(action)
@@ -180,7 +262,7 @@ def handle_progress_commands(progress_commands: List[str], tm: SocketTestManager
             step_i += 1
         
         else:
-            raise Exception("Action not handle!")
+            raise Exception(f"Action {action} not handle!")
 
 
 transport = TransportLayer()
@@ -189,13 +271,21 @@ manager = SocketTestManager("127.0.0.5", 12345, transport)
 
 uri: str = "/body.access//door.front_left#Door"
 
-def build_cloud_event(id: str):
-    return CloudEvent(spec_version="1.0", source="https://example.com", id="I am " + id)
+def build_cloud_event(id: str, source: str):
+    return CloudEvent(spec_version="1.0", source=source, id="I am " + id)
 
-def build_upayload(id: str):
+@dispatch(str, str)
+def build_upayload(id: str, source: str):
     any_obj = Any()
-    any_obj.Pack(build_cloud_event(id))
+    any_obj.Pack(build_cloud_event(id, source))
     return UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=any_obj.SerializeToString())
+
+@dispatch(CloudEvent)
+def build_upayload(cloud_event: CloudEvent):
+    any_obj = Any()
+    any_obj.Pack(cloud_event)
+    return UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=any_obj.SerializeToString())
+
 
 def build_uattributes():
     return UAttributesBuilder.publish(UPriority.UPRIORITY_CS4).build()
