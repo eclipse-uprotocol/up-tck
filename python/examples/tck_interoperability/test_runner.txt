@@ -1,18 +1,38 @@
 # Note: test agents are formmated as <sdk name>_test_agent
 # since there's only one test manager, it will be named "test_manager"
 # format: <enactor> <verb> to <receiver>
+# variables are not case sensitive
 
 
 java_test_agent connect_to test_manager
 
-test_manager register_listener_command java_test_agent
-    URI = "/body.access//door.front_left#Door"
+test_manager register_listener_command java_test_agent 
+{
+    UURI = "/body.access//door.front_left#Door"
+    UPAYLOAD = {
+        CLOUDEVENT = {
+            source = "https://example.com"
+            id = "ya boi"
+        }
+    } 
+    UAttributes = "5"
     # add payload and Attributes as params
+}
 
 java_test_agent responds_ustatus test_manager 
 
 test_manager send_command java_test_agent
-    URI = "/body.access//door.front_left#Door"
+{
+    UURI = "/body.access//door.front_left#Door"
+    UPAYLOAD = {
+        CLOUDEVENT = {
+            source = "https://example.com"
+            id = "ya boi"
+        }
+    } 
+    UAttributes = "5"
+    # add payload and Attributes as params
+}
 
 java_test_agent responds_ustatus test_manager 
 
