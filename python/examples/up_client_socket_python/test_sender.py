@@ -35,7 +35,7 @@ from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.proto.uattributes_pb2 import UPriority
 
-from ulink_socket_python.socket_utransport import SocketUTransport
+from up_client_socket_python.socket_utransport import SocketUTransport
 from google.protobuf.any_pb2 import Any
 
 PORT = 44444

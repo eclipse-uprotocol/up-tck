@@ -2,7 +2,7 @@ from ast import Dict
 import socket
 import time
 import json 
-from python.utils.socket_message_processing_utils import convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes
+from up_client_socket_python.utils.socket_message_processing_utils import convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes
 
 test_manager_IP: str = "localhost"
 test_manager_PORT: int = 1234

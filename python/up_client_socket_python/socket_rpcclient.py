@@ -58,7 +58,7 @@ class SocketRPCClient(RpcClient):
         @param socket: cli_socket connected socket
 
         '''
-        if socket is not None:
+        if server_conn is not None:
             self.socket = server_conn
         else:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  

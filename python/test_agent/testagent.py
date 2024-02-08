@@ -78,7 +78,7 @@ class SocketTestAgent:
             json_str: str = convert_bytes_to_string(recv_data) 
             json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str) 
 
-            print("json_msg", json_msg)
+            # print("json_msg", json_msg)
 
             action: str = json_msg["action"]
             umsg_base64: str = json_msg["message"]
@@ -120,7 +120,7 @@ class SocketTestAgent:
         Sends UStatus to Test Manager 
         @param status: the reply after receiving a message
         """
-        print(f"UStatus: {status}")
+        # print(f"UStatus: {status}")
 
         json_message = {
             "action": "uStatus",
