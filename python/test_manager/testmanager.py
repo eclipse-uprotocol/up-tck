@@ -32,12 +32,15 @@ from collections import defaultdict
 from typing import Dict
 from google.protobuf.any_pb2 import Any
 
-from uprotocol.proto.uattributes_pb2 import UAttributes
-from uprotocol.proto.uri_pb2 import UUri
+from uprotocol.proto.uattributes_pb2 import UAttributes, UPriority, UMessageType
+from uprotocol.proto.uri_pb2 import UUri, UAuthority, UEntity, UResource
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.transport.ulistener import UListener
-from uprotocol.proto.upayload_pb2 import UPayload
+from uprotocol.proto.cloudevents_pb2 import CloudEvent
+from uprotocol.proto.uuid_pb2 import UUID
+from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
+from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.rpc.rpcmapper import RpcMapper
 
 from up_client_socket_python.transport_layer import TransportLayer
@@ -273,7 +276,7 @@ class SocketTestManager():
             
         return status
 
-    def register_listener_command(self, sdk_name: str, command: str, topic: UUri, listener: UListener):
+    def register_listener_command(self, sdk_name: str, command: str, topic: UUri, listener: UListener) -> UStatus:
         """
         Sends "registerListener" message to Test Agent
         @param sdk_name: Test Agent's SDK type
@@ -301,3 +304,113 @@ class SocketTestManager():
             status: UStatus = self.__pop_status(sdk_name)          
 
         return status
+    
+    @staticmethod
+    def __get_priority(priority: str) -> UPriority :
+        priority = priority.strip()
+        
+        if priority == "UPRIORITY_UNSPECIFIED":
+            return UPriority.UPRIORITY_UNSPECIFIED 
+        
+        elif priority == "UPRIORITY_CS0":
+            return UPriority.UPRIORITY_CS0 
+        
+        elif priority == "UPRIORITY_CS1":
+            return UPriority.UPRIORITY_CS1 
+        
+        elif priority == "UPRIORITY_CS2":
+            return UPriority.UPRIORITY_CS2 
+        
+        elif priority == "UPRIORITY_CS3":
+            return UPriority.UPRIORITY_CS3 
+        
+        elif priority == "UPRIORITY_CS4":
+            return UPriority.UPRIORITY_CS4 
+        
+        elif priority == "UPRIORITY_CS5":
+            return UPriority.UPRIORITY_CS5 
+        
+        elif priority == "UPRIORITY_CS6":
+            return UPriority.UPRIORITY_CS6 
+        else:
+            raise Exception("UPriority value not handled")
+    
+    @staticmethod
+    def __get_umessage_type(umessage_type: str) -> UMessageType :
+        umessage_type = umessage_type.strip()
+        
+        if umessage_type == "UMESSAGE_TYPE_UNSPECIFIED":
+            return UMessageType.UMESSAGE_TYPE_UNSPECIFIED 
+        
+        elif umessage_type == "UMESSAGE_TYPE_PUBLISH":
+            return UMessageType.UMESSAGE_TYPE_PUBLISH 
+        
+        elif umessage_type == "UMESSAGE_TYPE_REQUEST":
+            return UMessageType.UMESSAGE_TYPE_REQUEST 
+        
+        elif umessage_type == "UMESSAGE_TYPE_RESPONSE":
+            return UMessageType.UMESSAGE_TYPE_RESPONSE 
+        else:
+            raise Exception("UMessageType value not handled!")
+        
+    def receive_action_request(self, json_request: Dict, listener: UListener):
+    
+        sdk_name: str = json_request["ue"][0]
+        command: str = json_request["action"][0].lower()
+        
+        name: str = json_request['uri.entity.name'][0]
+        entity = UEntity(name=name)
+        
+        name: str = json_request['uri.resource.name'][0]
+        instance: str = json_request['uri.resource.instance'][0]
+        message: str = json_request['uri.resource.message'][0]
+        resource: UResource = UResource(name=name, instance=instance, message=message)
+        
+        topic: UUri = UUri(entity=entity, resource=resource )
+        
+        format: str = json_request['payload.format'][0]
+        format = format.lower()
+        if format == "cloudevent":
+            values: Dict = json_request["payload.value"]
+            id: str = values["id"][0]
+            source: str = values["source"][0]
+            
+            cloudevent = CloudEvent(spec_version="1.0", source=source, id=id)
+            any_obj = Any()
+            any_obj.Pack(cloudevent)
+            proto: bytes = any_obj.SerializeToString()
+
+        elif format == "protobuf":
+            proto: str = json_request["payload.value"][0]
+            proto: bytes = base64_to_protobuf_bytes(proto)
+        else:
+            raise Exception("payload.format's provided value not handleable")
+        
+        upayload: UPayload = UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=proto)
+        
+        
+        priority: str = json_request['attributes.priority'][0]
+        priority: UPriority = self.__get_priority(priority)
+        
+        umsg_type: str = json_request['attributes.type'][0]
+        umsg_type: UMessageType = self.__get_umessage_type(umsg_type)
+        
+        id_str: str = json_request['attributes.id'][0]
+        id_bytes: bytes = base64_to_protobuf_bytes(id_str)
+        id: UUID = UUID()
+        id.ParseFromString(id_bytes)
+        
+        sink: str = json_request['attributes.sink'][0]
+        sink_bytes: bytes = base64_to_protobuf_bytes(sink) 
+        sink: UUri = UUri()
+        sink.ParseFromString(sink_bytes)
+        
+        attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
+
+        if command == "send":
+            return self.send_command(sdk_name, command, topic, upayload, attributes)
+        elif command == "registerlistener":
+
+            return self.register_listener_command(sdk_name, command, topic, listener)
+        else:
+            raise Exception("action value not handled!")
