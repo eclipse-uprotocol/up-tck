@@ -1,0 +1,41 @@
+<testsuite name="features.register_and_send.Default" tests="1" errors="1" failures="0" skipped="0" time="0.000619" timestamp="2024-02-07T10:14:50.762147" hostname="DCWVM20UBU18169"><testcase classname="features.register_and_send.Default" name="To test the registerlistener and send apis -- @1.1 topic_names" status="failed" time="0.000619"><error type="AttributeError" message="'Context' object has no attribute 'logger'">
+<![CDATA[
+Failing step: Given “uE1” test manager creates register listener data ... failed in 0.001s
+Location: features/register_and_send.feature:3
+Traceback (most recent call last):
+  File "/home/qz3f1z/PycharmProjects/BDDTCKProject/.venv/lib/python3.8/site-packages/behave/model.py", line 1329, in run
+    match.run(runner.context)
+  File "/home/qz3f1z/PycharmProjects/BDDTCKProject/.venv/lib/python3.8/site-packages/behave/matchers.py", line 98, in run
+    self.func(context, *args, **kwargs)
+  File "steps/tck_step_implementations.py", line 7, in step_impl
+    context.logger.debug("Inside create register listener data")
+  File "/home/qz3f1z/PycharmProjects/BDDTCKProject/.venv/lib/python3.8/site-packages/behave/runner.py", line 321, in __getattr__
+    raise AttributeError(msg)
+AttributeError: 'Context' object has no attribute 'logger'
+]]>
+</error><system-out>
+<![CDATA[
+@scenario.begin
+  Scenario Outline: To test the registerlistener and send apis -- @1.1 topic_names
+    Given “uE1” test manager creates register listener data ... failed in 0.001s
+    And sets uuri "uri.entity.name" to "body.access" ... skipped in 0.000s
+    And sets uuri "uri.resource.name" to "door" ... skipped in 0.000s
+    And sets uuri "uri.resource.instance" to "front_left" ... skipped in 0.000s
+    And sets uuri "uri.resource.message" to "Door" ... skipped in 0.000s
+    And sends register listener request to the “uE2” test agent ... skipped in 0.000s
+    When “uE1” test manager creates send data ... skipped in 0.000s
+    And sets "uri.entity.name" to "body.access" ... skipped in 0.000s
+    And sets "uri.resource.name" to "door" ... skipped in 0.000s
+    And sets "uri.resource.instance" to "front_left" ... skipped in 0.000s
+    And sets "uri.resource.message" to "Door" ... skipped in 0.000s
+    And sets "attributes.priority" to "UPRIORITY_CS1" ... skipped in 0.000s
+    And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH" ... skipped in 0.000s
+    And sets "attributes.id" to "long serialized uuid" ... skipped in 0.000s
+    And sets "payload.format" to "UPAYLOAD_FORMAT_PROTOBUF" ... skipped in 0.000s
+    And sets "payload.value" to "serialized protobuf data" ... skipped in 0.000s
+    And sends data to "uE2" test agent ... skipped in 0.000s
+
+@scenario.end
+--------------------------------------------------------------------------------
+]]>
+</system-out></testcase></testsuite>

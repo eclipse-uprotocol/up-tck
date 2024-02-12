@@ -8,14 +8,17 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 import org.eclipse.uprotocol.rpc.CallOptions;
 import org.eclipse.uprotocol.rpc.RpcClient;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.UTransport;
 import org.eclipse.uprotocol.v1.*;
+import org.tck.testagent.TestAgent;
 
 public class SocketUTransport implements UTransport, RpcClient {
+    private static final Logger logger = Logger.getLogger(SocketUTransport.class.getName());
     private final Socket socket;
     SocketRPCClient socketRPCClient;
     private final Map<UUri, UListener> topicToListener = new ConcurrentHashMap<>();
@@ -32,10 +35,10 @@ public class SocketUTransport implements UTransport, RpcClient {
                 InputStream inputStream = socket.getInputStream();
                 byte[] buffer = new byte[32767];
                 int readSize = inputStream.read(buffer);
-                System.out.println(readSize);
+                logger.info("Message length: "+readSize);
 
                 UMessage umsg = UMessage.parseFrom(Arrays.copyOfRange(buffer, 0, readSize) );
-                System.out.println("Received uMessage: " + umsg);
+                logger.info("Received uMessage: " + umsg);
 
                 UUri topic = umsg.getSource();
                 UPayload payload = umsg.getPayload();
@@ -43,7 +46,7 @@ public class SocketUTransport implements UTransport, RpcClient {
                 if (topicToListener.containsKey(topic)) {
                     topicToListener.get(topic).onReceive(topic, payload, attributes);
                 } else {
-                    System.out.println("Topic not found in Listener Map, discarding...");
+                    logger.info("Topic not found in Listener Map, discarding...");
                 }
             }
         } catch (IOException e) {
@@ -69,7 +72,7 @@ public class SocketUTransport implements UTransport, RpcClient {
             OutputStream outputStream = socket.getOutputStream();
             outputStream.write(umsgSerialized);
             outputStream.flush();
-            System.out.println("uMessage Sent");
+            logger.info("uMessage Sent");
         } catch (IOException e) {
             return UStatus.newBuilder()
                     .setCode(UCode.INTERNAL)

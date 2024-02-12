@@ -1,0 +1,29 @@
+[INFO] : 2024-02-09 02:57:18,029 : tck_step_implementations.py : step_impl:7 : Inside create register listener data
+[INFO] : 2024-02-09 02:57:18,029 : tck_step_implementations.py : step_impl:13 : RegisterListener json data: Key is uri.entity.name value is body.access
+[INFO] : 2024-02-09 02:57:18,036 : tck_step_implementations.py : step_impl:13 : RegisterListener json data: Key is uri.resource.name value is door
+[INFO] : 2024-02-09 02:57:18,036 : tck_step_implementations.py : step_impl:13 : RegisterListener json data: Key is uri.resource.instance value is front_left
+[INFO] : 2024-02-09 02:57:18,037 : tck_step_implementations.py : step_impl:13 : RegisterListener json data: Key is uri.resource.message value is Door
+[INFO] : 2024-02-09 02:57:18,037 : tck_step_implementations.py : step_impl:20 : Register listener {'uri.entity.name': ['body.access'], 'uri.resource.name': ['door'], 'uri.resource.instance': ['front_left'], 'uri.resource.message': ['Door']}
+[INFO] : 2024-02-09 02:57:18,037 : tck_step_implementations.py : step_impl:25 : Inside
+[INFO] : 2024-02-09 02:57:18,038 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is action value is send
+[INFO] : 2024-02-09 02:57:18,038 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,038 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is uri.entity.name value is body.access
+[INFO] : 2024-02-09 02:57:18,038 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,039 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is uri.resource.name value is door
+[INFO] : 2024-02-09 02:57:18,039 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,039 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is uri.resource.instance value is front_left
+[INFO] : 2024-02-09 02:57:18,039 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,039 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is uri.resource.message value is Door
+[INFO] : 2024-02-09 02:57:18,039 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,041 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is attributes.priority value is UPRIORITY_CS1
+[INFO] : 2024-02-09 02:57:18,041 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,042 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is attributes.type value is UMESSAGE_TYPE_PUBLISH
+[INFO] : 2024-02-09 02:57:18,042 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,042 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is attributes.id value is long serialized uuid
+[INFO] : 2024-02-09 02:57:18,042 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,042 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is payload.format value is UPAYLOAD_FORMAT_PROTOBUF
+[INFO] : 2024-02-09 02:57:18,042 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,043 : tck_step_implementations.py : step_impl:31 : Send Api json data: Key is payload.value value is serialized protobuf data
+[INFO] : 2024-02-09 02:57:18,043 : tck_step_implementations.py : step_impl:34 : Inside
+[INFO] : 2024-02-09 02:57:18,043 : tck_step_implementations.py : step_impl:39 : Send data {'action': ['send'], 'uri.entity.name': ['body.access'], 'uri.resource.name': ['door'], 'uri.resource.instance': ['front_left'], 'uri.resource.message': ['Door'], 'attributes.priority': ['UPRIORITY_CS1'], 'attributes.type': ['UMESSAGE_TYPE_PUBLISH'], 'attributes.id': ['long serialized uuid'], 'payload.format': ['UPAYLOAD_FORMAT_PROTOBUF'], 'payload.value': ['serialized protobuf data']}
+[INFO] : 2024-02-09 02:57:18,044 : tck_step_implementations.py : step_impl:44 : Payload data 
