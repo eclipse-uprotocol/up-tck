@@ -6,6 +6,8 @@ import org.eclipse.uprotocol.v1.*;
 import org.eclipse.uprotocol.v1.UMessage;
 import org.eclipse.uprotocol.rpc.RpcMapper;
 import org.json.JSONObject;
+import org.tck.up_client_socket_java.SocketUListener;
+import org.tck.up_client_socket_java.SocketUTransport;
 
 import com.google.protobuf.CodedOutputStream;
 import com.google.protobuf.Any;

@@ -14,3 +14,5 @@ with open('test.txt', 'r') as file:
     prog = Prog()
     prog.parse_grammar(input_lines, 0)
     
+import sys
+
