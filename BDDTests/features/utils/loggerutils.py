@@ -83,7 +83,7 @@ def setup_logging():
     """Use the LOG_SETTINGS defined above and initialize the logger
     :return: None
     """
-    logging.config.dictConfig(LOG_SETTINGS)
+    dictConfig(LOG_SETTINGS)
 
 
 def setup_formatted_logging(context):
