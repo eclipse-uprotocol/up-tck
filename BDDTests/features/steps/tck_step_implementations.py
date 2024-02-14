@@ -1,9 +1,10 @@
 from behave import when, then, given
 from behave.runner import Context
-from up_client_socket_python.transport_layer import TransportLayer
 import sys
 sys.path.append('../../../python/test_manager')
 from test_manager import testmanager
+sys.path.append('../../../python/up_client_socket_python')
+from up_client_socket_python import transport_layer as tl
 from uprotocol.transport.ulistener import UListener
 from uprotocol.proto.uattributes_pb2 import UAttributes
 from uprotocol.proto.uri_pb2 import UUri
@@ -30,53 +31,37 @@ class SocketUListener(UListener):
         print("Listener onreceived")
         # logger.info("MATTHEW is awesome!!!")
 
-        print.info(f"{payload}")
+        print(f"{payload}")
 
         return UStatus(code=UCode.OK, message="all good")
 
-@given(u'“{sdk_name}” creates uuri data to register a listener')
-def step_impl(context, sdk_name:str):
+@given(u'“{sdk_name}” creates data for "{command}"')
+@when(u'“{sdk_name}” creates data for "{command}"')
+def step_impl(context, sdk_name:str, command:str):
     context.logger.info("Inside create register listener data")
-    context.register_json_array = {}
+    context.json_array = {}
     context.ue = sdk_name
+    context.json_array['ue'] = [sdk_name]
+    context.json_array['action'] = [command]
 
 
-@given(u'sets uuri "{key}" to "{value}"')
+@given(u'sets "{key}" to "{value}"')
+@when(u'sets "{key}" to "{value}"')
 def step_impl(context: Context, key: str, value: str):
-    context.logger.info("RegisterListener json data: Key is " + str(key) + " value is " + str(value))
-    if key not in context.register_json_array:
-        context.register_json_array[key] = [value]
+    context.logger.info("Json data: Key is " + str(key) + " value is " + str(value))
+    if key not in context.json_array:
+        context.json_array[key] = [value]
 
 
 @given(u'sends "{command}" request')
+@when(u'sends "{command}" request')
 def step_impl(context, command:str):
     listener: UListener = SocketUListener()
-    transport = TransportLayer()
+    transport = tl()
     transport.set_socket_config("127.0.0.1", 44444)
     context.tm = testmanager.SocketTestManager("127.0.0.5", 12345, transport)
-    context.logger.info("Register listener " + str(context.register_json_array))
-    def register_listener_handler():
-        print("Register Listener handler")
-    context.tm.receive_action_request(context.register_json_array,listener)
-
-
-@when(u'“uE2” test agent creates send data')
-def step_impl(context):
-    context.logger.info("Inside")
-    context.send_json_array = {}
-
-
-@when(u'sets "{key}" to "{value}"')
-def step_impl(context: Context, key: str, value: str):
-    context.logger.info("Send Api json data: Key is " + str(key) + " value is " + str(value))
-    if key not in context.send_json_array:
-        context.send_json_array[key] = [value]
-    context.logger.info("Inside")
-
-
-@when(u'sends data')
-def step_impl(context):
-    context.logger.info("Send data " + str(context.send_json_array))
+    context.logger.info(f"Json request for {command} -> {str(context.json_array)}")
+    context.tm.receive_action_request(context.json_array,listener)
 
 
 @then(u'uE1 receives the payload')

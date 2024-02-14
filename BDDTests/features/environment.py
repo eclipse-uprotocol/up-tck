@@ -18,14 +18,25 @@ def before_all(context):
     script_paths = [
         "../python/dispatcher/dispatcher.py",
         "../python/examples/tck_interoperability/test_socket_tm.py",
-        "out/artifacts/java_test_agent_jar/java_test_agent.jar"
+        "../python/examples/tck_interoperability/test_socket_ta.py"
+        #"../java/java_test_agent/out/artifacts/java_test_agent_jar/uprotocol-tck.jar"
     ]
+    processes = []
 
     for script_path in script_paths:
         if script_path.endswith('.jar'):
-            subprocess.Popen(['gnome-terminal', '--', 'java', 'jar', script_path])
+            #subprocess.Popen(['gnome-terminal', '--', 'java', 'jar', script_path])
+            command = ['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)]
         else:
-            subprocess.Popen(['gnome-terminal', '--', 'python3', script_path])
+            # subprocess.Popen(['gnome-terminal', '--', f'python3 {os.path.abspath(script_path)}; while true; do sleep 1; done'])
+            command = ['gnome-terminal', '--', 'python3', os.path.abspath(script_path)]
+
+        process = subprocess.Popen(command)
+        processes.append(process)
+
+    # Wait for all terminal windows to close
+    for process in processes:
+        process.wait()
 
     #context.logger.info("Running BDD Framework version " + __version__)
 
