@@ -28,8 +28,9 @@ import socket
 import selectors
 import threading
 import logging
+import re
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, List
 from google.protobuf.any_pb2 import Any
 
 from uprotocol.proto.uattributes_pb2 import UAttributes, UPriority, UMessageType
@@ -45,6 +46,8 @@ from uprotocol.rpc.rpcmapper import RpcMapper
 
 from up_client_socket_python.transport_layer import TransportLayer
 from up_client_socket_python.utils.socket_message_processing_utils import receive_socket_data, convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, protobuf_to_base64, base64_to_protobuf_bytes, send_socket_data
+
+from up_client_socket_python.utils.grammar_parsing_utils import get_priority, get_umessage_type
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 # Create logger
@@ -71,7 +74,7 @@ class SocketTestManager():
         @param utransport: Real message passing medium (sockets)
         """
         
-        # Real lowlevel implementation (ex: Ulink's UTransport, Zenoh, etc).
+        # Lowlevel transport implementation (ex: Ulink's UTransport, Zenoh, etc).
         self.utransport: TransportLayer = utransport
 
         # Bc every sdk connection is unqiue, map the socket connection.
@@ -80,8 +83,6 @@ class SocketTestManager():
         self.sdk_to_received_ustatus_lock = threading.Lock()
 
         self.sock_addr_to_sdk: Dict[tuple[str, int], str] = defaultdict(str) 
-
-        self.possible_received_protobufs = [UMessage(), UStatus()]
 
         # Creates test manager socket server so it can accept connections from Test Agents.
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -97,7 +98,12 @@ class SocketTestManager():
         # Register server socket so selector can monitor for incoming client conn. and calls provided callback()
         self.selector.register(self.server, selectors.EVENT_READ, self.__accept)
     
-    def __accept(self, server, mask):
+    def __accept(self, server: socket.socket):
+        """Accepts Test Agent client socket connect requests
+
+        Args:
+            server (socket.socket): Test Manager server
+        """
         ta_socket, addr = server.accept() 
         print('accepted', ta_socket, 'from', addr)
         
@@ -105,20 +111,21 @@ class SocketTestManager():
         # So when call send(), it will put as much data in the buffer as possible and return.
         ta_socket.setblocking(False)
         # Register client socket so selector can monitor for incoming TA data and calls provided callback()
-        self.selector.register(ta_socket, selectors.EVENT_READ, self.__receive)
+        self.selector.register(ta_socket, selectors.EVENT_READ, self.__receive_from_test_agent)
     
-    def __receive(self, ta_socket: socket.socket, mask):
-        # 'mask' contains the events taht are ready
-        
-        # print(ta_socket.getsockname())  # server's ip and port
-        # print(ta_socket.getpeername())  # client's ip and port
+    def __receive_from_test_agent(self, ta_socket: socket.socket):
 
-        # print("__receive")
         recv_data: bytes = receive_socket_data(ta_socket)
         
         json_str: str = convert_bytes_to_string(recv_data) 
-        json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str) 
 
+        data_within_json : List[str]= re.findall('{(.+?)}', json_str)  # {json, action: ..., messge: "...."}{json, action: status messge: "...."}
+
+        for recv_json_data in data_within_json:
+            json_msg: Dict[str, str] = convert_jsonstring_to_json("{" + recv_json_data + "}")
+            self.__handle_recv_json_message(json_msg, ta_socket)
+
+    def __handle_recv_json_message(self, json_msg: Dict[str, str], ta_socket: socket.socket):
         if "SDK_name" in json_msg:
             sdk: str = json_msg["SDK_name"].lower().strip()
             
@@ -128,25 +135,20 @@ class SocketTestManager():
             self.sdk_to_test_agent_socket[sdk] = ta_socket
             
             print("Initialized new client socket!", ta_addr)
-            # print(self.sock_addr_to_sdk)
+            return
 
-        elif "action" in json_msg and json_msg["action"] == "uStatus":
-            ta_addr: tuple[str, int] = ta_socket.getpeername()
-            sdk = self.sock_addr_to_sdk[ta_addr]
-            
+        ta_addr: tuple[str, int] = ta_socket.getpeername()
+        sdk: str = self.sock_addr_to_sdk[ta_addr]
+
+        if "action" in json_msg and json_msg["action"] == "uStatus":
             # update status if received UStatus message
             umsg_base64: str = json_msg["message"]
             protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)  
             status: UStatus = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), UStatus)
-            # print("action Ustatus")
             
             self.__save_status(sdk, status)
-            # print(self.sdk_to_received_ustatus)
         
         elif "action" in json_msg and json_msg["action"] == "onReceive":
-            ta_addr: tuple[str, int] = ta_socket.getpeername()
-            sdk = self.sock_addr_to_sdk[ta_addr]
-            
             # update status if received UStatus message
             umsg_base64: str = json_msg["message"]
             protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)  
@@ -183,15 +185,6 @@ class SocketTestManager():
         """
         Listens for Test Agent Connections and creates a thread to start the init process
         """
-        '''
-        while True:
-            print("Waiting on Test Agent connection ...")
-            clientsocket, _ = self.server.accept()
-
-            thread = threading.Thread(target=self.__initialize_new_client_connection, args=(clientsocket, ))
-            print(clientsocket)
-            thread.start()
-        '''
         
         while True:
             # Wait until some registered file objects or sockets become ready, or the timeout expires.
@@ -217,34 +210,6 @@ class SocketTestManager():
 
         send_socket_data(test_agent_socket, message) 
 
-    def __receive_from_test_agent(self, test_agent_socket: socket.socket, message_protobuf_class):
-        """
-        Contains UStatus receiving data preprocessing and sending UMessage steps to Test Agent
-        @param test_agent_socket: Test Agent Socket
-        """
-        response_data: bytes = receive_socket_data(test_agent_socket)
-        
-        if not response_data:
-            print('closing', test_agent_socket)
-            self.selector.unregister(test_agent_socket)
-            test_agent_socket.close()
-            return
-            
-        json_str: str = convert_bytes_to_string(response_data)
-        json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str) 
-        
-        print("-----------------------json_msg----------------------")
-        print(json_msg)
-        print("-----------------------------------------")
-
-        umsg_base64: str = json_msg["message"]
-        
-        protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)  
-
-        filled_protobuf_obj = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), message_protobuf_class)
-
-        return filled_protobuf_obj
-
     def send_command(self, sdk_name: str, command: str,  topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
         """
         Sends "send" message to Test Agent
@@ -256,7 +221,7 @@ class SocketTestManager():
         """
         sdk_name = sdk_name.lower().strip()
 
-        if sdk_name == "python":
+        if sdk_name == "self":
             # Send message thru real medium (ulink's UTransport)
             status: UStatus = self.utransport.send(topic, payload, attributes)
             
@@ -267,9 +232,6 @@ class SocketTestManager():
             test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
 
             self.__send_to_test_agent(test_agent_socket, command, umsg)
-            '''
-            status: UStatus = self.__receive_from_test_agent(test_agent_socket, UStatus)
-            '''
             
             status: UStatus = self.__pop_status(sdk_name)            
             
@@ -285,7 +247,7 @@ class SocketTestManager():
         @param listener: handler when UTransport receives data from registered topic
         """
         sdk_name = sdk_name.lower().strip()
-        if sdk_name == "python":
+        if sdk_name == "self":
             # ulink registers to current topic
             status: UStatus = self.utransport.register_listener(topic, listener)
 
@@ -296,63 +258,11 @@ class SocketTestManager():
             test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
 
             self.__send_to_test_agent(test_agent_socket, command, umsg)
-            
-            '''
-            status: UStatus = self.__receive_from_test_agent(test_agent_socket, UStatus)
-            '''
-            
+
             status: UStatus = self.__pop_status(sdk_name)          
 
         return status
-    
-    @staticmethod
-    def __get_priority(priority: str) -> UPriority :
-        priority = priority.strip()
-        
-        if priority == "UPRIORITY_UNSPECIFIED":
-            return UPriority.UPRIORITY_UNSPECIFIED 
-        
-        elif priority == "UPRIORITY_CS0":
-            return UPriority.UPRIORITY_CS0 
-        
-        elif priority == "UPRIORITY_CS1":
-            return UPriority.UPRIORITY_CS1 
-        
-        elif priority == "UPRIORITY_CS2":
-            return UPriority.UPRIORITY_CS2 
-        
-        elif priority == "UPRIORITY_CS3":
-            return UPriority.UPRIORITY_CS3 
-        
-        elif priority == "UPRIORITY_CS4":
-            return UPriority.UPRIORITY_CS4 
-        
-        elif priority == "UPRIORITY_CS5":
-            return UPriority.UPRIORITY_CS5 
-        
-        elif priority == "UPRIORITY_CS6":
-            return UPriority.UPRIORITY_CS6 
-        else:
-            raise Exception("UPriority value not handled")
-    
-    @staticmethod
-    def __get_umessage_type(umessage_type: str) -> UMessageType :
-        umessage_type = umessage_type.strip()
-        
-        if umessage_type == "UMESSAGE_TYPE_UNSPECIFIED":
-            return UMessageType.UMESSAGE_TYPE_UNSPECIFIED 
-        
-        elif umessage_type == "UMESSAGE_TYPE_PUBLISH":
-            return UMessageType.UMESSAGE_TYPE_PUBLISH 
-        
-        elif umessage_type == "UMESSAGE_TYPE_REQUEST":
-            return UMessageType.UMESSAGE_TYPE_REQUEST 
-        
-        elif umessage_type == "UMESSAGE_TYPE_RESPONSE":
-            return UMessageType.UMESSAGE_TYPE_RESPONSE 
-        else:
-            raise Exception("UMessageType value not handled!")
-        
+
     def receive_action_request(self, json_request: Dict, listener: UListener):
     
         sdk_name: str = json_request["ue"][0]
@@ -366,8 +276,7 @@ class SocketTestManager():
         message: str = json_request['uri.resource.message'][0]
         resource: UResource = UResource(name=name, instance=instance, message=message)
         
-        topic: UUri = UUri(entity=entity, resource=resource)
-
+        topic: UUri = UUri(entity=entity, resource=resource )
         if command == "send":
             format: str = json_request['payload.format'][0]
             format = format.lower()
@@ -383,7 +292,7 @@ class SocketTestManager():
 
             elif format == "protobuf":
                 proto: str = json_request["payload.value"][0]
-                proto: bytes = base64_to_protobuf_bytes(proto)
+                proto: bytes = proto.encode()
             else:
                 raise Exception("payload.format's provided value not handleable")
 
@@ -391,18 +300,18 @@ class SocketTestManager():
 
 
             priority: str = json_request['attributes.priority'][0]
-            priority: UPriority = self.__get_priority(priority)
+            priority: UPriority = get_priority(priority)
 
             umsg_type: str = json_request['attributes.type'][0]
-            umsg_type: UMessageType = self.__get_umessage_type(umsg_type)
+            umsg_type: UMessageType = get_umessage_type(umsg_type)
 
             id_str: str = json_request['attributes.id'][0]
-            id_bytes: bytes = base64_to_protobuf_bytes(id_str)
+            id_bytes: bytes = id_str.encode()
             id: UUID = UUID()
             id.ParseFromString(id_bytes)
 
             sink: str = json_request['attributes.sink'][0]
-            sink_bytes: bytes = base64_to_protobuf_bytes(sink)
+            sink_bytes: bytes = sink.encode()
             sink: UUri = UUri()
             sink.ParseFromString(sink_bytes)
 
@@ -414,3 +323,28 @@ class SocketTestManager():
             return self.register_listener_command(sdk_name, command, topic, listener)
         else:
             raise Exception("action value not handled!")
+
+    def unregister_listener_command(self, sdk_name: str, command: str, topic: UUri, listener: UListener) -> UStatus:
+        """
+        Sends "registerListener" message to Test Agent
+        @param sdk_name: Test Agent's SDK type
+        @param command: type of message
+        @param topic: part of UMessage
+        @param listener: handler when UTransport receives data from registered topic
+        """
+        sdk_name = sdk_name.lower().strip()
+        if sdk_name == "self":
+            # ulink registers to current topic
+            status: UStatus = self.utransport.unregister_listener(topic, listener)
+
+        else:
+            # Send registerListener mesg to Test Agent
+            umsg: UMessage = UMessage(source=topic)
+
+            test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
+
+            self.__send_to_test_agent(test_agent_socket, command, umsg)
+
+            status: UStatus = self.__pop_status(sdk_name)
+
+        return status
