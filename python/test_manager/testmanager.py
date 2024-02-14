@@ -366,49 +366,49 @@ class SocketTestManager():
         message: str = json_request['uri.resource.message'][0]
         resource: UResource = UResource(name=name, instance=instance, message=message)
         
-        topic: UUri = UUri(entity=entity, resource=resource )
-        
-        format: str = json_request['payload.format'][0]
-        format = format.lower()
-        if format == "cloudevent":
-            values: Dict = json_request["payload.value"]
-            id: str = values["id"][0]
-            source: str = values["source"][0]
-            
-            cloudevent = CloudEvent(spec_version="1.0", source=source, id=id)
-            any_obj = Any()
-            any_obj.Pack(cloudevent)
-            proto: bytes = any_obj.SerializeToString()
-
-        elif format == "protobuf":
-            proto: str = json_request["payload.value"][0]
-            proto: bytes = base64_to_protobuf_bytes(proto)
-        else:
-            raise Exception("payload.format's provided value not handleable")
-        
-        upayload: UPayload = UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=proto)
-        
-        
-        priority: str = json_request['attributes.priority'][0]
-        priority: UPriority = self.__get_priority(priority)
-        
-        umsg_type: str = json_request['attributes.type'][0]
-        umsg_type: UMessageType = self.__get_umessage_type(umsg_type)
-        
-        id_str: str = json_request['attributes.id'][0]
-        id_bytes: bytes = base64_to_protobuf_bytes(id_str)
-        id: UUID = UUID()
-        id.ParseFromString(id_bytes)
-        
-        sink: str = json_request['attributes.sink'][0]
-        sink_bytes: bytes = base64_to_protobuf_bytes(sink) 
-        sink: UUri = UUri()
-        sink.ParseFromString(sink_bytes)
-        
-        attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
+        topic: UUri = UUri(entity=entity, resource=resource)
 
         if command == "send":
+            format: str = json_request['payload.format'][0]
+            format = format.lower()
+            if format == "cloudevent":
+                values: Dict = json_request["payload.value"]
+                id: str = values["id"][0]
+                source: str = values["source"][0]
+
+                cloudevent = CloudEvent(spec_version="1.0", source=source, id=id)
+                any_obj = Any()
+                any_obj.Pack(cloudevent)
+                proto: bytes = any_obj.SerializeToString()
+
+            elif format == "protobuf":
+                proto: str = json_request["payload.value"][0]
+                proto: bytes = base64_to_protobuf_bytes(proto)
+            else:
+                raise Exception("payload.format's provided value not handleable")
+
+            upayload: UPayload = UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=proto)
+
+
+            priority: str = json_request['attributes.priority'][0]
+            priority: UPriority = self.__get_priority(priority)
+
+            umsg_type: str = json_request['attributes.type'][0]
+            umsg_type: UMessageType = self.__get_umessage_type(umsg_type)
+
+            id_str: str = json_request['attributes.id'][0]
+            id_bytes: bytes = base64_to_protobuf_bytes(id_str)
+            id: UUID = UUID()
+            id.ParseFromString(id_bytes)
+
+            sink: str = json_request['attributes.sink'][0]
+            sink_bytes: bytes = base64_to_protobuf_bytes(sink)
+            sink: UUri = UUri()
+            sink.ParseFromString(sink_bytes)
+
+            attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
             return self.send_command(sdk_name, command, topic, upayload, attributes)
+
         elif command == "registerlistener":
 
             return self.register_listener_command(sdk_name, command, topic, listener)
