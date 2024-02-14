@@ -12,8 +12,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Logger;
 
 public class TestAgent {
+    private static final Logger logger = Logger.getLogger(TestAgent.class.getName());
     private SocketUTransport socketUTransport;
     private JSONObject jsonObject;
     private Socket clientSocket;
@@ -51,19 +53,16 @@ public class TestAgent {
                 int bytesRead = clientInputStream.read(recvData);
                 if (bytesRead > 0) {
                     String jsonStr = new String(recvData, 0, bytesRead, StandardCharsets.UTF_8);
-                    System.out.println("jsonMsg from TM: " + jsonStr);
+                    logger.info("jsonMsg from TM: " + jsonStr);
 
                     jsonObject = new JSONObject(jsonStr);
-                    System.out.println("json obj:" + jsonObject);
-
                     String action = jsonObject.getString("action");
-                    System.out.println("action ->" + action);
-
+                    logger.info("action ->" + action);
                     String message = jsonObject.getString("message");
                     byte[] protobuf_bytes = base64ToProtobufBytes(message);
-                    System.out.println("message ->" + protobuf_bytes);
+                    logger.info("message ->" + protobuf_bytes);
                     UMessage umsg = UMessage.parseFrom(protobuf_bytes);
-                    System.out.println(umsg);
+                    logger.info("UMessage: "+umsg);
 
                     UStatus status = null;
                     switch (action) {

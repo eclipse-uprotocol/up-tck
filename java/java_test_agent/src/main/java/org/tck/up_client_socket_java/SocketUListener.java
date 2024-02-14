@@ -33,7 +33,7 @@ public class SocketUListener implements UListener {
                 .build();
 
         JSONObject json = new JSONObject();
-        json.put("action", "uStatus");
+        json.put("action", "onReceive");
         json.put("message", protoboufToBase64(umsg));
 
         try {
