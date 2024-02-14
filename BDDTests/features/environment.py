@@ -1,10 +1,13 @@
-from utils.loggerutils import setup_logging, setup_formatted_logging
+import time
+
+from utils import loggerutils
 import subprocess
 import os
 import sys
-from abc import ABC, abstractclassmethod
-
-from up_client_socket_python.utils.file_pathing_utils import get_git_root
+sys.path.append('../../python/test_manager')
+from test_manager import testmanager
+sys.path.append('../../python/up_client_socket_python')
+from up_client_socket_python import transport_layer as tl
 
 def before_all(context):
     """Set up test environment
@@ -22,8 +25,8 @@ def before_all(context):
     path = os.getcwd()
     script_paths = [
         "../python/dispatcher/dispatcher.py",
-        "../python/examples/tck_interoperability/test_socket_tm.py",
-        "../python/examples/tck_interoperability/test_socket_ta.py"
+       # "../python/examples/tck_interoperability/test_socket_tm.py",
+       # "../python/examples/tck_interoperability/test_socket_ta.py"
         #"../java/java_test_agent/out/artifacts/java_test_agent_jar/uprotocol-tck.jar"
     ]
     processes = []
@@ -50,6 +53,12 @@ def before_all(context):
     # Wait for all terminal windows to close
     for process in processes:
         process.wait()
+
+    transport = tl.TransportLayer()
+    transport.set_socket_config("127.0.0.1", 44444)
+    time.sleep(2)
+    context.tm = testmanager.SocketTestManager("127.0.0.5", 12345, transport)
+
 
     #context.logger.info("Running BDD Framework version " + __version__)
 

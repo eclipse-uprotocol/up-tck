@@ -99,7 +99,7 @@ class SocketTestManager():
         self.selector.register(self.server, selectors.EVENT_READ, self.__accept)
     
     def __accept(self, server: socket.socket):
-        """Accepts Test Agent client socket connect requests 
+        """Accepts Test Agent client socket connect requests
 
         Args:
             server (socket.socket): Test Manager server
@@ -118,11 +118,11 @@ class SocketTestManager():
         recv_data: bytes = receive_socket_data(ta_socket)
         
         json_str: str = convert_bytes_to_string(recv_data) 
-        
+
         data_within_json : List[str]= re.findall('{(.+?)}', json_str)  # {json, action: ..., messge: "...."}{json, action: status messge: "...."}
-        
+
         for recv_json_data in data_within_json:
-            json_msg: Dict[str, str] = convert_jsonstring_to_json("{" + recv_json_data + "}") 
+            json_msg: Dict[str, str] = convert_jsonstring_to_json("{" + recv_json_data + "}")
             self.__handle_recv_json_message(json_msg, ta_socket)
 
     def __handle_recv_json_message(self, json_msg: Dict[str, str], ta_socket: socket.socket):
@@ -136,10 +136,10 @@ class SocketTestManager():
             
             print("Initialized new client socket!", ta_addr)
             return
-        
+
         ta_addr: tuple[str, int] = ta_socket.getpeername()
         sdk: str = self.sock_addr_to_sdk[ta_addr]
-        
+
         if "action" in json_msg and json_msg["action"] == "uStatus":
             # update status if received UStatus message
             umsg_base64: str = json_msg["message"]
@@ -148,7 +148,7 @@ class SocketTestManager():
             
             self.__save_status(sdk, status)
         
-        elif "action" in json_msg and json_msg["action"] == "onReceive":            
+        elif "action" in json_msg and json_msg["action"] == "onReceive":
             # update status if received UStatus message
             umsg_base64: str = json_msg["message"]
             protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)  
@@ -191,7 +191,7 @@ class SocketTestManager():
             events = self.selector.select()
             for key, mask in events:
                 callback = key.data
-                callback(key.fileobj)
+                callback(key.fileobj, mask)
 
     def __send_to_test_agent(self, test_agent_socket: socket.socket, command: str, umsg: UMessage):
         """
@@ -258,11 +258,11 @@ class SocketTestManager():
             test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
 
             self.__send_to_test_agent(test_agent_socket, command, umsg)
-            
+
             status: UStatus = self.__pop_status(sdk_name)          
 
         return status
-    
+
     def receive_action_request(self, json_request: Dict, listener: UListener):
     
         sdk_name: str = json_request["ue"][0]
@@ -277,54 +277,53 @@ class SocketTestManager():
         resource: UResource = UResource(name=name, instance=instance, message=message)
         
         topic: UUri = UUri(entity=entity, resource=resource )
-        
-        format: str = json_request['payload.format'][0]
-        format = format.lower()
-        if format == "cloudevent":
-            values: Dict = json_request["payload.value"]
-            id: str = values["id"][0]
-            source: str = values["source"][0]
-            
-            cloudevent = CloudEvent(spec_version="1.0", source=source, id=id)
-            any_obj = Any()
-            any_obj.Pack(cloudevent)
-            proto: bytes = any_obj.SerializeToString()
-
-        elif format == "protobuf":
-            proto: str = json_request["payload.value"][0]
-            proto: bytes = proto.encode()
-        else:
-            raise Exception("payload.format's provided value not handleable")
-        
-        upayload: UPayload = UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=proto)
-        
-        
-        priority: str = json_request['attributes.priority'][0]
-        priority: UPriority = get_priority(priority)
-        
-        umsg_type: str = json_request['attributes.type'][0]
-        umsg_type: UMessageType = get_umessage_type(umsg_type)
-        
-        id_str: str = json_request['attributes.id'][0]
-        id_bytes: bytes = id_str.encode()
-        id: UUID = UUID()
-        id.ParseFromString(id_bytes)
-        
-        sink: str = json_request['attributes.sink'][0]
-        sink_bytes: bytes = sink.encode()
-        sink: UUri = UUri()
-        sink.ParseFromString(sink_bytes)
-        
-        attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
-
         if command == "send":
+            format: str = json_request['payload.format'][0]
+            format = format.lower()
+            if format == "cloudevent":
+                values: Dict = json_request["payload.value"]
+                id: str = values["id"][0]
+                source: str = values["source"][0]
+
+                cloudevent = CloudEvent(spec_version="1.0", source=source, id=id)
+                any_obj = Any()
+                any_obj.Pack(cloudevent)
+                proto: bytes = any_obj.SerializeToString()
+
+            elif format == "protobuf":
+                proto: str = json_request["payload.value"][0]
+                proto: bytes = proto.encode()
+            else:
+                raise Exception("payload.format's provided value not handleable")
+
+            upayload: UPayload = UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=proto)
+
+
+            priority: str = json_request['attributes.priority'][0]
+            priority: UPriority = get_priority(priority)
+
+            umsg_type: str = json_request['attributes.type'][0]
+            umsg_type: UMessageType = get_umessage_type(umsg_type)
+
+            id_str: str = json_request['attributes.id'][0]
+            id_bytes: bytes = id_str.encode()
+            id: UUID = UUID()
+            id.ParseFromString(id_bytes)
+
+            sink: str = json_request['attributes.sink'][0]
+            sink_bytes: bytes = sink.encode()
+            sink: UUri = UUri()
+            sink.ParseFromString(sink_bytes)
+
+            attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
             return self.send_command(sdk_name, command, topic, upayload, attributes)
+
         elif command == "registerlistener":
 
             return self.register_listener_command(sdk_name, command, topic, listener)
         else:
             raise Exception("action value not handled!")
-        
+
     def unregister_listener_command(self, sdk_name: str, command: str, topic: UUri, listener: UListener) -> UStatus:
         """
         Sends "registerListener" message to Test Agent
@@ -345,7 +344,7 @@ class SocketTestManager():
             test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
 
             self.__send_to_test_agent(test_agent_socket, command, umsg)
-            
-            status: UStatus = self.__pop_status(sdk_name)          
 
-        return status 
+            status: UStatus = self.__pop_status(sdk_name)
+
+        return status
