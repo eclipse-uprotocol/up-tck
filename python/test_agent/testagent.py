@@ -93,6 +93,8 @@ class SocketTestAgent:
                 print("Test Agent Send")
             elif action == "registerlistener":
                 status = self.utransport.register_listener(response_proto.source, listener)
+            elif action == "unregisterlistener":
+                status = self.utransport.unregister_listener(response_proto.source, listener)
 
             self.send(status)
             

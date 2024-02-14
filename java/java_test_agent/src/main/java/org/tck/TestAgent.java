@@ -90,6 +90,9 @@ public class TestAgent {
                         case "registerlistener":
                             status = socketUTransport.registerListener(umsg.getSource(), listener);
                             break;
+                        case "unregisterlistener":
+                            status = socketUTransport.unregisterListener(umsg.getSource(), listener);
+                            break;
                     }
                     this.send(status);
                 }
