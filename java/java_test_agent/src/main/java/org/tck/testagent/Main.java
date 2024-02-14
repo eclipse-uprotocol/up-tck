@@ -9,18 +9,34 @@ import org.tck.up_client_socket_java.SocketUTransport;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
-        SocketUTransport socketUTransport = new SocketUTransport("127.0.0.1", 44444);
-        System.out.println("Connected in UTransport");
-        Socket clientSocket = new Socket("127.0.0.5", 12345);
-        System.out.println("Connected in TM");
+    private static final Logger logger = Logger.getLogger(Main.class.getName());
 
-        TestAgent agent = new TestAgent(clientSocket, socketUTransport, new SocketUListener(clientSocket));
-        JSONObject obj = new JSONObject();
-        obj.put("SDK_name", "java");
-        agent.sendToTM(obj);
+    public static void main(String[] args) throws IOException {
+        try {
+            FileHandler fh = new FileHandler("tck_java.log");
+            logger.addHandler(fh);
+            SimpleFormatter formatter = new SimpleFormatter();
+            fh.setFormatter(formatter);
+
+            logger.setLevel(Level.FINE);
+            SocketUTransport socketUTransport = new SocketUTransport("127.0.0.1", 44444);
+            logger.info("Connected in UTransport");
+            Socket clientSocket = new Socket("127.0.0.5", 12345);
+            logger.info("Connected in TM");
+
+            TestAgent agent = new TestAgent(clientSocket, socketUTransport, new SocketUListener(clientSocket));
+            JSONObject obj = new JSONObject();
+            obj.put("SDK_name", "java");
+            agent.sendToTM(obj);
+        } catch (SecurityException | IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static UPayload buildUPayload() {
