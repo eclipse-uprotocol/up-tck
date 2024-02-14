@@ -124,4 +124,4 @@ if __name__ == "__main__":
     attributes: UAttributes = build_uattributes()
 
 
-    agent.send_to_TM({'SDK_name': "java"})
+    agent.send_to_TM({'SDK_name': "python"})
