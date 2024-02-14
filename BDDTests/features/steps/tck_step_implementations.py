@@ -1,8 +1,15 @@
+import base64
+
+from google.protobuf import any_pb2
+from google.protobuf.any_pb2 import Any
+
 from behave import when, then, given
 from behave.runner import Context
 import sys
+
 sys.path.append('../../../python/test_manager')
 from test_manager import testmanager
+
 sys.path.append('../../../python/up_client_socket_python')
 from up_client_socket_python import transport_layer as tl
 from uprotocol.transport.ulistener import UListener
@@ -11,6 +18,8 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.proto.upayload_pb2 import UPayload
+from uprotocol.proto.cloudevents_pb2 import CloudEvent
+
 
 
 class SocketUListener(UListener):
@@ -35,9 +44,20 @@ class SocketUListener(UListener):
 
         return UStatus(code=UCode.OK, message="all good")
 
+
+def build_cloud_event():
+    return CloudEvent(spec_version="1.0", source="https://example.com", id="HARTLEY IS THE BEST")
+
+
+def build_upayload():
+    any_obj = Any()
+    any_obj.Pack(build_cloud_event())
+    return any_obj.SerializeToString()
+
+
 @given(u'“{sdk_name}” creates data for "{command}"')
 @when(u'“{sdk_name}” creates data for "{command}"')
-def step_impl(context, sdk_name:str, command:str):
+def step_impl(context, sdk_name: str, command: str):
     context.logger.info("Inside create register listener data")
     context.json_array = {}
     context.ue = sdk_name
@@ -55,13 +75,11 @@ def step_impl(context: Context, key: str, value: str):
 
 @given(u'sends "{command}" request')
 @when(u'sends "{command}" request')
-def step_impl(context, command:str):
+def step_impl(context, command: str):
     listener: UListener = SocketUListener()
-    transport = tl()
-    transport.set_socket_config("127.0.0.1", 44444)
-    context.tm = testmanager.SocketTestManager("127.0.0.5", 12345, transport)
     context.logger.info(f"Json request for {command} -> {str(context.json_array)}")
-    context.tm.receive_action_request(context.json_array,listener)
+    resp = context.tm.receive_action_request(context.json_array, listener)
+    context.logger.info(f"Received response for {command} as {resp} of type {type(resp)}")
 
 
 @then(u'uE1 receives the payload')
