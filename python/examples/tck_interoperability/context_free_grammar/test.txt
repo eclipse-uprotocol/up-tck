@@ -1,0 +1,17 @@
+# send_command
+# asd
+
+
+java_test_agent connect_to test_manager
+
+test_manager register_listener_command java_test_agent 
+
+java_test_agent respond_ustatus test_manager 
+
+test_manager send_command java_test_agent
+
+java_test_agent respond_ustatus test_manager 
+
+test_manager unregister_listener_command java_test_agent
+
+java_test_agent respond_ustatus test_manager 

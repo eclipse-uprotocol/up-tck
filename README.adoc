@@ -35,6 +35,23 @@ Test Manager uses the test_runner.txt file in the python/examples/tck_interopera
 Inside the test_runner.txt file, you will find various statements that can be used to trigger Test Manager behaviors.
 To learn more about this grammar, please refer to the bottom section.
 
+==== Running Python Test Manager and Java Test Agent (JAR file)
+
+1. In Eclipse, open the existing Java Maven project located in the folder up-tck\java\java_test_agent 
+* If there are errors when importing a java folder, here is a guide: https://crunchify.com/mavenmvn-clean-install-update-project-and-project-clean-options-in-eclipse-ide-to-fix-any-dependency-issue/
+* If Maven option is not found after right-clicking the java_test_agent Java Project, follow this: https://stackoverflow.com/questions/10362166/maven-option-is-not-found-in-eclipse
+* If "Maven build ..." does not work with the goal "mvn clean install", then set the goal as "clean install"
+
+2. To create a JAR file of the java_test_agent Java project, goto File -> Export -> Runnable JAR File -> Launch configuration: "Main - java_test_agent" -> (Update Export Destination e.g. Downloads) -> Library handling: Extract required libraries into generated JAR -> Finish
+
+3. Run the dispatcher: ```python up-tck/python/dispatcher/dispatcher.py```
+
+4. Run the Test Manager: ```python up-tck/python/examples/tck_interoperability/test_socket_tm.py```
+
+5. To run the Java Test Agent, double-click the newly created JavaTestAgent.jar
+
+==== Running Python Test Manager and Python Test Agent
+
 If you would like to run the python Test Manager and Test Agent automatically in Windows, triggering your test_runner.txt file, run python\examples\tck_interoperability\demo_windows.bat
 
 

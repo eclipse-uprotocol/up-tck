@@ -1,3 +1,28 @@
+# -------------------------------------------------------------------------
+#
+# Copyright (c) 2023 General Motors GTO LLC
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# SPDX-FileType: SOURCE
+# SPDX-FileCopyrightText: 2023 General Motors GTO LLC
+# SPDX-License-Identifier: Apache-2.0
+#
+# -------------------------------------------------------------------------
 import time
 from threading import Thread
 from typing import Dict, List
@@ -21,6 +46,8 @@ from test_manager.testmanager import SocketTestManager
 from multipledispatch import dispatch
 import logging 
 import re
+
+from up_client_socket_python.utils.socket_message_processing_utils import protobuf_to_base64
 
 
 logging.basicConfig(format='%(asctime)s %(message)s')
@@ -87,7 +114,18 @@ def get_next_string(token: str) -> str:
 def check_variable_initialization(parameters: dict, param: str):
     if param not in parameters:
         raise Exception(f"{param} parameter not initialized")
-        
+
+def check_open_bracket(progress_commands: List[str], step_i: int):
+    open_bracket: str = progress_commands[step_i] 
+    if open_bracket != "{":
+        raise Exception("Need \"{\" on next line after a command!")
+
+def check_close_bracket(progress_commands: List[str], step_i: int):
+    closed_bracket: str = progress_commands[step_i] 
+    if closed_bracket != "}":
+        raise Exception("Need \"}\" on next line after a command!")
+
+                 
 def parse_param(parameters: dict, progress_commands: List[str], step_i: int) -> int:
     """
     <param> := <variable> = "string" | <variable> = { <param-list> }
@@ -130,9 +168,8 @@ def parse_param(parameters: dict, progress_commands: List[str], step_i: int) -> 
         parameters["UURI"] = topic
         
     elif variable_id == "UPAYLOAD":   
-        check_variable_initialization(parameters, "UPAYLOAD")
+        check_variable_initialization(parameters, "CLOUDEVENT")
 
-        
         payload: UPayload = build_upayload(parameters["CLOUDEVENT"])
 
         parameters["UPAYLOAD"] = payload
@@ -192,25 +229,27 @@ def handle_progress_commands(progress_commands: List[str], tm: SocketTestManager
 
             # get ta's sdk type
             ta_receiver: str = command[2]
-            sdk: str = ta_receiver.split("_")[0]
+            sdk_name: str = ta_receiver.split("_")[0]
             
-            if not tm.has_sdk_connection(sdk_name):
-                raise Exception(f"{sdk} Test Agent was never connected!")
+            if sdk_name != "self" and not tm.has_sdk_connection(sdk_name):
+                raise Exception(f"{sdk_name} Test Agent was never connected!")
             step_i += 1
             
             # enter params bracket "{"
+            check_open_bracket(progress_commands, step_i)
             step_i += 1
             
             parameters = dict()
             step_i = parse_param_list(parameters, progress_commands, step_i)
             
             # exit params bracket "}"
+            check_close_bracket(progress_commands, step_i)
             step_i += 1
             
             check_variable_initialization(parameters, "UURI")
 
 
-            register_listener_status: UStatus = tm.register_listener_command(sdk, "registerlistener", parameters["UURI"], listener)
+            register_listener_status: UStatus = tm.register_listener_command(sdk_name, "registerlistener", parameters["UURI"], listener)
             
 
         elif action == "send_command":
@@ -218,26 +257,28 @@ def handle_progress_commands(progress_commands: List[str], tm: SocketTestManager
 
             # get ta's sdk type
             ta_receiver: str = command[2]
-            sdk: str = ta_receiver.split("_")[0]
+            sdk_name: str = ta_receiver.split("_")[0]
             
-            if not tm.has_sdk_connection(sdk_name):
-                raise Exception(f"{sdk} Test Agent was never connected!")
+            if sdk_name != "self" and not tm.has_sdk_connection(sdk_name):
+                raise Exception(f"{sdk_name} Test Agent was never connected!")
             step_i += 1
             
             # enter params bracket "{"
+            check_open_bracket(progress_commands, step_i)
             step_i += 1
             
             parameters = dict()
             step_i = parse_param_list(parameters, progress_commands, step_i)
             
             # exit params bracket "}"
+            check_close_bracket(progress_commands, step_i)
             step_i += 1
             
             check_variable_initialization(parameters, "UURI")
             check_variable_initialization(parameters, "UPAYLOAD")
             check_variable_initialization(parameters, "UATTRIBUTES")
 
-            send_status: UStatus = tm.send_command(sdk, "send", parameters["UURI"], parameters["UPAYLOAD"], parameters["UATTRIBUTES"])
+            send_status: UStatus = tm.send_command(sdk_name, "send", parameters["UURI"], parameters["UPAYLOAD"], parameters["UATTRIBUTES"])
             
             
         elif action == "responds_ustatus":
@@ -253,6 +294,9 @@ def handle_progress_commands(progress_commands: List[str], tm: SocketTestManager
                 elif send_status is not None:
                     print("send_status:", send_status)
                     send_status = None
+                elif unregister_listener_status is not None:
+                    print("unregister_listener_status:", unregister_listener_status)
+                    unregister_listener_status = None
                 else:
                     raise Exception("did not receive any Status!")
                 
@@ -260,6 +304,33 @@ def handle_progress_commands(progress_commands: List[str], tm: SocketTestManager
                 raise Exception("Only handles Test Manager for receiving data!")
             
             step_i += 1
+        
+        elif action == "unregister_listener_command":
+            print_action(action)
+
+            # get ta's sdk type
+            ta_receiver: str = command[2]
+            sdk_name: str = ta_receiver.split("_")[0]
+            
+            if sdk_name != "self" and not tm.has_sdk_connection(sdk_name):
+                raise Exception(f"{sdk_name} Test Agent was never connected!")
+            step_i += 1
+            
+            # enter params bracket "{"
+            check_open_bracket(progress_commands, step_i)
+            step_i += 1
+            
+            parameters = dict()
+            step_i = parse_param_list(parameters, progress_commands, step_i)
+            
+            # exit params bracket "}"
+            check_close_bracket(progress_commands, step_i)
+            step_i += 1
+            
+            check_variable_initialization(parameters, "UURI")
+
+
+            unregister_listener_status: UStatus = tm.unregister_listener_command(sdk_name, "unregisterlistener", parameters["UURI"], listener)
         
         else:
             raise Exception(f"Action {action} not handle!")
@@ -271,19 +342,25 @@ manager = SocketTestManager("127.0.0.5", 12345, transport)
 
 uri: str = "/body.access//door.front_left#Door"
 
-def build_cloud_event(id: str, source: str):
+def build_cloud_event(source: str, id: str = "fake id"):
     return CloudEvent(spec_version="1.0", source=source, id="I am " + id)
 
 @dispatch(str, str)
-def build_upayload(id: str, source: str):
+def build_upayload(source: str, id: str,):
     any_obj = Any()
-    any_obj.Pack(build_cloud_event(id, source))
+    any_obj.Pack(build_cloud_event(source, id))
     return UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=any_obj.SerializeToString())
 
 @dispatch(CloudEvent)
 def build_upayload(cloud_event: CloudEvent):
     any_obj = Any()
     any_obj.Pack(cloud_event)
+    return UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=any_obj.SerializeToString())
+
+@dispatch(str)
+def build_upayload(sdk: str):
+    any_obj = Any()
+    any_obj.Pack(build_cloud_event(sdk))
     return UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=any_obj.SerializeToString())
 
 
@@ -303,6 +380,8 @@ print("-             Test Manager             -")
 print("----------------------------------------")
 
 
+# payload = build_upayload(build_cloud_event("random source idk",id="fake id"))
+# print(protobuf_to_base64(payload))
 
 handle_progress_commands(get_progress_commands(), manager)    
 '''
