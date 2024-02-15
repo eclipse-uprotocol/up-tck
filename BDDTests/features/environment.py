@@ -56,10 +56,10 @@ def before_all(context):
     for process in processes:
         process.wait()
     time.sleep(2)
-    transport = tl.TransportLayer()
+    transport = TransportLayer()
     transport.set_socket_config("127.0.0.1", 44444)
     time.sleep(2)
-    context.tm = testmanager.SocketTestManager("127.0.0.5", 12345, transport)
+    context.tm = SocketTestManager("127.0.0.5", 12345, transport)
     thread = Thread(target=context.tm.listen_for_client_connections)
     thread.start()
 
