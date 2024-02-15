@@ -383,7 +383,7 @@ print("----------------------------------------")
 # payload = build_upayload(build_cloud_event("random source idk",id="fake id"))
 # print(protobuf_to_base64(payload))
 
-# handle_progress_commands(get_progress_commands(), manager)    
+handle_progress_commands(get_progress_commands(), manager)    
 '''
 while True:
     sdk: str = input("Enter SDK Language[java/python]: ")

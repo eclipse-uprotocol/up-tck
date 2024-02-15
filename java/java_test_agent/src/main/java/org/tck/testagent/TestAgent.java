@@ -91,6 +91,7 @@ public class TestAgent {
                 .setPayload(payload)
                 .build();
         byte[] base64umsg = umsg.toByteArray();
+        JSONObject jsonObject = new JSONObject();
         jsonObject.put("action", "send");
         jsonObject.put("message", Base64ProtobufSerializer.deserialize(base64umsg));
         sendToTM(jsonObject);
