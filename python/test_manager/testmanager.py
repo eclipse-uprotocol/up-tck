@@ -306,15 +306,15 @@ class SocketTestManager():
             umsg_type: UMessageType = get_umessage_type(umsg_type)
 
             id_str: str = json_request['attributes.id'][0]
-            # id_bytes: bytes = id_str.encode()
-            # id: UUID = UUID()
-            # id.ParseFromString(id_bytes)
-            id: UUID = UUID(msb=int(id_str))
+            id_bytes: bytes = id_str.encode()
+            id: UUID = UUID()
+            #id.ParseFromString(id_bytes)
 
-            sink: str = json_request['attributes.sink'][0]
-            sink_bytes: bytes = sink.encode()
+            if "attributes.sink" in json_request:
+                sink: str = json_request['attributes.sink'][0]
+                sink_bytes: bytes = sink.encode()
             sink: UUri = UUri()
-            sink.ParseFromString(sink_bytes)
+            #sink.ParseFromString(sink_bytes)
 
             attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
             return self.send_command(sdk_name, command, topic, upayload, attributes)

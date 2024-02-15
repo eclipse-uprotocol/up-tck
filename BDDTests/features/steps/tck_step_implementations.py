@@ -21,6 +21,9 @@ from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.proto.cloudevents_pb2 import CloudEvent
 
 
+# transport = tl.TransportLayer()
+# transport.set_socket_config("127.0.0.1", 44444)
+# tm = testmanager.SocketTestManager("127.0.0.5", 12345, transport)
 
 class SocketUListener(UListener):
     def __init__(self, sdk_name: str = "python") -> None:
@@ -43,16 +46,6 @@ class SocketUListener(UListener):
         print(f"{payload}")
 
         return UStatus(code=UCode.OK, message="all good")
-
-
-def build_cloud_event():
-    return CloudEvent(spec_version="1.0", source="https://example.com", id="HARTLEY IS THE BEST")
-
-
-def build_upayload():
-    any_obj = Any()
-    any_obj.Pack(build_cloud_event())
-    return any_obj.SerializeToString()
 
 
 @given(u'“{sdk_name}” creates data for "{command}"')
@@ -78,8 +71,7 @@ def step_impl(context: Context, key: str, value: str):
 def step_impl(context, command: str):
     listener: UListener = SocketUListener()
     context.logger.info(f"Json request for {command} -> {str(context.json_array)}")
-    resp = context.tm.receive_action_request(context.json_array, listener)
-    context.logger.info(f"Received response for {command} as {resp} of type {type(resp)}")
+    context.tm.receive_action_request(context.json_array, listener)
 
 
 @then(u'uE1 receives the payload')
