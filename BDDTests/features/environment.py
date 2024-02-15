@@ -1,13 +1,21 @@
 import time
+import socket
+from abc import ABC
+from threading import Thread
 
 from utils import loggerutils
 import subprocess
 import os
 import sys
-sys.path.append('../../python/test_manager')
-from test_manager import testmanager
-sys.path.append('../../python/up_client_socket_python')
-from up_client_socket_python import transport_layer as tl
+sys.path.append('../../python/')
+from python.test_manager import testmanager
+# sys.path.append('../../python/up_client_socket_python')
+from python.up_client_socket_python import transport_layer as tl
+from python.test_agent import testagent as testagent
+from uprotocol.transport.ulistener import UListener
+
+
+
 
 def before_all(context):
     """Set up test environment
@@ -19,9 +27,8 @@ def before_all(context):
     :return: None
     """
 
-    setup_logging()
-    setup_formatted_logging(context)
-
+    loggerutils.setup_logging()
+    loggerutils.setup_formatted_logging(context)
     path = os.getcwd()
     script_paths = [
         "../python/dispatcher/dispatcher.py",
@@ -34,30 +41,31 @@ def before_all(context):
     for script_path in script_paths:
         if script_path.endswith('.jar'):
             #subprocess.Popen(['gnome-terminal', '--', 'java', 'jar', script_path])
-            if sys.platform == "win32":
-                command = ['start', '/min', 'java', '-jar', os.path.abspath(script_path)]
-            else:
-                command = ['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)]  
+            command = ['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)]
         else:
             # subprocess.Popen(['gnome-terminal', '--', f'python3 {os.path.abspath(script_path)}; while true; do sleep 1; done'])
-            if sys.platform == "win32":
-                command = ['start', '/min', 'python', os.path.abspath(script_path)]
-            else:
-                command = ['gnome-terminal', '--', 'python3', os.path.abspath(script_path)]
+            command = ['gnome-terminal', '--', 'python3', os.path.abspath(script_path)]
 
-        print(command)
-        process = subprocess.Popen(command, shell=True)
-        print("hi")
+        process = subprocess.Popen(command)
         processes.append(process)
 
     # Wait for all terminal windows to close
     for process in processes:
         process.wait()
-
+    time.sleep(2)
     transport = tl.TransportLayer()
     transport.set_socket_config("127.0.0.1", 44444)
     time.sleep(2)
     context.tm = testmanager.SocketTestManager("127.0.0.5", 12345, transport)
+    thread = Thread(target=context.tm.listen_for_client_connections)
+    thread.start()
+
+    time.sleep(5)
+    #script_path = "../python/examples/tck_interoperability/test_socket_ta.py"
+    #subprocess.Popen(['gnome-terminal', '--', 'python3', os.path.abspath(script_path)])
+    script_path = "../java/java_test_agent/out/artifacts/java_test_agent_jar/uprotocol-tck.jar"
+    subprocess.Popen(['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)])
+    time.sleep(5)
 
 
     #context.logger.info("Running BDD Framework version " + __version__)
@@ -67,23 +75,3 @@ def before_all(context):
     #                          "environment. Please start with virtual "
     #                          "environment (venv) enabled.")
     #     quit()
-
-# class IRunScripts(ABC):
-#     @abstractclassmethod
-#     def before_all(self, context):
-#         pass
-
-# class RunWindowsTestScript(IRunScripts):
-    
-#     @staticmethod
-#     def before_all(context):
-        
-#         print("get_git_root():", get_git_root())
-#         print(os.path.abspath(get_git_root() + "\python\examples\\tck_interoperability"))
-#         p = subprocess.Popen("demo_windows.bat", cwd=os.path.abspath(get_git_root() + "\python\examples\\tck_interoperability"), shell=True)
-
-#         stdout, stderr = p.communicate()
-
-            
-# if sys.platform == "win32":
-#     RunWindowsTestScript.before_all(None)
