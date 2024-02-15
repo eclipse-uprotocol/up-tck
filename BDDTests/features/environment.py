@@ -1,4 +1,6 @@
 import time
+import socket
+from abc import ABC
 from threading import Thread
 
 from utils import loggerutils
@@ -36,73 +38,37 @@ def before_all(context):
     ]
     
     processes = []
-    
-    #set up dispatcher
-    print("prerunning dispatcher")
-    command = ['start', '/min', 'python', get_git_root() + "/python/dispatcher/dispatcher.py"]
-    process = subprocess.Popen(command, shell=True)
-    processes.append(process)
-    print("postrunning dispatcher")
-    time.sleep(5)
-    # set up TM
-    transport = TransportLayer()
-    transport.set_socket_config("127.0.0.1", 44444)
-    time.sleep(5)
-    print("prerunning testmanager")
-    context.tm = SocketTestManager("127.0.0.5", 12345, transport)
-    thread = Thread(target = context.tm.listen_for_client_connections)  
-    thread.start()
-    print("postrunning testmanager")
-    time.sleep(5)
-    
-    # setup test agent
-    print("prerunning test agent")
-    command = ['start', '/min', 'python', get_git_root() + "/python/examples/tck_interoperability/test_socket_ta.py"]
-    process = subprocess.Popen(command, shell=True)
-    processes.append(process)
-    print("postrunning test agent")
-    time.sleep(5)
 
-    '''
-    if sys.platform == "win32":
-        paths_from_root_repo = [
-            "/python/dispatcher/dispatcher.py",
-            # "/python/examples/tck_interoperability/test_socket_tm.py",
-            # "/python/examples/tck_interoperability/test_socket_ta.py"
-            #"../java/java_test_agent/out/artifacts/java_test_agent_jar/uprotocol-tck.jar"
-        ]
-        
-        for script_path in paths_from_root_repo:
-            if script_path.endswith('.jar'):
-                command = ['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)]  
-            else:
-                # start /min python ../../dispatcher/dispatcher.py
-                command = ['start', '/min', 'python', get_git_root() + script_path]
+    for script_path in script_paths:
+        if script_path.endswith('.jar'):
+            #subprocess.Popen(['gnome-terminal', '--', 'java', 'jar', script_path])
+            command = ['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)]
+        else:
+            # subprocess.Popen(['gnome-terminal', '--', f'python3 {os.path.abspath(script_path)}; while true; do sleep 1; done'])
+            command = ['gnome-terminal', '--', 'python3', os.path.abspath(script_path)]
 
-            print("RunWindowsTestScript")
-            print(command)
-            process = subprocess.Popen(command, shell=True)
-            processes.append(process)
-            time.sleep(1)
-    else:
-        for script_path in script_paths:
-            if script_path.endswith('.jar'):
-                #subprocess.Popen(['gnome-terminal', '--', 'java', 'jar', script_path])
-                command = ['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)]  
-            else:
-                # subprocess.Popen(['gnome-terminal', '--', f'python3 {os.path.abspath(script_path)}; while true; do sleep 1; done'])
-                command = ['gnome-terminal', '--', 'python3', os.path.abspath(script_path)]
-
-            print(command)
-            process = subprocess.Popen(command)
-            processes.append(process)
-        '''
+        print(command)
+        process = subprocess.Popen(command, shell=True)
+        print("hi")
+        processes.append(process)
 
     # Wait for all terminal windows to close
     for process in processes:
         process.wait()
+    time.sleep(2)
+    transport = tl.TransportLayer()
+    transport.set_socket_config("127.0.0.1", 44444)
+    time.sleep(2)
+    context.tm = testmanager.SocketTestManager("127.0.0.5", 12345, transport)
+    thread = Thread(target=context.tm.listen_for_client_connections)
+    thread.start()
 
-
+    time.sleep(5)
+    #script_path = "../python/examples/tck_interoperability/test_socket_ta.py"
+    #subprocess.Popen(['gnome-terminal', '--', 'python3', os.path.abspath(script_path)])
+    script_path = "../java/java_test_agent/out/artifacts/java_test_agent_jar/uprotocol-tck.jar"
+    subprocess.Popen(['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)])
+    time.sleep(5)
 
 
     #context.logger.info("Running BDD Framework version " + __version__)
