@@ -53,6 +53,10 @@ class SocketUListener(UListener):
 def step_impl(context, sdk_name: str, command: str):
     context.logger.info("Inside create register listener data")
     context.json_array = {}
+    
+    while not context.tm.has_sdk_connection(sdk_name):
+        continue
+    
     context.ue = sdk_name
     context.json_array['ue'] = [sdk_name]
     context.json_array['action'] = [command]

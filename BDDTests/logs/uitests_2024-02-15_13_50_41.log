@@ -1,0 +1,17 @@
+[INFO] : 2024-02-15 13:50:46,622 : tck_step_implementations.py : step_impl:54 : Inside create register listener data
+[INFO] : 2024-02-15 13:50:46,625 : tck_step_implementations.py : step_impl:64 : Json data: Key is uri.entity.name value is body.access
+[INFO] : 2024-02-15 13:50:46,626 : tck_step_implementations.py : step_impl:64 : Json data: Key is uri.resource.name value is door
+[INFO] : 2024-02-15 13:50:46,629 : tck_step_implementations.py : step_impl:64 : Json data: Key is uri.resource.instance value is front_left
+[INFO] : 2024-02-15 13:50:46,631 : tck_step_implementations.py : step_impl:64 : Json data: Key is uri.resource.message value is Door
+[INFO] : 2024-02-15 13:50:46,633 : tck_step_implementations.py : step_impl:73 : Json request for registerlistener -> {'ue': ['self'], 'action': ['registerlistener'], 'uri.entity.name': ['body.access'], 'uri.resource.name': ['door'], 'uri.resource.instance': ['front_left'], 'uri.resource.message': ['Door']}
+[INFO] : 2024-02-15 13:50:46,635 : tck_step_implementations.py : step_impl:54 : Inside create register listener data
+[INFO] : 2024-02-15 13:50:46,638 : tck_step_implementations.py : step_impl:64 : Json data: Key is uri.entity.name value is body.access
+[INFO] : 2024-02-15 13:50:46,640 : tck_step_implementations.py : step_impl:64 : Json data: Key is uri.resource.name value is door
+[INFO] : 2024-02-15 13:50:46,641 : tck_step_implementations.py : step_impl:64 : Json data: Key is uri.resource.instance value is front_left
+[INFO] : 2024-02-15 13:50:46,644 : tck_step_implementations.py : step_impl:64 : Json data: Key is uri.resource.message value is Door
+[INFO] : 2024-02-15 13:50:46,646 : tck_step_implementations.py : step_impl:64 : Json data: Key is attributes.priority value is UPRIORITY_CS1
+[INFO] : 2024-02-15 13:50:46,647 : tck_step_implementations.py : step_impl:64 : Json data: Key is attributes.type value is UMESSAGE_TYPE_PUBLISH
+[INFO] : 2024-02-15 13:50:46,649 : tck_step_implementations.py : step_impl:64 : Json data: Key is attributes.id value is 12345
+[INFO] : 2024-02-15 13:50:46,651 : tck_step_implementations.py : step_impl:64 : Json data: Key is payload.format value is protobuf
+[INFO] : 2024-02-15 13:50:46,653 : tck_step_implementations.py : step_impl:64 : Json data: Key is payload.value value is serialized protobuf data
+[INFO] : 2024-02-15 13:50:46,655 : tck_step_implementations.py : step_impl:73 : Json request for send -> {'ue': ['python'], 'action': ['send'], 'uri.entity.name': ['body.access'], 'uri.resource.name': ['door'], 'uri.resource.instance': ['front_left'], 'uri.resource.message': ['Door'], 'attributes.priority': ['UPRIORITY_CS1'], 'attributes.type': ['UMESSAGE_TYPE_PUBLISH'], 'attributes.id': ['12345'], 'payload.format': ['protobuf'], 'payload.value': ['serialized protobuf data']}
