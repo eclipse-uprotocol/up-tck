@@ -191,7 +191,7 @@ class SocketTestManager():
             events = self.selector.select()
             for key, mask in events:
                 callback = key.data
-                callback(key.fileobj, mask)
+                callback(key.fileobj)
 
     def __send_to_test_agent(self, test_agent_socket: socket.socket, command: str, umsg: UMessage):
         """
@@ -306,9 +306,10 @@ class SocketTestManager():
             umsg_type: UMessageType = get_umessage_type(umsg_type)
 
             id_str: str = json_request['attributes.id'][0]
-            id_bytes: bytes = id_str.encode()
-            id: UUID = UUID()
-            id.ParseFromString(id_bytes)
+            # id_bytes: bytes = id_str.encode()
+            # id: UUID = UUID()
+            # id.ParseFromString(id_bytes)
+            id: UUID = UUID(msb=int(id_str))
 
             sink: str = json_request['attributes.sink'][0]
             sink_bytes: bytes = sink.encode()

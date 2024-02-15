@@ -1,13 +1,18 @@
 import time
+from threading import Thread
 
 from utils import loggerutils
 import subprocess
 import os
 import sys
-sys.path.append('../../python/test_manager')
-from test_manager import testmanager
-sys.path.append('../../python/up_client_socket_python')
-from up_client_socket_python import transport_layer as tl
+from abc import ABC, abstractclassmethod
+from up_client_socket_python.utils.file_pathing_utils import get_git_root
+
+# sys.path.append('../../python/test_manager')
+from test_manager.testmanager import SocketTestManager
+
+# sys.path.append('../../python/up_client_socket_python')
+from up_client_socket_python.transport_layer import TransportLayer
 
 def before_all(context):
     """Set up test environment
@@ -19,8 +24,8 @@ def before_all(context):
     :return: None
     """
 
-    setup_logging()
-    setup_formatted_logging(context)
+    loggerutils.setup_logging()
+    loggerutils.setup_formatted_logging(context)
 
     path = os.getcwd()
     script_paths = [
@@ -29,35 +34,75 @@ def before_all(context):
        # "../python/examples/tck_interoperability/test_socket_ta.py"
         #"../java/java_test_agent/out/artifacts/java_test_agent_jar/uprotocol-tck.jar"
     ]
+    
     processes = []
+    
+    #set up dispatcher
+    print("prerunning dispatcher")
+    command = ['start', '/min', 'python', get_git_root() + "/python/dispatcher/dispatcher.py"]
+    process = subprocess.Popen(command, shell=True)
+    processes.append(process)
+    print("postrunning dispatcher")
+    time.sleep(5)
+    # set up TM
+    transport = TransportLayer()
+    transport.set_socket_config("127.0.0.1", 44444)
+    time.sleep(5)
+    print("prerunning testmanager")
+    context.tm = SocketTestManager("127.0.0.5", 12345, transport)
+    thread = Thread(target = context.tm.listen_for_client_connections)  
+    thread.start()
+    print("postrunning testmanager")
+    time.sleep(5)
+    
+    # setup test agent
+    print("prerunning test agent")
+    command = ['start', '/min', 'python', get_git_root() + "/python/examples/tck_interoperability/test_socket_ta.py"]
+    process = subprocess.Popen(command, shell=True)
+    processes.append(process)
+    print("postrunning test agent")
+    time.sleep(5)
 
-    for script_path in script_paths:
-        if script_path.endswith('.jar'):
-            #subprocess.Popen(['gnome-terminal', '--', 'java', 'jar', script_path])
-            if sys.platform == "win32":
-                command = ['start', '/min', 'java', '-jar', os.path.abspath(script_path)]
-            else:
+    '''
+    if sys.platform == "win32":
+        paths_from_root_repo = [
+            "/python/dispatcher/dispatcher.py",
+            # "/python/examples/tck_interoperability/test_socket_tm.py",
+            # "/python/examples/tck_interoperability/test_socket_ta.py"
+            #"../java/java_test_agent/out/artifacts/java_test_agent_jar/uprotocol-tck.jar"
+        ]
+        
+        for script_path in paths_from_root_repo:
+            if script_path.endswith('.jar'):
                 command = ['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)]  
-        else:
-            # subprocess.Popen(['gnome-terminal', '--', f'python3 {os.path.abspath(script_path)}; while true; do sleep 1; done'])
-            if sys.platform == "win32":
-                command = ['start', '/min', 'python', os.path.abspath(script_path)]
             else:
+                # start /min python ../../dispatcher/dispatcher.py
+                command = ['start', '/min', 'python', get_git_root() + script_path]
+
+            print("RunWindowsTestScript")
+            print(command)
+            process = subprocess.Popen(command, shell=True)
+            processes.append(process)
+            time.sleep(1)
+    else:
+        for script_path in script_paths:
+            if script_path.endswith('.jar'):
+                #subprocess.Popen(['gnome-terminal', '--', 'java', 'jar', script_path])
+                command = ['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)]  
+            else:
+                # subprocess.Popen(['gnome-terminal', '--', f'python3 {os.path.abspath(script_path)}; while true; do sleep 1; done'])
                 command = ['gnome-terminal', '--', 'python3', os.path.abspath(script_path)]
 
-        print(command)
-        process = subprocess.Popen(command, shell=True)
-        print("hi")
-        processes.append(process)
+            print(command)
+            process = subprocess.Popen(command)
+            processes.append(process)
+        '''
 
     # Wait for all terminal windows to close
     for process in processes:
         process.wait()
 
-    transport = tl.TransportLayer()
-    transport.set_socket_config("127.0.0.1", 44444)
-    time.sleep(2)
-    context.tm = testmanager.SocketTestManager("127.0.0.5", 12345, transport)
+
 
 
     #context.logger.info("Running BDD Framework version " + __version__)
@@ -68,21 +113,48 @@ def before_all(context):
     #                          "environment (venv) enabled.")
     #     quit()
 
-# class IRunScripts(ABC):
-#     @abstractclassmethod
-#     def before_all(self, context):
-#         pass
+class IRunScripts(ABC):
+    @abstractclassmethod
+    def before_all(self, context):
+        pass
 
-# class RunWindowsTestScript(IRunScripts):
+class RunWindowsTestScript(IRunScripts):
     
-#     @staticmethod
-#     def before_all(context):
+    @staticmethod
+    def before_all(context):
         
-#         print("get_git_root():", get_git_root())
-#         print(os.path.abspath(get_git_root() + "\python\examples\\tck_interoperability"))
-#         p = subprocess.Popen("demo_windows.bat", cwd=os.path.abspath(get_git_root() + "\python\examples\\tck_interoperability"), shell=True)
+        paths_from_root_repo = [
+            "/python/dispatcher/dispatcher.py",
+            # "../python/examples/tck_interoperability/test_socket_tm.py",
+            # "../python/examples/tck_interoperability/test_socket_ta.py"
+            #"../java/java_test_agent/out/artifacts/java_test_agent_jar/uprotocol-tck.jar"
+        ]
+        processes = []
 
-#         stdout, stderr = p.communicate()
+        for script_path in paths_from_root_repo:
+            if script_path.endswith('.jar'):
+                #subprocess.Popen(['gnome-terminal', '--', 'java', 'jar', script_path])
+                command = ['gnome-terminal', '--', 'java', '-jar', os.path.abspath(script_path)]  
+            else:
+                # subprocess.Popen(['gnome-terminal', '--', f'python3 {os.path.abspath(script_path)}; while true; do sleep 1; done'])
+                # start /min python ../../dispatcher/dispatcher.py
+
+                command = ['start', '/min', 'python', get_git_root() + script_path]
+
+            print("RunWindowsTestScript")
+            print(command)
+            process = subprocess.Popen(command, shell=True)
+            processes.append(process)
+
+        # Wait for all terminal windows to close
+        for process in processes:
+            process.wait()
+
+        transport = TransportLayer()
+        transport.set_socket_config("127.0.0.1", 44444)
+        time.sleep(2)
+        context.tm = SocketTestManager("127.0.0.5", 12345, transport)
+    
 
             
 # if sys.platform == "win32":
