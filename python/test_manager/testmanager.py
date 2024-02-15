@@ -62,16 +62,20 @@ class SocketTestManager():
     from different devices.
 
     Test Manager acts as a server that interoperable (ex: Java, C++, Rust, etc.) Test Agents will connect to.
+    These connections will later do be used for stress testing, testing the latencies in sending messages in a high
+    message passing sending rates, the size of messages, and the implementation of the core SDK
 
     Assumption: For every connection between Test Agent (TA) and Test Manager (TM), 
     message passing is blocking/sychronous 
 
     """
     def __init__(self, ip_addr: str, port: int, utransport: TransportLayer) -> None:
-        """
-        @param ip_addr: Test Manager's ip address
-        @param port: Test Manager's port number
-        @param utransport: Real message passing medium (sockets)
+        """Starts Test Manager by creating the server and accepting Test Agent client socket connections
+
+        Args:
+            ip_addr (str): Test Manager's ip address
+            port (int): Test Manager's port number
+            utransport (TransportLayer): Real message passing medium (sockets)
         """
         
         # Lowlevel transport implementation (ex: Ulink's UTransport, Zenoh, etc).
@@ -99,7 +103,7 @@ class SocketTestManager():
         self.selector.register(self.server, selectors.EVENT_READ, self.__accept)
     
     def __accept(self, server: socket.socket):
-        """Accepts Test Agent client socket connect requests
+        """Accepts Test Agent client socket connect requests and listens for incoming data from the new TA conn.
 
         Args:
             server (socket.socket): Test Manager server
@@ -114,18 +118,32 @@ class SocketTestManager():
         self.selector.register(ta_socket, selectors.EVENT_READ, self.__receive_from_test_agent)
     
     def __receive_from_test_agent(self, ta_socket: socket.socket):
+        """handles incoming json data from Test Agent
+
+        Args:
+            ta_socket (socket.socket): <SDK> Test Agent 
+        """
 
         recv_data: bytes = receive_socket_data(ta_socket)
         
         json_str: str = convert_bytes_to_string(recv_data) 
 
+        # in case if json messages are concatenated, we are splitting the json data and handling it separately
         data_within_json : List[str]= re.findall('{(.+?)}', json_str)  # {json, action: ..., messge: "...."}{json, action: status messge: "...."}
-
         for recv_json_data in data_within_json:
             json_msg: Dict[str, str] = convert_jsonstring_to_json("{" + recv_json_data + "}")
             self.__handle_recv_json_message(json_msg, ta_socket)
 
     def __handle_recv_json_message(self, json_msg: Dict[str, str], ta_socket: socket.socket):
+        """Runtime Handler for different type of incoming json messages
+
+        Args:
+            json_msg (Dict[str, str]): received json data
+            ta_socket (socket.socket): Test Agent socket connection
+
+        Raises:
+            Exception: if dont recognize certain received json messages
+        """
         if "SDK_name" in json_msg:
             sdk: str = json_msg["SDK_name"].lower().strip()
             
@@ -134,7 +152,7 @@ class SocketTestManager():
             # Store new SDK's socket connection
             self.sdk_to_test_agent_socket[sdk] = ta_socket
             
-            print("Initialized new client socket!", ta_addr)
+            print("Initialized new client socket!",sdk, ta_addr )
             return
 
         ta_addr: tuple[str, int] = ta_socket.getpeername()
@@ -179,6 +197,8 @@ class SocketTestManager():
         return status
     
     def has_sdk_connection(self, sdk_name: str) -> bool:
+        if sdk_name == "self":
+            return True
         return sdk_name in self.sdk_to_test_agent_socket
         
     def listen_for_client_connections(self):
@@ -194,10 +214,12 @@ class SocketTestManager():
                 callback(key.fileobj)
 
     def __send_to_test_agent(self, test_agent_socket: socket.socket, command: str, umsg: UMessage):
-        """
-        Contains data preprocessing and sending UMessage steps to Test Agent
-        @param test_agent_socket: Test Agent Socket
-        @param command: message's action-type
+        """ Contains data preprocessing and sending UMessage steps to Test Agent
+
+        Args:
+            test_agent_socket (socket.socket): Test Agent Socket
+            command (str): message's action-type
+            umsg (UMessage): the raw protobuf message 
         """
         json_message = {
             "action": command,
@@ -263,7 +285,16 @@ class SocketTestManager():
 
         return status
 
-    def receive_action_request(self, json_request: Dict, listener: UListener):
+    def receive_action_request(self, json_request: Dict, listener: UListener) -> UStatus:
+        """Runtime command to send to Test Agent based on request json
+
+        Args:
+            json_request (Dict): the command that needs to run but formatted in a json
+            listener (UListener): required listener if need to run registerListener()
+
+        Returns:
+            UStatus: the status after doing a command
+        """
     
         sdk_name: str = json_request["ue"][0]
         command: str = json_request["action"][0].lower()
@@ -277,6 +308,7 @@ class SocketTestManager():
         resource: UResource = UResource(name=name, instance=instance, message=message)
         
         topic: UUri = UUri(entity=entity, resource=resource )
+        
         if command == "send":
             format: str = json_request['payload.format'][0]
             format = format.lower()
@@ -305,16 +337,15 @@ class SocketTestManager():
             umsg_type: str = json_request['attributes.type'][0]
             umsg_type: UMessageType = get_umessage_type(umsg_type)
 
-            id_str: str = json_request['attributes.id'][0]
-            id_bytes: bytes = id_str.encode()
-            id: UUID = UUID()
-            #id.ParseFromString(id_bytes)
+            if 'attributes.id' in json_request:
+                id_num: int = int(json_request['attributes.id'][0])
+                id: UUID = UUID(msb=id_num)
 
+            sink: UUri = UUri()
             if "attributes.sink" in json_request:
                 sink: str = json_request['attributes.sink'][0]
                 sink_bytes: bytes = sink.encode()
-            sink: UUri = UUri()
-            #sink.ParseFromString(sink_bytes)
+                #sink.ParseFromString(sink_bytes)
 
             attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
             return self.send_command(sdk_name, command, topic, upayload, attributes)
