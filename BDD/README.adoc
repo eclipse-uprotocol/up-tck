@@ -1,0 +1,107 @@
+= Eclipse uProtocol TCK - BDD Tests
+:toc:
+
+== Overview
+
+This Test Framework allows users to implement their own interoperability tests using the python Behave library.
+
+
+== Getting Started
+
+=== Prerequisites
+Set up up-python
+
+----
+$ git clone https://github.com/eclipse-uprotocol/up-python.git
+$ cd up-python
+$ pip install .
+----
+
+=== Importing the up-tck-python
+ 
+Set up upclient-socket-python local repository and install
+[source]
+----
+$ git clone https://github.com/eclipse-uprotocol/up-tck.git
+$ cd up-tck/python
+$ pip install .
+----
+*This will install the up-tck-python, making its classes and modules available for import in your python code.*
+
+=== Building Java Test Agent Jar
+
+If you would like to run any tests with the Java Test Agent, follow these instructions:
+
+1. In Eclipse, open the existing Java Maven project located in the folder up-tck\java\java_test_agent 
+* If there are errors when importing a java folder, here is a guide: https://crunchify.com/mavenmvn-clean-install-update-project-and-project-clean-options-in-eclipse-ide-to-fix-any-dependency-issue/
+* If Maven option is not found after right-clicking the java_test_agent Java Project, follow this: https://stackoverflow.com/questions/10362166/maven-option-is-not-found-in-eclipse
+* If "Maven build ..." does not work with the goal "mvn clean install", then set the goal as "clean install"
+
+2. To create a JAR file of the java_test_agent Java project, goto File -> Export -> Runnable JAR File -> Launch configuration: "Main - java_test_agent" -> (Update Export Destination e.g. Downloads) -> Library handling: Extract required libraries into generated JAR -> Finish
+
+=== Running BDD Tests
+
+Behave is a python implementation of the BDD (Behavior Driven Development) style of testing. With Behave, users can create files called "feature files," within which a test is written out in natural language.
+
+For testing interoperability between different language test agents, users can create these feature files, specifying which languages are under test. Specific step definitions for the test manager and test agents are located under BDD/README.adoc.
+
+==== Running BDD Example Test
+
+Example scripts for TCK Interoperability are supplied under BDD/features/tests. To run these example tests:
+
+1. Go to the BDD Folder (cd BDD)
+2. Run "pip install -r requirements.txt"
+3. Run "behave -i <feature file name>" (ex. "behave -i register_and_send.feature)
+
+
+==== Writing your own BDD Tests
+
+You can follow the format in BDD/features/tests/register_and_send.feature to see how different tests are created and formatted. All steps in the feature file are implemented in BDD/features/steps/tck_step_implementations.py.
+
+===== Register Listener
+
+If you would like to trigger the "registerlistener" method, either within the Test Manager's uTransport, or within an individual Test Agent's uTransport, use the following format:
+
+----
+Given “<uE1>” creates data for "registerlistener"
+    And sets "uri.entity.name" to "body.access"
+    And sets "uri.resource.name" to "door"
+    And sets "uri.resource.instance" to "front_left"
+    And sets "uri.resource.message" to "Door"
+    And sends "registerlistener" request
+----
+
+In this example, <uE1> is the uEntity that will be doing the uTransport "registerlistener" method. If this is set to "self", the Test Manager itself will be running the method. Otherwise, the language specified will run the "registerlistener" method.
+
+==== Send
+
+If you would like to trigger the "send" method, either within the Test Manager's uTransport, or within an individual Test Agent's uTransport, use the following format:
+
+----
+When “<uE2>” creates data for "send"
+    And sets "uri.entity.name" to "body.access"
+    And sets "uri.resource.name" to "door"
+    And sets "uri.resource.instance" to "front_left"
+    And sets "uri.resource.message" to "Door"
+    And sets "attributes.priority" to "UPRIORITY_CS1"
+    And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
+    And sets "attributes.id" to "12345"
+    And sets "payload.format" to "protobuf"
+    And sets "payload.value" to "serialized protobuf data"
+    And sends "send" request
+----
+
+In this example, <uE2> is the uEntity that will be doing the uTransport "send" method. If this is set to "self", the Test Manager itself will be running the method. Otherwise, the language specified will run the "send" method.
+
+==== Examples section
+
+This section specifies the individual tests that will be run as part of the scenario. You create as many rows in this section as you want. The first row specifies the variable name, and subsequent rows specify what those variables will be set to during the test.
+
+----
+Examples: topic_names
+| uE1     | uE2    |
+| self    | python |
+| self    | java   |
+---
+
+For example, here, one test will be run where <uE1> is set to "self" and <uE2> is set to "python", and then the same test will be run with <uE1> set to "self" and <uE2> set to "java".

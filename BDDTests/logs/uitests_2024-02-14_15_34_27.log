@@ -1,5 +1,0 @@
-[INFO] : 2024-02-14 15:34:29,674 : tck_step_implementations.py : step_impl:41 : Inside create register listener data
-[INFO] : 2024-02-14 15:34:29,677 : tck_step_implementations.py : step_impl:51 : Json data: Key is uri.entity.name value is body.access
-[INFO] : 2024-02-14 15:34:29,679 : tck_step_implementations.py : step_impl:51 : Json data: Key is uri.resource.name value is door
-[INFO] : 2024-02-14 15:34:29,681 : tck_step_implementations.py : step_impl:51 : Json data: Key is uri.resource.instance value is front_left
-[INFO] : 2024-02-14 15:34:29,683 : tck_step_implementations.py : step_impl:51 : Json data: Key is uri.resource.message value is Door
