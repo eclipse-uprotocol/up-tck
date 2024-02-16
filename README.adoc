@@ -151,8 +151,8 @@ Figure 1: Test Manager --> Test Agent Communication Pattern
 
 image::screenshots/RegisterListener.drawio.svg[]
 
-Figure 1: Test Manager --> Test Agent RegisterListener Command Flow
+Figure 2: Test Manager --> Test Agent RegisterListener Command Flow
 
 image::screenshots/SendCommand.drawio.svg[]
 
-Figure 1: Test Manager --> Test Agent Send Command Flow
+Figure 3: Test Manager --> Test Agent Send Command Flow

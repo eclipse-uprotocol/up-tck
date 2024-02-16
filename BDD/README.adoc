@@ -102,6 +102,6 @@ Examples: topic_names
 | uE1     | uE2    |
 | self    | python |
 | self    | java   |
----
+----
 
 For example, here, one test will be run where <uE1> is set to "self" and <uE2> is set to "python", and then the same test will be run with <uE1> set to "self" and <uE2> set to "java".
