@@ -24,10 +24,35 @@ Set up upclient-socket-python local repository and install
 [source]
 ----
 $ git clone https://github.com/eclipse-uprotocol/up-tck.git
-$ cd up-tck
+$ cd up-tck/python
 $ pip install .
 ----
 *This will install the up-tck-python, making its classes and modules available for import in your python code.*
+
+=== Building Java Test Agent Jar
+
+If you would like to run any tests with the Java Test Agent, follow these instructions:
+
+1. In Eclipse, open the existing Java Maven project located in the folder up-tck\java\java_test_agent 
+* If there are errors when importing a java folder, here is a guide: https://crunchify.com/mavenmvn-clean-install-update-project-and-project-clean-options-in-eclipse-ide-to-fix-any-dependency-issue/
+* If Maven option is not found after right-clicking the java_test_agent Java Project, follow this: https://stackoverflow.com/questions/10362166/maven-option-is-not-found-in-eclipse
+* If "Maven build ..." does not work with the goal "mvn clean install", then set the goal as "clean install"
+
+2. To create a JAR file of the java_test_agent Java project, goto File -> Export -> Runnable JAR File -> Launch configuration: "Main - java_test_agent" -> (Update Export Destination e.g. Downloads) -> Library handling: Extract required libraries into generated JAR -> Finish
+
+=== Running BDD Tests
+
+Behave is a python implementation of the BDD (Behavior Driven Development) style of testing. With Behave, users can create files called "feature files," within which a test is written out in natural language.
+
+For testing interoperability between different language test agents, users can create these feature files, specifying which languages are under test. Specific step definitions for the test manager and test agents are located under BDD/README.adoc.
+
+==== Running BDD Example Test
+
+Example scripts for TCK Interoperability are supplied under BDD/features/tests. To run these example tests:
+
+1. Go to the BDD Folder (cd BDD)
+2. Run "pip install -r requirements.txt"
+3. Run "behave -i <feature file name>" (ex. "behave -i register_and_send.feature)
 
 === Running Test Manager and Test Agent Examples
 
@@ -37,18 +62,11 @@ To learn more about this grammar, please refer to the bottom section.
 
 ==== Running Python Test Manager and Java Test Agent (JAR file)
 
-1. In Eclipse, open the existing Java Maven project located in the folder up-tck\java\java_test_agent 
-* If there are errors when importing a java folder, here is a guide: https://crunchify.com/mavenmvn-clean-install-update-project-and-project-clean-options-in-eclipse-ide-to-fix-any-dependency-issue/
-* If Maven option is not found after right-clicking the java_test_agent Java Project, follow this: https://stackoverflow.com/questions/10362166/maven-option-is-not-found-in-eclipse
-* If "Maven build ..." does not work with the goal "mvn clean install", then set the goal as "clean install"
+1. Run the dispatcher: ```python up-tck/python/dispatcher/dispatcher.py```
 
-2. To create a JAR file of the java_test_agent Java project, goto File -> Export -> Runnable JAR File -> Launch configuration: "Main - java_test_agent" -> (Update Export Destination e.g. Downloads) -> Library handling: Extract required libraries into generated JAR -> Finish
+2. Run the Test Manager: ```python up-tck/python/examples/tck_interoperability/test_socket_tm.py```
 
-3. Run the dispatcher: ```python up-tck/python/dispatcher/dispatcher.py```
-
-4. Run the Test Manager: ```python up-tck/python/examples/tck_interoperability/test_socket_tm.py```
-
-5. To run the Java Test Agent, double-click the newly created JavaTestAgent.jar
+3. To run the Java Test Agent, double-click the newly created JavaTestAgent.jar
 
 ==== Running Python Test Manager and Python Test Agent
 
@@ -124,3 +142,17 @@ Clean up by running the command:
 
     <variable> := UUrI | UPAYLOAD | CLOUDEVENT | UAttributes | id | source
     
+
+== Diagrams
+
+image::screenshots/TestManagerTestAgent.drawio.svg[]
+
+Figure 1: Test Manager --> Test Agent Communication Pattern
+
+image::screenshots/RegisterListener.drawio.svg[]
+
+Figure 1: Test Manager --> Test Agent RegisterListener Command Flow
+
+image::screenshots/SendCommand.drawio.svg[]
+
+Figure 1: Test Manager --> Test Agent Send Command Flow

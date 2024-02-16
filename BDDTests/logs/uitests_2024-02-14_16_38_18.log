@@ -1,6 +1,0 @@
-[INFO] : 2024-02-14 16:38:41,425 : tck_step_implementations.py : step_impl:61 : Inside create register listener data
-[INFO] : 2024-02-14 16:38:41,427 : tck_step_implementations.py : step_impl:71 : Json data: Key is uri.entity.name value is body.access
-[INFO] : 2024-02-14 16:38:41,429 : tck_step_implementations.py : step_impl:71 : Json data: Key is uri.resource.name value is door
-[INFO] : 2024-02-14 16:38:41,432 : tck_step_implementations.py : step_impl:71 : Json data: Key is uri.resource.instance value is front_left
-[INFO] : 2024-02-14 16:38:41,435 : tck_step_implementations.py : step_impl:71 : Json data: Key is uri.resource.message value is Door
-[INFO] : 2024-02-14 16:38:41,439 : tck_step_implementations.py : step_impl:80 : Json request for registerlistener -> {'ue': ['python'], 'action': ['registerlistener'], 'uri.entity.name': ['body.access'], 'uri.resource.name': ['door'], 'uri.resource.instance': ['front_left'], 'uri.resource.message': ['Door']}
