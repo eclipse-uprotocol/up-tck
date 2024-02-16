@@ -51,7 +51,7 @@ Example scripts for TCK Interoperability are supplied under BDD/features/tests. 
 
 1. Go to the BDD Folder (cd BDD)
 2. Run "pip install -r requirements.txt"
-3. Run "behave -i <feature file name>" (ex. "behave -i register_and_send.feature)
+3. If in Windows, run "testrunner.bat". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature"). If in Linux, run "testrunner.sh". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
 
 
 ==== Writing your own BDD Tests
