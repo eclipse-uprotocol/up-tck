@@ -53,7 +53,12 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
 
 
 def create_subprocess(command: List[str]) -> subprocess.Popen:
-    process = subprocess.Popen(command, shell=True)
+    if sys.platform == "win32":
+        process = subprocess.Popen(command, shell=True)
+    elif sys.platform == "linux" or sys.platform == "linux2":
+        process = subprocess.Popen(command)
+    else:
+        raise Exception("only handle Windows and Linux commands for now")
     return process
 
 
