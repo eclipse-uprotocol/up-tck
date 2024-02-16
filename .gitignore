@@ -24,3 +24,5 @@ MANIFEST
 .venv/
 *.log
 *.log.lck
+*.log.1
+*.html

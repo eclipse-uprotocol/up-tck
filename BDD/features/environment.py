@@ -72,7 +72,7 @@ def before_all(context):
     command = create_command("/python/dispatcher/dispatcher.py")
     process: subprocess.Popen = create_subprocess(command)
     
-    print("created Dis")
+    print("Created Dispatcher")
     time.sleep(2)
 
 
@@ -84,11 +84,6 @@ def before_all(context):
     context.tm = test_manager
     
     print("created TM")
-    
-    command = create_command("/python/examples/tck_interoperability/test_socket_ta.py")
-    process: subprocess.Popen = create_subprocess(command)
-    process.wait()
-    
     
     command = create_command("/python/examples/tck_interoperability/test_socket_ta.py")
     process: subprocess.Popen = create_subprocess(command)
