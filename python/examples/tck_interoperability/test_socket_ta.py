@@ -49,12 +49,12 @@ from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from up_client_socket_python.utils.socket_message_processing_utils import convert_json_to_jsonstring, convert_str_to_bytes, protobuf_to_base64, send_socket_data
 
 class SocketUListener(UListener):
-    def __init__(self, test_agent_conn: socket.socket) -> None:
+    def __init__(self, test_manager_conn: socket.socket) -> None:
         """
         @param test_agent_conn: Connection to Test Agent
         """
         # Connection to Test Manager
-        self.test_agent_conn: socket.socket = test_agent_conn
+        self.test_manager_conn: socket.socket = test_manager_conn
 
     def on_receive(self, topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
         """
@@ -69,7 +69,6 @@ class SocketUListener(UListener):
         print("Listener onreceived")
         print(f"{payload}")
 
-        #NOTE: Need to send as JSON!!!
         umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
         
         json_message = {
@@ -77,13 +76,12 @@ class SocketUListener(UListener):
             "message": protobuf_to_base64(umsg) 
         }
 
-        print("SENDING onReceive...")
         json_message_str: str = convert_json_to_jsonstring(json_message) 
 
         message: bytes = convert_str_to_bytes(json_message_str) 
 
-        print("Sending to Test Manager Directly!")
-        send_socket_data(test_agent_socket, message) 
+        print("Sending onReceive to Test Manager Directly!")
+        send_socket_data(self.test_manager_conn, message) 
 
         return UStatus(code=UCode.OK, message="all good") 
     

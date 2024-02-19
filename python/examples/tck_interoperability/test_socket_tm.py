@@ -34,6 +34,7 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.transport.ulistener import UListener
+from uprotocol.proto.umessage_pb2 import UMessage
 
 from uprotocol.proto.cloudevents_pb2 import CloudEvent
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
@@ -383,8 +384,8 @@ print("----------------------------------------")
 # payload = build_upayload(build_cloud_event("random source idk",id="fake id"))
 # print(protobuf_to_base64(payload))
 
-handle_progress_commands(get_progress_commands(), manager)    
-'''
+# handle_progress_commands(get_progress_commands(), manager)    
+
 while True:
     sdk: str = input("Enter SDK Language[java/python]: ")
     sdk = sdk.strip()
@@ -395,17 +396,21 @@ while True:
     payload: UPayload = build_upayload(sdk)
     attributes: UAttributes = build_uattributes()
 
-    if command_name == "send": 
+    if command_name == "send" or command_name == "invokemethod": 
         print("SEND COMMAND")
-        status: UStatus = manager.send_command(sdk, command_name, topic, payload, attributes)
-    elif command_name == "registerlistener":
-        print("RegisterListener COMMAND")
+        umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
 
-        status: UStatus = manager.register_listener_command(sdk, command_name, topic, listener)
+        # status: UStatus = manager.send_command(sdk, command_name, topic, payload, attributes)
+    elif command_name == "registerlistener" or command_name == "unregisterlistener":
+        print("RegisterListener COMMAND")
+        umsg: UMessage = UMessage(source=topic)
+
+        # status: UStatus = manager.register_listener_command(sdk, command_name, topic, listener)
     else:
         print("in exception!")
         continue
+    
+    status: UStatus = manager.request(sdk, command_name, umsg)
     print("received status:", status)
     print("---------------")
     time.sleep(1)
-'''

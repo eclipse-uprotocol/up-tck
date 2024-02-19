@@ -69,7 +69,6 @@ if __name__ == "__main__":
     payload: UPayload = build_upayload()
     attributes: UAttributes = build_uattributes()
     umsg_dummy2 = UMessage(source=topic, attributes=attributes, payload=payload) 
-    umsg_dummy1 = UMessage(source=topic, payload=payload) 
 
     req: UUID = UUID(msb=1234, lsb=4321)
     req_dummy1: UUID = UUID(msb=4321, lsb=1234)
@@ -81,42 +80,34 @@ if __name__ == "__main__":
     umsg_dummy3 = UMessage(source=topic, payload=payload, attributes=attributes_dummy1) 
     umsg_dummy4 = UMessage(source=topic, payload=payload, attributes=attributes_dummy2) 
 
-    # Create a socket object 
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)         
+    # connects to dispatcher
+    cli_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
+    cli_socket.connect(ADDR)  
 
-    # Prerequisite for server to listen for incoming conn. requests
-    server.bind(ADDR)  
-
-    # Put the socket into listening mode 
-    # NOTE: 5 connections are kept waiting 
-    # if the server is busy and if a 6th socket tries to connect, then the connection is refused.
-    server.listen(5)  
-
-    clientsocket, addr = server.accept()   
-
-    recv_data: bytes = clientsocket.recv(32767)
+    
+    recv_data: bytes = cli_socket.recv(32767)
 
     # create dumby response
     print("sending dum1")
-    clientsocket.send(umsg_dummy1.SerializeToString()) 
+    cli_socket.send(umsg_dummy2.SerializeToString()) 
 
     time.sleep(3)
 
     # create dumby response
     print("sending dum2")
-    clientsocket.send(umsg_dummy2.SerializeToString()) 
+    cli_socket.send(umsg_dummy2.SerializeToString()) 
 
     time.sleep(3)
 
     # create dumby response
     print("sending dum3")
-    clientsocket.send(umsg_dummy3.SerializeToString()) 
+    cli_socket.send(umsg_dummy3.SerializeToString()) 
 
     time.sleep(3)
 
     # create dumby response
     print("sending dum4")
-    clientsocket.send(umsg_dummy4.SerializeToString()) 
+    cli_socket.send(umsg_dummy4.SerializeToString()) 
     time.sleep(3)
 
     #create correct response
@@ -127,7 +118,7 @@ if __name__ == "__main__":
     attributes_real: UAttributes = build_uattributes(recv_msg.attributes.id)
     umsg_real = UMessage(source=topic, payload=payload, attributes=attributes_real) 
 
-    clientsocket.send(umsg_real.SerializeToString()) 
+    cli_socket.send(umsg_real.SerializeToString()) 
 
 
 

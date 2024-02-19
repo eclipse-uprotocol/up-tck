@@ -83,7 +83,8 @@ if __name__ == "__main__":
 
     print(response.result())
 
-
+while True:
+    pass
 # test w/ dispatcher
 # 1. move test code into here
 # replace request ID w/ UUID id in attributes

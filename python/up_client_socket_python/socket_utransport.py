@@ -120,7 +120,7 @@ class SocketUTransport(UTransport):
             num_bytes_sent: int = self.socket.send(umsg_serialized)
             if num_bytes_sent == 0:
                 return UStatus(code=UCode.INTERNAL, message="INTERNAL ERROR: Socket Connection Broken")
-            logger.info("uMessage Sent")
+            logger.info(f"{self.__class__.__name__} uMessage Sent")
         except OSError:
             return UStatus(code=UCode.INTERNAL, message="INTERNAL ERROR: OSError sending UMessage")
 

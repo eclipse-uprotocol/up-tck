@@ -231,59 +231,55 @@ class SocketTestManager():
         message: bytes = convert_str_to_bytes(json_message_str) 
 
         send_socket_data(test_agent_socket, message) 
+        
+    def request(self, sdk_ta_destination: str, command: str, message: UMessage) -> UStatus:
+        """Sends different requests to a specific SDK Test Agent
 
-    def send_command(self, sdk_name: str, command: str,  topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
+        Args:
+            sdk_ta_destination (str): SDK Test Agent
+            command (str): send, registerlistener, unregisterlistener, invokemethod
+            message (UMessage): message data to send to the SDK Test Agent
+
+        Returns:
+            UStatus: response Status
         """
-        Sends "send" message to Test Agent
-        @param sdk_name: Test Agent's SDK type
-        @param command: type of message
-        @param topic: part of UMessage
-        @param payload: part of UMessage
-        @param attributes: part of UMessage
-        """
-        sdk_name = sdk_name.lower().strip()
+        sdk_ta_destination = sdk_ta_destination.lower().strip()
 
-        if sdk_name == "self":
-            # Send message thru real medium (ulink's UTransport)
-            status: UStatus = self.utransport.send(topic, payload, attributes)
-            
-        else:
-            
-            # Send message to Test Agent
-            umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
-            test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
+        test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_ta_destination]
 
-            self.__send_to_test_agent(test_agent_socket, command, umsg)
-            
-            status: UStatus = self.__pop_status(sdk_name)            
-            
-            
+        self.__send_to_test_agent(test_agent_socket, command, message)
+        
+        status: UStatus = self.__pop_status(sdk_ta_destination) 
         return status
 
-    def register_listener_command(self, sdk_name: str, command: str, topic: UUri, listener: UListener) -> UStatus:
-        """
-        Sends "registerListener" message to Test Agent
-        @param sdk_name: Test Agent's SDK type
-        @param command: type of message
-        @param topic: part of UMessage
-        @param listener: handler when UTransport receives data from registered topic
-        """
+    '''def send_command(self, sdk_name: str, command: str,  topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
+
         sdk_name = sdk_name.lower().strip()
-        if sdk_name == "self":
-            # ulink registers to current topic
-            status: UStatus = self.utransport.register_listener(topic, listener)
 
-        else:
-            # Send registerListener mesg to Test Agent
-            umsg: UMessage = UMessage(source=topic)
+        # Send message to Test Agent
+        umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
+        test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
 
-            test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
+        self.__send_to_test_agent(test_agent_socket, command, umsg)
+        
+        status: UStatus = self.__pop_status(sdk_name)            
+        
+            
+        return status'''
 
-            self.__send_to_test_agent(test_agent_socket, command, umsg)
+    '''def register_listener_command(self, sdk_name: str, command: str, topic: UUri) -> UStatus:
+        sdk_name = sdk_name.lower().strip()
 
-            status: UStatus = self.__pop_status(sdk_name)          
+        # Send registerListener mesg to Test Agent
+        umsg: UMessage = UMessage(source=topic)
 
-        return status
+        test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
+
+        self.__send_to_test_agent(test_agent_socket, command, umsg)
+
+        status: UStatus = self.__pop_status(sdk_name)          
+
+        return status'''
 
     def receive_action_request(self, json_request: Dict, listener: UListener) -> UStatus:
         """Runtime command to send to Test Agent based on request json
@@ -348,35 +344,29 @@ class SocketTestManager():
                 #sink.ParseFromString(sink_bytes)
 
             attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
-            return self.send_command(sdk_name, command, topic, upayload, attributes)
+            # return self.send_command(sdk_name, command, topic, upayload, attributes)
+            umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=upayload)
+            return self.request(sdk_name, command, umsg)
 
         elif command == "registerlistener":
-
-            return self.register_listener_command(sdk_name, command, topic, listener)
+            umsg: UMessage = UMessage(source=topic)
+            # return self.register_listener_command(sdk_name, command, topic, listener)
+            return self.request(sdk_name, command, umsg)
+        
         else:
             raise Exception("action value not handled!")
 
-    def unregister_listener_command(self, sdk_name: str, command: str, topic: UUri, listener: UListener) -> UStatus:
-        """
-        Sends "registerListener" message to Test Agent
-        @param sdk_name: Test Agent's SDK type
-        @param command: type of message
-        @param topic: part of UMessage
-        @param listener: handler when UTransport receives data from registered topic
-        """
+    '''def unregister_listener_command(self, sdk_name: str, command: str, topic: UUri, listener: UListener) -> UStatus:
         sdk_name = sdk_name.lower().strip()
-        if sdk_name == "self":
-            # ulink registers to current topic
-            status: UStatus = self.utransport.unregister_listener(topic, listener)
 
-        else:
-            # Send registerListener mesg to Test Agent
-            umsg: UMessage = UMessage(source=topic)
+        # Send registerListener mesg to Test Agent
+        umsg: UMessage = UMessage(source=topic)
 
-            test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
+        test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
 
-            self.__send_to_test_agent(test_agent_socket, command, umsg)
+        self.__send_to_test_agent(test_agent_socket, command, umsg)
 
-            status: UStatus = self.__pop_status(sdk_name)
+        status: UStatus = self.__pop_status(sdk_name)
 
-        return status
+        return status'''
+   

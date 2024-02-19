@@ -105,6 +105,9 @@ class SocketRPCClient(RpcClient):
                 raise Exception(err)   
             
             response_reqid: UUID = response_umsg.attributes.reqid
+            
+            print(request_id_b)
+            print(response_reqid.SerializeToString())
 
             if request_id_b == response_reqid.SerializeToString():
                 # Got response

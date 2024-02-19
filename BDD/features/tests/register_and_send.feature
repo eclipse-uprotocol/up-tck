@@ -25,5 +25,4 @@ Scenario Outline: To test the registerlistener and send apis
 
     Examples: topic_names
     | uE1     | uE2    |
-    | self    | python |
-    | self    | java   |
+    | python    | python |
