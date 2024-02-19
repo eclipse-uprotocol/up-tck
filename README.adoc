@@ -145,14 +145,16 @@ Clean up by running the command:
 
 == Diagrams
 
-image::screenshots/TestManagerTestAgent.drawio.svg[]
+image::screenshots/RegisterListenerv2.drawio.svg[]
 
-Figure 1: Test Manager --> Test Agent Communication Pattern
+*Figure 1: Test Manager --> Test Agent: Trigger Send/RegisterListener/UnregisterListener*
 
-image::screenshots/RegisterListener.drawio.svg[]
+image::screenshots/DispatcherCommunication.drawio.svg[]
 
-Figure 2: Test Manager --> Test Agent RegisterListener Command Flow
+*Figure 2: Test Agent: Dispatcher Communication*
 
-image::screenshots/SendCommand.drawio.svg[]
+The Dispatcher is a socket-utransport-specific module, created to quickly test SDK Interoperability.
 
-Figure 3: Test Manager --> Test Agent Send Command Flow
+image::screenshots/TestManagerTestAgentv2.drawio.svg[]
+
+*Figure 3: Test Manager --> Test Agent: Integrated Communication*
