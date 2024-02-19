@@ -13,9 +13,9 @@ def send_socket_data(s: socket.socket , msg: bytes):
     filler =  b' ' * (recv_size - len(message))
     test_agent_socket1.send(message + filler)
     """
-    filler =  b' ' * (BYTES_MSG_LENGTH - len(msg))
-    # test_agent_socket1.send(message + filler)
-    s.send(msg + filler)
+    # filler =  b' ' * (BYTES_MSG_LENGTH - len(msg))
+    # s.send(msg + filler)
+    s.send(msg)
 
 def receive_socket_data(s: socket.socket) -> bytes:
     return s.recv(BYTES_MSG_LENGTH)
