@@ -75,7 +75,9 @@ class SocketTestAgent:
             recv_data: bytes = receive_socket_data(self.clientsocket) 
             
             if recv_data == b"":
-                continue
+                print("Closing TA Client Socket")
+                self.clientsocket.close()
+                return
 
             json_str: str = convert_bytes_to_string(recv_data) 
             json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str) 
@@ -148,3 +150,6 @@ class SocketTestAgent:
         
         send_socket_data(self.clientsocket, message)
         print(f"Sent {message}")
+
+    def close_connection(self):
+        self.clientsocket.close()

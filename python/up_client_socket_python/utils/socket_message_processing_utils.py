@@ -34,17 +34,16 @@ from uprotocol.cloudevent.serialize.base64protobufserializer import Base64Protob
 BYTES_MSG_LENGTH: int = 32767
 
 def send_socket_data(s: socket.socket , msg: bytes):
-    """_summary_
-
-    filler =  b' ' * (recv_size - len(message))
-    test_agent_socket1.send(message + filler)
-    """
     # filler =  b' ' * (BYTES_MSG_LENGTH - len(msg))
     # s.send(msg + filler)
     s.send(msg)
 
 def receive_socket_data(s: socket.socket) -> bytes:
-    return s.recv(BYTES_MSG_LENGTH)
+    try:
+        return s.recv(BYTES_MSG_LENGTH)
+    except OSError as oserr:  # in case if socket is closed
+        print(oserr)
+        return b''
 
 def protobuf_to_base64(obj: Any) -> str:
     serial_proto: bytes = obj.SerializeToString()

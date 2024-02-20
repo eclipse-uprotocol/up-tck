@@ -78,6 +78,8 @@ class SocketTestManager():
             utransport (TransportLayer): Real message passing medium (sockets)
         """
         
+        self.received_umessage: UMessage = None
+        
         # Lowlevel transport implementation (ex: Ulink's UTransport, Zenoh, etc).
         self.utransport: TransportLayer = utransport
 
@@ -85,6 +87,8 @@ class SocketTestManager():
         self.sdk_to_test_agent_socket: Dict[str, socket.socket] = defaultdict(socket.socket)
         self.sdk_to_received_ustatus: Dict[str, UStatus] = defaultdict(lambda: None)  # maybe thread safe
         self.sdk_to_received_ustatus_lock = threading.Lock()
+        self.sdk_to_test_agent_socket_lock = threading.Lock()
+
 
         self.sock_addr_to_sdk: Dict[tuple[str, int], str] = defaultdict(str) 
 
@@ -124,7 +128,22 @@ class SocketTestManager():
             ta_socket (socket.socket): <SDK> Test Agent 
         """
 
+        print("ta_socket", ta_socket)
+            
         recv_data: bytes = receive_socket_data(ta_socket)
+        
+        # if client socket closed connection, then close on server endpoint too
+        if recv_data == b'':
+            try: 
+                ta_addr: tuple[str, int] = ta_socket.getpeername()
+                sdk: str = self.sock_addr_to_sdk[ta_addr] 
+                
+                self.close_ta(sdk)
+                
+                del self.sock_addr_to_sdk[ta_addr]
+            except OSError as oserr:
+                print(oserr)
+            return
         
         json_str: str = convert_bytes_to_string(recv_data) 
 
@@ -149,8 +168,12 @@ class SocketTestManager():
             
             ta_addr: tuple[str, int] = ta_socket.getpeername()
             self.sock_addr_to_sdk[ta_addr] = sdk
+            
             # Store new SDK's socket connection
+            self.sdk_to_test_agent_socket_lock.acquire()
             self.sdk_to_test_agent_socket[sdk] = ta_socket
+            self.sdk_to_test_agent_socket_lock.release()
+
             
             print("Initialized new client socket!",sdk, ta_addr )
             return
@@ -171,6 +194,8 @@ class SocketTestManager():
             umsg_base64: str = json_msg["message"]
             protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)  
             onreceive_umsg: UMessage = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), UMessage)
+        
+            self.received_umessage = onreceive_umsg
         
             print("---------------------------------OnReceive response from Test Agent!---------------------------------")
             print(onreceive_umsg)
@@ -252,36 +277,7 @@ class SocketTestManager():
         status: UStatus = self.__pop_status(sdk_ta_destination) 
         return status
 
-    '''def send_command(self, sdk_name: str, command: str,  topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
-
-        sdk_name = sdk_name.lower().strip()
-
-        # Send message to Test Agent
-        umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
-        test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
-
-        self.__send_to_test_agent(test_agent_socket, command, umsg)
-        
-        status: UStatus = self.__pop_status(sdk_name)            
-        
-            
-        return status'''
-
-    '''def register_listener_command(self, sdk_name: str, command: str, topic: UUri) -> UStatus:
-        sdk_name = sdk_name.lower().strip()
-
-        # Send registerListener mesg to Test Agent
-        umsg: UMessage = UMessage(source=topic)
-
-        test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
-
-        self.__send_to_test_agent(test_agent_socket, command, umsg)
-
-        status: UStatus = self.__pop_status(sdk_name)          
-
-        return status'''
-
-    def receive_action_request(self, json_request: Dict, listener: UListener) -> UStatus:
+    def receive_action_request(self, json_request: Dict) -> UStatus:
         """Runtime command to send to Test Agent based on request json
 
         Args:
@@ -354,19 +350,21 @@ class SocketTestManager():
             return self.request(sdk_name, command, umsg)
         
         else:
-            raise Exception("action value not handled!")
+            raise Exception("action value not handled!")   
+        
+    def close(self):
+        self.selector.close()
+    
+    def close_ta(self, sdk_name: str):
+        print(f"Closing {sdk_name} connection")
+        
+        # if havent deleted and closed socket client already...
+        if sdk_name in self.sdk_to_test_agent_socket:
+        
+            self.sdk_to_test_agent_socket_lock.acquire()
+            ta_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
+            del self.sdk_to_test_agent_socket[sdk_name]
+            self.sdk_to_test_agent_socket_lock.release()
 
-    '''def unregister_listener_command(self, sdk_name: str, command: str, topic: UUri, listener: UListener) -> UStatus:
-        sdk_name = sdk_name.lower().strip()
-
-        # Send registerListener mesg to Test Agent
-        umsg: UMessage = UMessage(source=topic)
-
-        test_agent_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
-
-        self.__send_to_test_agent(test_agent_socket, command, umsg)
-
-        status: UStatus = self.__pop_status(sdk_name)
-
-        return status'''
-   
+            ta_socket.close()
+    

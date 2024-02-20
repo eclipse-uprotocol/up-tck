@@ -28,37 +28,7 @@ from behave import when, then, given, step
 from behave.runner import Context
 from hamcrest import assert_that, equal_to
 
-from uprotocol.transport.ulistener import UListener
-from uprotocol.proto.uattributes_pb2 import UAttributes
-from uprotocol.proto.uri_pb2 import UUri
-from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.proto.upayload_pb2 import UPayload
-
-received_payload = ''
-
-class SocketUListener(UListener):
-    def __init__(self, sdk_name: str = "python") -> None:
-        pass
-
-    def on_receive(self, topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
-        """
-        ULIstener is for each TA
-        ADD SDK NAME in constructor or something
-
-        Method called to handle/process events.<br><br>
-        @param topic: Topic the underlying source of the message.
-        @param payload: Payload of the message.
-        @param attributes: Transportation attributes.
-        @return Returns an Ack every time a message is received and processed.
-        """
-        print("Listener onreceived")
-
-        print(f"{payload}")
-        global received_payload
-        received_payload = payload
-
-        return UStatus(code=UCode.OK, message="all good")
-
 
 @given(u'“{sdk_name}” creates data for "{command}"')
 @when(u'“{sdk_name}” creates data for "{command}"')
@@ -85,9 +55,8 @@ def step_impl(context: Context, key: str, value: str):
 @given(u'sends "{command}" request')
 @when(u'sends "{command}" request')
 def step_impl(context, command: str):
-    listener: UListener = SocketUListener()
     context.logger.info(f"Json request for {command} -> {str(context.json_array)}")
-    context.status = context.tm.receive_action_request(context.json_array, listener)
+    context.status = context.tm.receive_action_request(context.json_array)
     context.logger.info(f"Status Received: {context.status}")
 
 
@@ -99,9 +68,9 @@ def step_impl(context, command, status):
 
 @then(u'"{sdk_name}" receives "{key}" as "{value}"')
 def step_impl(context, sdk_name, key, value):
-    global received_payload
     try:
-        if received_payload not in ['', None]:
+        if context.tm.received_umessage not in ['', None]:
+            received_payload: UPayload = context.tm.received_umessage.payload
             context.logger.info(f"Payload data for {sdk_name} is {received_payload}")
             assert_that(received_payload.value.decode('utf-8'), equal_to(value))
         else:

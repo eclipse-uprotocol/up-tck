@@ -37,11 +37,6 @@ from test_manager.testmanager import SocketTestManager
 
 from up_client_socket_python.transport_layer import TransportLayer
 
-SYS_PLATFORM_COMMAND_PREFIXES = {
-    "win32": ["start"],
-    "linux": ['gnome-terminal', '--']
-}
-
 def create_file_path(filepath_from_root_repo: str) -> str:
     return get_git_root() + filepath_from_root_repo
 
