@@ -52,38 +52,7 @@ Example scripts for TCK Interoperability are supplied under BDD/features/tests. 
 
 1. Go to the BDD Folder (cd BDD)
 2. Run "pip install -r requirements.txt"
-3. If in Windows, run "testrunner.bat". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature"). If in Linux, run "testrunner.sh". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
-
-=== Running Test Manager and Test Agent Examples
-
-Test Manager uses the test_runner.txt file in the python/examples/tck_interoperability folder to define and run tests between the Test Manager and Test Agents.
-Inside the test_runner.txt file, you will find various statements that can be used to trigger Test Manager behaviors.
-To learn more about this grammar, please refer to the bottom section.
-
-==== Running Python Test Manager and Java Test Agent (JAR file)
-
-1. Run the dispatcher: ```python up-tck/python/dispatcher/dispatcher.py```
-
-2. Run the Test Manager: ```python up-tck/python/examples/tck_interoperability/test_socket_tm.py```
-
-3. To run the Java Test Agent, double-click the newly created JavaTestAgent.jar
-
-=== Running up-tck-python Socket-UTransport examples
-
-To run the examples...
-
-----
-$ cd .\python\dispatcher\
-$ python .\dispatcher.py
-----
-----
-$ cd .\python\examples\up-client-socket-python\
-$ python .\test_listener.py
-----
-----
-$ cd .\python\examples\up-client-socket-python\
-$ python .\test_sender.py
-----
+3. If in Windows, run "testrunner.bat". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature"). If in Linux, run "sh testrunner.sh". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
 
 === Cleaning Up
 
