@@ -6,7 +6,7 @@ Scenario Outline: To test the registerlistener and send apis
       And sets "uri.resource.instance" to "front_left"
       And sets "uri.resource.message" to "Door"
       And sends "registerlistener" request
-      #And "registerlistener" request is sent successfully
+      And the status for "registerlistener" request is "OK"
 
     When “<uE2>” creates data for "send"
       And sets "uri.entity.name" to "body.access"
@@ -19,10 +19,12 @@ Scenario Outline: To test the registerlistener and send apis
       And sets "payload.format" to "protobuf"
       And sets "payload.value" to "serialized protobuf data"
       And sends "send" request
-      #And "send" request is sent successfully
+      And the status for "send" request is "OK"
 
-    Then uE1 receives the payload
+    Then "<uE1>" receives "payload.value" as "serialized protobuf data"
 
     Examples: topic_names
     | uE1     | uE2    |
-    | python    | python |
+    | python  | java   |
+    | python  | python |
+    | java    | python |

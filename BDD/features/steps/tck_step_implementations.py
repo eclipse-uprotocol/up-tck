@@ -1,29 +1,21 @@
-import base64
-
-from google.protobuf import any_pb2
-from google.protobuf.any_pb2 import Any
-
-from behave import when, then, given
+from behave import when, then, given, step
 from behave.runner import Context
 import sys
+from hamcrest import assert_that, equal_to
 
-sys.path.append('../../../python/test_manager')
-from test_manager import testmanager
+# sys.path.append('../../../python/test_manager')
+# from test_manager import testmanager
 
-sys.path.append('../../../python/up_client_socket_python')
-from up_client_socket_python import transport_layer as tl
+# sys.path.append('../../../python/up_client_socket_python')
+# from up_client_socket_python import transport_layer as tl
 from uprotocol.transport.ulistener import UListener
 from uprotocol.proto.uattributes_pb2 import UAttributes
 from uprotocol.proto.uri_pb2 import UUri
-from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.proto.cloudevents_pb2 import CloudEvent
 
+received_payload = ''
 
-# transport = tl.TransportLayer()
-# transport.set_socket_config("127.0.0.1", 44444)
-# tm = testmanager.SocketTestManager("127.0.0.5", 12345, transport)
 
 class SocketUListener(UListener):
     def __init__(self, sdk_name: str = "python") -> None:
@@ -41,9 +33,10 @@ class SocketUListener(UListener):
         @return Returns an Ack every time a message is received and processed.
         """
         print("Listener onreceived")
-        # logger.info("MATTHEW is awesome!!!")
 
         print(f"{payload}")
+        global received_payload
+        received_payload = payload
 
         return UStatus(code=UCode.OK, message="all good")
 
@@ -53,10 +46,10 @@ class SocketUListener(UListener):
 def step_impl(context, sdk_name: str, command: str):
     context.logger.info("Inside create register listener data")
     context.json_array = {}
-    
+
     while not context.tm.has_sdk_connection(sdk_name):
         continue
-    
+
     context.ue = sdk_name
     context.json_array['ue'] = [sdk_name]
     context.json_array['action'] = [command]
@@ -75,9 +68,29 @@ def step_impl(context: Context, key: str, value: str):
 def step_impl(context, command: str):
     listener: UListener = SocketUListener()
     context.logger.info(f"Json request for {command} -> {str(context.json_array)}")
-    context.tm.receive_action_request(context.json_array, listener)
+    context.status = context.tm.receive_action_request(context.json_array, listener)
+    context.logger.info(f"Status Received: {context.status}")
 
 
-@then(u'uE1 receives the payload')
-def step_impl(context):
-    context.logger.info("Payload data ")
+@step(u'the status for "{command}" request is "{status}"')
+def step_impl(context, command, status):
+    context.logger.info(f"Status for {command} is {context.status}")
+    assert_that(context.status.message, equal_to(status))
+
+
+@then(u'"{sdk_name}" receives "{key}" as "{value}"')
+def step_impl(context, sdk_name, key, value):
+    global received_payload
+    try:
+        if received_payload not in ['', None]:
+            context.logger.info(f"Payload data for {sdk_name} is {received_payload}")
+            assert_that(received_payload.value.decode('utf-8'), equal_to(value))
+        else:
+            raise ValueError(f"Received empty payload for {sdk_name}")
+
+    except AssertionError as ae:
+        context.logger.error(f"Assertion error. Expected is {value} but "
+                             f"received {received_payload.value.decode('utf-8')}",
+                             exc_info=ae)
+    except Exception as ex:
+        context.logger.error(f"Exception Occurs: {ex}")
