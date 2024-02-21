@@ -37,7 +37,9 @@ If you would like to run any tests with the Java Test Agent, follow these instru
 * If Maven option is not found after right-clicking the java_test_agent Java Project, follow this: https://stackoverflow.com/questions/10362166/maven-option-is-not-found-in-eclipse
 * If "Maven build ..." does not work with the goal "mvn clean install", then set the goal as "clean install"
 
-2. To create a JAR file of the java_test_agent Java project, goto File -> Export -> Runnable JAR File -> Launch configuration: "Main - java_test_agent" -> (Update Export Destination e.g. Downloads) -> Library handling: Extract required libraries into generated JAR -> Finish
+2. To create a JAR file of the java_test_agent Java project, goto File -> Export -> Runnable JAR File -> Launch configuration: "Main - java_test_agent" -> (Update Export Destination e.g. Downloads) -> Library handling: Extract required libraries into generated JAR -> Finish. Name the Jar as "JavaTestAgent.jar"
+
+3. Place the newly-created "JavaTestAgent.jar" in the up-tck/java folder.
 
 === Running BDD Tests
 
@@ -53,6 +55,7 @@ Example scripts for TCK Interoperability are supplied under BDD/features/tests. 
 2. Run "pip install -r requirements.txt"
 3. If in Windows, run "testrunner.bat". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature"). If in Linux, run "testrunner.sh". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
 
+After running a BDD test, ensure that you close all opened command prompt windows before running a new test. Your report will be located in BDD/reports. It will be labeled with the date and time that the test was run.
 
 ==== Writing your own BDD Tests
 

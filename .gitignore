@@ -26,3 +26,6 @@ MANIFEST
 *.log.lck
 *.log.1
 *.html
+*.xml
+*.json
+**/jar_files/**

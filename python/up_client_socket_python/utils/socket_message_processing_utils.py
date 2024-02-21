@@ -1,3 +1,29 @@
+# -------------------------------------------------------------------------
+#
+# Copyright (c) 2024 General Motors GTO LLC
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# SPDX-FileType: SOURCE
+# SPDX-FileCopyrightText: 2024 General Motors GTO LLC
+# SPDX-License-Identifier: Apache-2.0
+#
+# -------------------------------------------------------------------------
+
 import socket
 import json
 from google.protobuf.any_pb2 import Any
@@ -8,17 +34,16 @@ from uprotocol.cloudevent.serialize.base64protobufserializer import Base64Protob
 BYTES_MSG_LENGTH: int = 32767
 
 def send_socket_data(s: socket.socket , msg: bytes):
-    """_summary_
-
-    filler =  b' ' * (recv_size - len(message))
-    test_agent_socket1.send(message + filler)
-    """
     # filler =  b' ' * (BYTES_MSG_LENGTH - len(msg))
     # s.send(msg + filler)
     s.send(msg)
 
 def receive_socket_data(s: socket.socket) -> bytes:
-    return s.recv(BYTES_MSG_LENGTH)
+    try:
+        return s.recv(BYTES_MSG_LENGTH)
+    except OSError as oserr:  # in case if socket is closed
+        print(oserr)
+        return b''
 
 def protobuf_to_base64(obj: Any) -> str:
     serial_proto: bytes = obj.SerializeToString()

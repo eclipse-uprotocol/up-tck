@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------
-
+#
 # Copyright (c) 2024 General Motors GTO LLC
 #
 # Licensed to the Apache Software Foundation (ASF) under one
@@ -21,7 +21,7 @@
 # SPDX-FileType: SOURCE
 # SPDX-FileCopyrightText: 2024 General Motors GTO LLC
 # SPDX-License-Identifier: Apache-2.0
-
+#
 # -------------------------------------------------------------------------
 
 from concurrent.futures import Future, ThreadPoolExecutor

@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------
 #
-# Copyright (c) 2023 General Motors GTO LLC
+# Copyright (c) 2024 General Motors GTO LLC
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -19,7 +19,7 @@
 # specific language governing permissions and limitations
 # under the License.
 # SPDX-FileType: SOURCE
-# SPDX-FileCopyrightText: 2023 General Motors GTO LLC
+# SPDX-FileCopyrightText: 2024 General Motors GTO LLC
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
@@ -75,7 +75,9 @@ class SocketTestAgent:
             recv_data: bytes = receive_socket_data(self.clientsocket) 
             
             if recv_data == b"":
-                continue
+                print("Closing TA Client Socket")
+                self.clientsocket.close()
+                return
 
             json_str: str = convert_bytes_to_string(recv_data) 
             json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str) 
@@ -148,3 +150,6 @@ class SocketTestAgent:
         
         send_socket_data(self.clientsocket, message)
         print(f"Sent {message}")
+
+    def close_connection(self):
+        self.clientsocket.close()
