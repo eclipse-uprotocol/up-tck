@@ -110,7 +110,7 @@ def before_all(context):
     process: subprocess.Popen = create_subprocess(command)
     process.wait()
     
-    command = create_command("/java/java_test_agent/out/artifacts/java_test_agent_jar/uprotocol-tck.jar")
+    command = create_command("/java/JavaTestAgent.jar")
     process: subprocess.Popen = create_subprocess(command)
     process.wait()
 
