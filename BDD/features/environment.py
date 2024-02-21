@@ -94,7 +94,7 @@ def before_all(context):
     process: subprocess.Popen = create_subprocess(command)
 
     print("Created Dispatcher...")
-    time.sleep(2)
+    time.sleep(5)
 
 
     transport = TransportLayer()
