@@ -57,6 +57,10 @@ Example scripts for TCK Interoperability are supplied under BDD/features/tests. 
 
 After running a BDD test, ensure that you close all opened command prompt windows before running a new test. Your report will be located in BDD/reports. It will be labeled with the date and time that the test was run.
 
+If you receive a "/usr/bin/python: No module named behave" error, go into "testrunner.sh" and change "python" to "python3".
+
+If you run into any errors related to "Connection refused", this means that something is still listening on the sockets being used to communicate. Please try to shut those sockets down, or restart your computer.
+
 ==== Writing your own BDD Tests
 
 You can follow the format in BDD/features/tests/register_and_send.feature to see how different tests are created and formatted. All steps in the feature file are implemented in BDD/features/steps/tck_step_implementations.py.
