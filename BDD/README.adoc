@@ -67,7 +67,7 @@ You can follow the format in BDD/features/tests/register_and_send.feature to see
 
 ===== Register Listener
 
-If you would like to trigger the "registerlistener" method, either within the Test Manager's uTransport, or within an individual Test Agent's uTransport, use the following format:
+If you would like to trigger the "registerlistener" method within an individual Test Agent's uTransport, use the following format:
 
 ----
 Given “<uE1>” creates data for "registerlistener"
@@ -78,11 +78,11 @@ Given “<uE1>” creates data for "registerlistener"
     And sends "registerlistener" request
 ----
 
-In this example, <uE1> is the uEntity that will be doing the uTransport "registerlistener" method. If this is set to "self", the Test Manager itself will be running the method. Otherwise, the language specified will run the "registerlistener" method.
+In this example, <uE1> is the uEntity that will be doing the uTransport "registerlistener" method. The language specified will run the "registerlistener" method.
 
 ==== Send
 
-If you would like to trigger the "send" method, either within the Test Manager's uTransport, or within an individual Test Agent's uTransport, use the following format:
+If you would like to trigger the "send" method within an individual Test Agent's uTransport, use the following format:
 
 ----
 When “<uE2>” creates data for "send"
@@ -98,7 +98,7 @@ When “<uE2>” creates data for "send"
     And sends "send" request
 ----
 
-In this example, <uE2> is the uEntity that will be doing the uTransport "send" method. If this is set to "self", the Test Manager itself will be running the method. Otherwise, the language specified will run the "send" method.
+In this example, <uE2> is the uEntity that will be doing the uTransport "send" method. The language specified will run the "send" method.
 
 ==== Examples section
 
@@ -106,9 +106,9 @@ This section specifies the individual tests that will be run as part of the scen
 
 ----
 Examples: topic_names
-| uE1     | uE2    |
-| self    | python |
-| self    | java   |
+| uE1       | uE2    |
+| java      | python |
+| python    | java   |
 ----
 
-For example, here, one test will be run where <uE1> is set to "self" and <uE2> is set to "python", and then the same test will be run with <uE1> set to "self" and <uE2> set to "java".
+For example, here, one test will be run where <uE1> is set to "java" and <uE2> is set to "python", and then the same test will be run with <uE1> set to "python" and <uE2> set to "java".
