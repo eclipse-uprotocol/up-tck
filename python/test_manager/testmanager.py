@@ -121,14 +121,13 @@ class SocketTestManager():
         # Register client socket so selector can monitor for incoming TA data and calls provided callback()
         self.selector.register(ta_socket, selectors.EVENT_READ, self.__receive_from_test_agent)
     
-    def __receive_from_test_agent(self, ta_socket: socket.socket):
+    def __receive_from_test_agent(self, ta_socket):
         """handles incoming json data from Test Agent
 
         Args:
             ta_socket (socket.socket): <SDK> Test Agent 
         """
 
-        print("ta_socket", ta_socket)
             
         recv_data: bytes = receive_socket_data(ta_socket)
         
@@ -352,6 +351,9 @@ class SocketTestManager():
             raise Exception("action value not handled!")   
         
     def close(self):
+        """Close the selector / test manager's server, 
+        BUT need to free its individual SDK TA connections using self.close_ta(sdk) first
+        """
         self.selector.close()
     
     def close_ta(self, sdk_name: str):
@@ -362,7 +364,10 @@ class SocketTestManager():
         
             self.sdk_to_test_agent_socket_lock.acquire()
             ta_socket: socket.socket = self.sdk_to_test_agent_socket[sdk_name]
+            
             del self.sdk_to_test_agent_socket[sdk_name]
             self.sdk_to_test_agent_socket_lock.release()
 
+            # Stop monitoring socket/fileobj. A file object shall be unregistered prior to being closed.
+            self.selector.unregister(ta_socket)
             ta_socket.close()

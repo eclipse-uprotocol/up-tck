@@ -102,6 +102,11 @@ public class TestAgent {
                     }
                     this.send(status);
                 }
+                else {
+                	clientSocket.close();
+                    logger.info("Closed Test Agent Socket Client");
+                    return;
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();

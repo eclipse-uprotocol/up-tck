@@ -23,12 +23,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
-
+import time
 from behave import when, then, given, step
 from behave.runner import Context
 from hamcrest import assert_that, equal_to
 
 from uprotocol.proto.upayload_pb2 import UPayload
+from test_manager.testmanager import SocketTestManager
 
 @given(u'“{sdk_name}” creates data for "{command}"')
 @when(u'“{sdk_name}” creates data for "{command}"')
@@ -82,3 +83,33 @@ def step_impl(context, sdk_name, key, value):
                              exc_info=ae)
     except Exception as ex:
         context.logger.error(f"Exception Occurs: {ex}")
+        
+@given('"{sdk_name}" is connected to the Test Manager')
+def tm_connects_to_ta_socket(context, sdk_name: str):
+    test_manager: SocketTestManager = context.tm
+    
+    start_time: float = time.time()
+    end_time: float = start_time
+    wait_sec: float = 7.0
+    
+    while not test_manager.has_sdk_connection(sdk_name):
+        time.sleep(1)
+        end_time = time.time()
+    if not test_manager.has_sdk_connection(sdk_name):
+        context.logger.error(sdk_name + " Test Agent didn't connect in time")
+        raise Exception(sdk_name + " Test Agent didn't connect in time")
+    
+    context.logger.info(f"{sdk_name} TA connects to TM {test_manager.sdk_to_test_agent_socket.keys()}")
+
+
+@when('"{sdk_name}" closes its client socket connection')
+def tm_closing_ta_socket(context, sdk_name: str):
+    test_manager: SocketTestManager = context.tm
+    # test_manager.close_ta(sdk_name)
+    context.logger.info(f"TM closed TA connection {sdk_name} {test_manager.sdk_to_test_agent_socket.keys()}")
+    pass
+    
+@then('Test Manager closes server socket connection to the "{sdk_name}"')
+def step_impl(context, sdk_name: str):
+    # context.logger.info("YOOOO SERVER cLOSED")
+    pass

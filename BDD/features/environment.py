@@ -27,15 +27,17 @@
 import time
 from threading import Thread
 from typing import List
-
 from utils import loggerutils
 import subprocess
+import os
 import sys
+import psutil
+from behave.runner import Context
+import signal
+
 from up_client_socket_python.utils.file_pathing_utils import get_git_root
-
-from test_manager.testmanager import SocketTestManager
-
 from up_client_socket_python.transport_layer import TransportLayer
+from test_manager.testmanager import SocketTestManager
 
 def create_file_path(filepath_from_root_repo: str) -> str:
     return get_git_root() + filepath_from_root_repo
@@ -44,7 +46,8 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []
     
     if sys.platform == "win32":
-        command.append("start")
+        # command.append("start")
+        pass
     elif sys.platform == "linux" or sys.platform == "linux2":
         command.append('gnome-terminal')
         command.append('--')
@@ -108,10 +111,62 @@ def before_all(context):
     
     command = create_command("/python/examples/tck_interoperability/test_socket_ta.py")
     process: subprocess.Popen = create_subprocess(command)
-    process.wait()
+    # process.wait()
+    context.python_ta_process = process
 
     command = create_command("/java/JavaTestAgent.jar")
     process: subprocess.Popen = create_subprocess(command)
-    process.wait()
+    # process.wait()
+    context.java_ta_process = process
 
     print("Created All Test Agents...")
+
+def after_all(context: Context):
+    # Closes sockets and releases memory
+    test_manager: SocketTestManager = context.tm
+    
+    test_manager.close_ta("python")
+    test_manager.close_ta("java")
+
+    test_manager.close()
+    
+    try:
+        
+        # The os.setsid() is passed in the argument preexec_fn so
+        # it's run after the fork() and before  exec() to run the shell.
+
+
+        # print(os.getpid())
+        # print(context.java_ta_process.pid)
+
+        # print(context.python_ta_process.pid)
+        # print(context.java_ta_process.terminate())
+        # print(context.java_ta_process.wait())
+
+        # subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=context.java_ta_process.pid))
+        # subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=context.python_ta_process.pid))
+
+        # os.killpg(os.getpid, signal.SIGTERM)  # Send the signal to all the process groups
+
+
+        # pobj = psutil.Process(context.python_ta_process.pid)
+        # print(pobj)
+        # # list children & kill them
+        # for c in pobj.children(recursive=True):
+        #     c.kill()
+        # pobj.kill()
+
+        context.java_ta_process.kill()
+        context.java_ta_process.communicate()
+        context.python_ta_process.kill()
+        context.python_ta_process.communicate()
+
+        # pidvalue=context.java_ta_process.pid
+        # print(context.java_ta_process)
+        # subprocess.Popen('taskkill /F /T /PID %i' % pidvalue)
+        
+        # pidvalue=context.python_ta_process.pid
+        # subprocess.Popen('taskkill /F /T /PID %i' % pidvalue)
+        pass
+    except Exception as e:
+        print(e)
