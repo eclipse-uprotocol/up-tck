@@ -52,11 +52,11 @@ public class SocketRPCClient {
 
         UUID requestId = UUID.getDefaultInstance();
         byte[] requestIdB = requestId.toString().getBytes();
-        UAttributesBuilder builder = UAttributesBuilder.request(UPriority.UPRIORITY_CS4, topic, callOptions.timeout());
+        UUri sink = UUri.newBuilder().build();
+        UAttributesBuilder builder = UAttributesBuilder.request(topic, sink, UPriority.UPRIORITY_CS4, callOptions.timeout());
         UAttributes attributes = builder.build();
 
         UMessage umsg = UMessage.newBuilder()
-                .setSource(topic)
                 .setAttributes(attributes)
                 .setPayload(payload)
                 .build();

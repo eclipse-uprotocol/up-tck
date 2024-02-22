@@ -46,15 +46,9 @@ public class SocketUListener implements UListener {
     }
 
     @Override
-    public void onReceive(UUri topic, UPayload payload, UAttributes attributes) {
+    public void onReceive(UMessage umsg) {
         System.out.println("Listener onReceived");
-        System.out.println(payload);
-
-        UMessage umsg = UMessage.newBuilder()
-                .setSource(topic)
-                .setAttributes(attributes)
-                .setPayload(payload)
-                .build();
+        System.out.println(umsg);
 
         JSONObject json = new JSONObject();
         json.put("action", "onReceive");

@@ -113,7 +113,10 @@ class SocketUTransport(UTransport):
         with the appropriate failure.
         """
         
-        umsg = UMessage(source=topic, attributes=attributes, payload=payload) 
+        if topic is not None:
+            attributes.source.CopyFrom(topic)
+
+        umsg = UMessage(attributes=attributes, payload=payload) 
         umsg_serialized: bytes = umsg.SerializeToString()
 
         try:
