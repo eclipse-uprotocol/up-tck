@@ -39,7 +39,7 @@ from test_agent.testagent import SocketTestAgent
 
 from uprotocol.transport.ulistener import UListener
 
-from uprotocol.proto.cloudevents_pb2 import CloudEvent
+from uprotocol.cloudevent.cloudevents_pb2 import CloudEvent
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uattributes_pb2 import UPriority
@@ -69,7 +69,10 @@ class SocketUListener(UListener):
         print("Listener onreceived")
         print(f"{payload}")
 
-        umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
+        if topic is not None:
+            attributes.source.CopyFrom(topic)
+        
+        umsg: UMessage = UMessage(attributes=attributes, payload=payload)
         
         json_message = {
             "action": "onReceive",

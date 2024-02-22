@@ -64,11 +64,9 @@ public class SocketUTransport implements UTransport, RpcClient {
                 UMessage umsg = UMessage.parseFrom(Arrays.copyOfRange(buffer, 0, readSize) );
                 logger.info("Received uMessage: " + umsg);
 
-                UUri topic = umsg.getSource();
-                UPayload payload = umsg.getPayload();
-                UAttributes attributes = umsg.getAttributes();
+                UUri topic = umsg.getAttributes().getSource();
                 if (topicToListener.containsKey(topic)) {
-                    topicToListener.get(topic).onReceive(topic, payload, attributes);
+                    topicToListener.get(topic).onReceive(umsg);
                 } else {
                     logger.info("Topic not found in Listener Map, discarding...");
                 }
@@ -83,12 +81,7 @@ public class SocketUTransport implements UTransport, RpcClient {
     }
 
     @Override
-    public UStatus send(UUri topic, UPayload payload, UAttributes attributes) {
-        UMessage umsg = UMessage.newBuilder()
-                .setSource(topic)
-                .setAttributes(attributes)
-                .setPayload(payload)
-                .build();
+    public UStatus send(UMessage umsg) {
 
         byte[] umsgSerialized = umsg.toByteArray();
 
@@ -130,8 +123,8 @@ public class SocketUTransport implements UTransport, RpcClient {
 
 
     @Override
-    public CompletionStage<UMessage> invokeMethod(UUri topic, UPayload payload, CallOptions callOptions) {
-        CompletionStage<UMessage> response = socketRPCClient.invokeMethod(topic, payload, callOptions);
+    public CompletionStage<UMessage> invokeMethod(UUri methodURI, UPayload payload, CallOptions callOptions) {
+        CompletionStage<UMessage> response = socketRPCClient.invokeMethod(methodURI, payload, callOptions);
         return response;
     }
 }

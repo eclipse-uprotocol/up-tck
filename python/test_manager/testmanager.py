@@ -38,7 +38,7 @@ from uprotocol.proto.uri_pb2 import UUri, UAuthority, UEntity, UResource
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.transport.ulistener import UListener
-from uprotocol.proto.cloudevents_pb2 import CloudEvent
+from uprotocol.cloudevent.cloudevents_pb2 import CloudEvent
 from uprotocol.proto.uuid_pb2 import UUID
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
@@ -298,7 +298,7 @@ class SocketTestManager():
         message: str = json_request['uri.resource.message'][0]
         resource: UResource = UResource(name=name, instance=instance, message=message)
         
-        topic: UUri = UUri(entity=entity, resource=resource )
+        topic: UUri = UUri(entity=entity, resource=resource)
         
         if command == "send":
             format: str = json_request['payload.format'][0]
@@ -340,11 +340,15 @@ class SocketTestManager():
 
             attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
             # return self.send_command(sdk_name, command, topic, upayload, attributes)
-            umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=upayload)
+
+            if topic is not None:
+                attributes.source.CopyFrom(topic)
+
+            umsg: UMessage = UMessage(attributes=attributes, payload=upayload)
             return self.request(sdk_name, command, umsg)
 
         elif command == "registerlistener":
-            umsg: UMessage = UMessage(source=topic)
+            umsg: UMessage = UMessage(attributes=UAttributes(source=topic))
             # return self.register_listener_command(sdk_name, command, topic, listener)
             return self.request(sdk_name, command, umsg)
         

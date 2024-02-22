@@ -92,13 +92,13 @@ class SocketTestAgent:
 
             status: UStatus = None
             if action == SEND_COMMAND:
-                status = self.utransport.send(received_proto.source, received_proto.payload, received_proto.attributes)
+                status = self.utransport.send(received_proto.attributes.source, received_proto.payload, received_proto.attributes)
             elif action == REGISTER_LISTENER_COMMAND:
-                status = self.utransport.register_listener(received_proto.source, listener)
+                status = self.utransport.register_listener(received_proto.attributes.source, listener)
             elif action == UNREGISTER_LISTENER_COMMAND:
-                status = self.utransport.unregister_listener(received_proto.source, listener)
+                status = self.utransport.unregister_listener(received_proto.attributes.source, listener)
             elif action == INVOKE_METHOD_COMMAND:
-                future_umsg: Future = self.utransport.invoke_method(received_proto.source, received_proto.payload, received_proto.attributes)
+                future_umsg: Future = self.utransport.invoke_method(received_proto.attributes.source, received_proto.payload, received_proto.attributes)
                 print("future_umsg")
                 print(future_umsg)
                 
@@ -114,7 +114,11 @@ class SocketTestAgent:
         @param payload: part of UMessage
         @param attributes: part of UMessage
         """
-        umsg: UMessage = UMessage(source=topic, attributes=attributes, payload=payload)
+
+        if topic is not None:
+            attributes.source.CopyFrom(topic)
+        
+        umsg: UMessage = UMessage(attributes=attributes, payload=payload)
 
         json_message = {
             "action": "send",

@@ -78,7 +78,11 @@ class SocketRPCClient(RpcClient):
         request_id_b: bytes = request_id.SerializeToString()
 
         # Protobuf message
-        umsg = UMessage(source=topic, attributes=attributes, payload=payload) 
+
+        if topic is not None:
+            attributes.source.CopyFrom(topic)
+
+        umsg = UMessage(attributes=attributes, payload=payload) 
 
         # Now serialized, then send
         umsg_serialized: bytes = umsg.SerializeToString()

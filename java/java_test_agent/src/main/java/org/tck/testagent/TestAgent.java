@@ -87,17 +87,17 @@ public class TestAgent {
                     logger.info("message ->" + protobuf_bytes);
                     UMessage umsg = UMessage.parseFrom(protobuf_bytes);
                     logger.info("UMessage: "+umsg);
-
+                    UAttributes attributes = umsg.getAttributes();
                     UStatus status = null;
                     switch (action) {
                         case "send":
-                            status = socketUTransport.send(umsg.getSource(), umsg.getPayload(), umsg.getAttributes());
+                            status = socketUTransport.send(umsg);
                             break;
                         case "registerlistener":
-                            status = socketUTransport.registerListener(umsg.getSource(), listener);
+                            status = socketUTransport.registerListener(attributes.getSource(), listener);
                             break;
                         case "unregisterlistener":
-                            status = socketUTransport.unregisterListener(umsg.getSource(), listener);
+                            status = socketUTransport.unregisterListener(attributes.getSource(), listener);
                             break;
                     }
                     this.send(status);
@@ -108,12 +108,7 @@ public class TestAgent {
         }
     }
 
-    public void send(UUri topic, UPayload payload, UAttributes attributes) {
-        UMessage umsg = UMessage.newBuilder()
-                .setSource(topic)
-                .setAttributes(attributes)
-                .setPayload(payload)
-                .build();
+    public void send(UMessage umsg) {
         byte[] base64umsg = umsg.toByteArray();
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("action", "send");
