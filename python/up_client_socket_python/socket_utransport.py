@@ -32,9 +32,10 @@ from google.protobuf.any_pb2 import Any
 from concurrent.futures import Future
 
 from threading import Thread
-from uprotocol.proto.uattributes_pb2 import UAttributes
+from uprotocol.proto.uattributes_pb2 import UAttributes, UMessageType
 from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.proto.uri_pb2 import UEntity, UUri
+from uprotocol.proto.uuid_pb2 import UUID
 from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
@@ -60,7 +61,8 @@ class SocketUTransport(UTransport):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
         self.socket.connect((dipatcher_ip, dipatcher_port))  
 
-        self.rpcclient: RpcClient = SocketRPCClient(None, None, server_conn=self.socket)
+        # self.rpcclient: RpcClient = SocketRPCClient(None, None, server_conn=self.socket)
+        self.reqid_to_future: Dict[bytes, Future] = {}
 
         self.topic_to_listener: Dict[bytes, UListener] = {} 
         thread = Thread(target = self.__listen)  
@@ -82,25 +84,51 @@ class SocketUTransport(UTransport):
                     continue
                 
                 umsg: UMessage = RpcMapper.unpack_payload(Any(value=recv_data), UMessage ) # unpack(recv_data , UMessage())
-                logger.info(f"{self.__class__.__name__} Received uMessage: {umsg}")
-
-                uuri: UUri = umsg.source
+                logger.info(f"{self.__class__.__name__} Received uMessage")
+                
+                
+                """
+                NEED TO CHECK MESSAGE TYPE!!! and respond accordinly
+                
+                if if attributes.type == UMessageType.UMESSAGE_TYPE_PUBLISH:
+                    THEN do listener.onrecieve()
+                elif attributes.type == UMessageType.UMESSAGE_TYPE_RESPONSE:
+                    set REPSONSE to the FUTURE
+                """
+                # uuri: UUri = umsg.source
+                uuri: UUri = umsg.attributes.source
                 payload: UPayload = umsg.payload
                 attributes: UAttributes = umsg.attributes
+                
+                if attributes.type == UMessageType.UMESSAGE_TYPE_PUBLISH or attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
+                    self._handle_publish_message(uuri, payload, attributes)
 
-                topic: bytes = uuri.SerializeToString()
-                if topic in self.topic_to_listener:
-                    logger.info(f"{self.__class__.__name__} Handle Topic")
-
-                    listener: UListener = self.topic_to_listener[topic]
-                    listener.on_receive(uuri, payload, attributes)
-                else:
-                    logger.info(f"{self.__class__.__name__} Topic not found in Listener Map, discarding...")
+                elif attributes.type == UMessageType.UMESSAGE_TYPE_RESPONSE:
+                    self._handle_response_message(umsg)
 
             except socket.error:
                 self.socket.close()
                 break
+    
+    def _handle_response_message(self, umsg: UMessage):
+        request_id: UUID = umsg.attributes.reqid
+        request_id_b: bytes = request_id.SerializeToString()
         
+        if request_id_b in self.reqid_to_future:
+            respose_future: Future = self.reqid_to_future[request_id_b]
+            respose_future.set_result(umsg)
+
+            del self.reqid_to_future[request_id_b]
+                    
+    def _handle_publish_message(self, topic: UUri, payload: UPayload, attributes: UAttributes):
+        topic_b: bytes = topic.SerializeToString()
+        if topic_b in self.topic_to_listener:
+            logger.info(f"{self.__class__.__name__} Handle Topic")
+
+            listener: UListener = self.topic_to_listener[topic_b]
+            listener.on_receive(topic, payload, attributes)
+        else:
+            logger.info(f"{self.__class__.__name__} Topic not found in Listener Map, discarding...")
 
 
     def send(self, topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
@@ -112,10 +140,9 @@ class SocketUTransport(UTransport):
         @return:Returns OKSTATUS if the payload has been successfully sent (ACK'ed), otherwise it returns FAILSTATUS
         with the appropriate failure.
         """
-        
+                
         if topic is not None:
             attributes.source.CopyFrom(topic)
-
         umsg = UMessage(attributes=attributes, payload=payload) 
         umsg_serialized: bytes = umsg.SerializeToString()
 
@@ -127,7 +154,7 @@ class SocketUTransport(UTransport):
         except OSError:
             return UStatus(code=UCode.INTERNAL, message="INTERNAL ERROR: OSError sending UMessage")
 
-        return UStatus(code=UCode.OK, message="OK") 
+        return UStatus(code=UCode.OK, message="OK")           
 
     def register_listener(self, topic: UUri, listener: UListener) -> UStatus:
         """
@@ -162,6 +189,12 @@ class SocketUTransport(UTransport):
         @param attributes: metadata for the method invocation (i.e. priority, timeout, etc.)
         @return: Returns the CompletableFuture with the result or exception.
         """
-        return self.rpcclient.invoke_method(topic, payload, attributes)
-    
+        
+        # Get UAttributes's request id
+        request_id: UUID = attributes.id
+        response = Future()
+        self.reqid_to_future[request_id.SerializeToString()] = response
 
+        self.send(topic, payload, attributes)
+        
+        return response
