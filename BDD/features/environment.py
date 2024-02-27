@@ -114,7 +114,7 @@ def before_all(context):
     # process.wait()
     context.python_ta_process = process
 
-    command = create_command("/java/JavaTestAgent.jar")
+    command = create_command("/java/java_test_agent/target/JavaTestAgent-jar-with-dependencies.jar")
     process: subprocess.Popen = create_subprocess(command)
     # process.wait()
     context.java_ta_process = process
