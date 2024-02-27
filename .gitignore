@@ -29,3 +29,4 @@ MANIFEST
 *.xml
 *.json
 **/jar_files/**
+*.jar

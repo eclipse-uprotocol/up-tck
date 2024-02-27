@@ -19,3 +19,4 @@
 behave >= 1.2.6
 behave-html-formatter
 PyHamcrest
+psutil
