@@ -78,11 +78,9 @@ def step_impl(context, sdk_name, key, value):
             raise ValueError(f"Received empty payload for {sdk_name}")
 
     except AssertionError as ae:
-        context.logger.error(f"Assertion error. Expected is {value} but "
+        raise AssertionError(f"Assertion error. Expected is {value} but "
                              f"received {received_payload.value.decode('utf-8')}",
                              exc_info=ae)
-    except Exception as ex:
-        context.logger.error(f"Exception Occurs: {ex}")
         
 @given('"{sdk_name}" is connected to the Test Manager')
 def tm_connects_to_ta_socket(context, sdk_name: str):
