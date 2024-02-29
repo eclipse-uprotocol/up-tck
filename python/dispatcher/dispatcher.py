@@ -101,11 +101,11 @@ class Dispatcher:
         addr: Tuple[str, int] = socket_utransport.getpeername()
         self.utransport_clients[addr] = socket_utransport
         
-    def __writer_priority_write_sockets(self, func: Callable, socket_utransport: socket.socket):
+    def __writer_priority_write_sockets(self, write_func: Callable, socket_utransport: socket.socket):
         """gives write priority when changing add or remove sockets
 
         Args:
-            func (Callable): save or close/remove sockets
+            write_func (Callable): save or close/remove sockets
             socket_utransport (socket.socket): 
         """
         with self.count_writers_lock:
@@ -114,7 +114,7 @@ class Dispatcher:
             self.num_writers += 1
         
         with self.access_clients_lock:
-            func(socket_utransport)  # writing 
+            write_func(socket_utransport)  # writing 
             
         with self.count_writers_lock:
             self.num_writers -= 1
@@ -134,12 +134,12 @@ class Dispatcher:
             client_socket.close()
             self.selector.unregister(client_socket)
     
-    def __writer_priority_read_sockets(self, func: Callable, data: bytes):
+    def __writer_priority_read_sockets(self, read_func: Callable, data: bytes):
         """when doing any reading/iterating over connected SocketUTransports, we give writer priority using locks/mutexes
         Reasoning is if socket is closed/added, we want it to be updated 1st before we read/send data again
 
         Args:
-            func (Callable): reading functions (e.g. iteration sending)
+            read_func (Callable): reading functions (e.g. iteration sending)
             data (bytes): data used to send (so far...)
         """
         with self.block_readers_lock:
@@ -148,7 +148,7 @@ class Dispatcher:
                     self.access_clients_lock.acquire()
                 self.num_readers += 1
                 
-        func(data)
+        read_func(data)
         
         with self.count_readers_lock:
             self.num_readers -= 1
