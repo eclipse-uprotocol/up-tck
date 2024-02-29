@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -45,7 +46,7 @@ public class SocketUTransport implements UTransport, RpcClient {
     private static final Logger logger = Logger.getLogger(SocketUTransport.class.getName());
     private final Socket socket;
     SocketRPCClient socketRPCClient;
-    private final Map<UUri, UListener> topicToListener = new ConcurrentHashMap<>();
+    private final Map<UUri, ArrayList<UListener>> topicToListener = new ConcurrentHashMap<>();
 
     public SocketUTransport(String hostIp, int port) throws IOException {
         socket = new Socket(hostIp, port);
@@ -62,11 +63,13 @@ public class SocketUTransport implements UTransport, RpcClient {
                 logger.info("Message length: "+readSize);
 
                 UMessage umsg = UMessage.parseFrom(Arrays.copyOfRange(buffer, 0, readSize) );
-                logger.info("Received uMessage: " + umsg);
+                logger.info("Received uMessage...");
 
                 UUri topic = umsg.getAttributes().getSource();
                 if (topicToListener.containsKey(topic)) {
-                    topicToListener.get(topic).onReceive(umsg);
+                	for (UListener listener : topicToListener.get(topic)) {
+                		listener.onReceive(umsg);
+                	}
                 } else {
                     logger.info("Topic not found in Listener Map, discarding...");
                 }
@@ -105,7 +108,12 @@ public class SocketUTransport implements UTransport, RpcClient {
 
     @Override
     public UStatus registerListener(UUri topic, UListener listener) {
-        topicToListener.put(topic, listener);
+    	ArrayList<UListener> new_array_list = new ArrayList<UListener>();
+    	if (topicToListener.containsKey(topic)) {
+    		new_array_list = topicToListener.get(topic);
+    	}
+		new_array_list.add(listener);
+		topicToListener.put(topic,  new_array_list);
         return UStatus.newBuilder()
                 .setCode(UCode.OK)
                 .setMessage("OK")
@@ -114,7 +122,16 @@ public class SocketUTransport implements UTransport, RpcClient {
 
     @Override
     public UStatus unregisterListener(UUri topic, UListener listener) {
-        topicToListener.remove(topic);
+    	ArrayList<UListener> new_array_list = new ArrayList<UListener>();
+    	if (topicToListener.containsKey(topic)) {
+    		new_array_list = topicToListener.get(topic);
+    		if (new_array_list.size() > 1) {
+    			new_array_list.remove(listener);
+    			topicToListener.put(topic, new_array_list);
+    		} else {
+    			topicToListener.remove(topic);
+    		}
+    	}
         return UStatus.newBuilder()
                 .setCode(UCode.OK)
                 .setMessage("OK")

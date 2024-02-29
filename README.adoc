@@ -43,7 +43,7 @@ For information about running BDD Tests, refer to BDD/README.adoc
 === Cleaning Up
 
 Clean up by running the command:
-`python clean_project.py`
+`python ./python/clean_project.py`
 
 == Diagrams
 
