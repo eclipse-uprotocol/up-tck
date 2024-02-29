@@ -46,14 +46,9 @@ from uprotocol.rpc.rpcmapper import RpcMapper
 
 from up_client_socket_python.transport_layer import TransportLayer
 from up_client_socket_python.utils.socket_message_processing_utils import receive_socket_data, convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, protobuf_to_base64, base64_to_protobuf_bytes, send_socket_data
-
 from up_client_socket_python.utils.grammar_parsing_utils import get_priority, get_umessage_type
 
-logging.basicConfig(format='%(asctime)s %(message)s')
-# Create logger
-logger = logging.getLogger('simple_example')
-logger.setLevel(logging.DEBUG)
-
+from logger.logger import logger
 
 class SocketTestManager():
     """
@@ -113,7 +108,7 @@ class SocketTestManager():
             server (socket.socket): Test Manager server
         """
         ta_socket, addr = server.accept() 
-        print('accepted', ta_socket, 'from', addr)
+        logger.info(f'accepted conn. {addr}')
         
         # Never wait for the operation to complete. 
         # So when call send(), it will put as much data in the buffer as possible and return.
@@ -137,11 +132,11 @@ class SocketTestManager():
                 ta_addr: tuple[str, int] = ta_socket.getpeername()
                 sdk: str = self.sock_addr_to_sdk[ta_addr] 
                 
-                self.close_ta(sdk)
+                self.close_ta_socket(sdk)
                 
                 del self.sock_addr_to_sdk[ta_addr]
             except OSError as oserr:
-                print(oserr)
+                logger.error(oserr)
             return
 
         json_str: str = convert_bytes_to_string(recv_data) 
@@ -173,7 +168,7 @@ class SocketTestManager():
             self.sdk_to_test_agent_socket[sdk] = ta_socket
             self.sdk_to_test_agent_socket_lock.release()
             
-            print("Initialized new client socket!",sdk, ta_addr )
+            logger.info(f"Initialized new client socket! {sdk}")
             return
 
         ta_addr: tuple[str, int] = ta_socket.getpeername()
@@ -195,9 +190,9 @@ class SocketTestManager():
 
             self.received_umessage = onreceive_umsg
 
-            print("---------------------------------OnReceive response from Test Agent!---------------------------------")
-            print(onreceive_umsg)
-            print("-----------------------------------------------------------------------------------------------------")
+            logger.info("---------------------OnReceive response from Test Agent!----------------------------")
+            logger.info(onreceive_umsg)
+            logger.info("------------------------------------------------------------------------------------")
 
 
         else:
@@ -360,8 +355,8 @@ class SocketTestManager():
         """
         self.selector.close()
     
-    def close_ta(self, sdk_name: str):
-        print(f"Closing {sdk_name} connection")
+    def close_ta_socket(self, sdk_name: str):
+        logger.info(f"Closing {sdk_name} connection")
         
         # if havent deleted and closed socket client already...
         if sdk_name in self.sdk_to_test_agent_socket:

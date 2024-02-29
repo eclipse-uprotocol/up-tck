@@ -43,7 +43,8 @@ from up_client_socket_python.transport_layer import TransportLayer
 from up_client_socket_python.utils.socket_message_processing_utils import send_socket_data, receive_socket_data, convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, protobuf_to_base64, base64_to_protobuf_bytes
 from up_client_socket_python.utils.constants import SEND_COMMAND, REGISTER_LISTENER_COMMAND, UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND
 from uprotocol.transport.ulistener import UListener
-    
+
+from logger.logger import logger
 
 class SocketTestAgent:
     def __init__(self, test_clientsocket: socket.socket, utransport: TransportLayer, listener: UListener) -> None:
@@ -75,7 +76,7 @@ class SocketTestAgent:
             recv_data: bytes = receive_socket_data(self.clientsocket) 
             
             if recv_data == b"":
-                print("Closing TA Client Socket")
+                logger.info("Closing TA Client Socket")
                 self.clientsocket.close()
                 return
 
@@ -87,8 +88,6 @@ class SocketTestAgent:
             protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)  
             
             received_proto: UMessage = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), UMessage)
-            print('action:', action)
-            print("received_proto:", received_proto)
 
             status: UStatus = None
             if action == SEND_COMMAND:
@@ -99,8 +98,6 @@ class SocketTestAgent:
                 status = self.utransport.unregister_listener(received_proto.attributes.source, listener)
             elif action == INVOKE_METHOD_COMMAND:
                 future_umsg: Future = self.utransport.invoke_method(received_proto.attributes.source, received_proto.payload, received_proto.attributes)
-                print("future_umsg")
-                print(future_umsg)
                 
                 status = UStatus(code=UCode.OK, message="OK") 
             self.send(status)
@@ -133,7 +130,6 @@ class SocketTestAgent:
         Sends UStatus to Test Manager 
         @param status: the reply after receiving a message
         """
-        # print(f"UStatus: {status}")
 
         json_message = {
             "action": "uStatus",
@@ -153,7 +149,7 @@ class SocketTestAgent:
         message: bytes = convert_str_to_bytes(json_message_str)
         
         send_socket_data(self.clientsocket, message)
-        print(f"Sent {message}")
+        logger.info(f"Sent to TM {message}")
 
     def close_connection(self):
         self.clientsocket.close()

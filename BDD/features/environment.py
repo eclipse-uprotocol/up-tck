@@ -29,11 +29,8 @@ from threading import Thread
 from typing import List
 from utils import loggerutils
 import subprocess
-import os
 import sys
-import psutil
 from behave.runner import Context
-import signal
 
 from up_client_socket_python.utils.file_pathing_utils import get_git_root
 from up_client_socket_python.transport_layer import TransportLayer
@@ -96,7 +93,7 @@ def before_all(context):
     command = create_command("/python/dispatcher/dispatcher.py")
     process: subprocess.Popen = create_subprocess(command)
 
-    print("Created Dispatcher...")
+    context.logger.info("Created Dispatcher...")
     time.sleep(5)
 
 
@@ -107,7 +104,7 @@ def before_all(context):
     thread.start()
     context.tm = test_manager
 
-    print("Created Test Manager...")
+    context.logger.info("Created Test Manager...")
     
     command = create_command("/python/examples/tck_interoperability/test_socket_ta.py")
     process: subprocess.Popen = create_subprocess(command)
@@ -119,7 +116,7 @@ def before_all(context):
     # process.wait()
     context.java_ta_process = process
 
-    print("Created All Test Agents...")
+    context.logger.info("Created All Test Agents...")
 
 def after_all(context: Context):
     # Closes sockets and releases memory
@@ -169,4 +166,4 @@ def after_all(context: Context):
         # subprocess.Popen('taskkill /F /T /PID %i' % pidvalue)
         pass
     except Exception as e:
-        print(e)
+        context.logger.error(e)

@@ -64,12 +64,7 @@ public class Main {
     }
 
     private static UPayload buildUPayload() {
-        CloudEvent cloudEvent = CloudEvent.newBuilder()
-                .setSpecVersion("1.0")
-                .setSource("https://example.com")
-                .setId("HARTLEY IS THE BEST")
-                .build();
-        Any any_obj = Any.pack(cloudEvent);
+        Any any_obj = Any.pack(buildCloudEvent());
         return UPayload.newBuilder()
                 .setFormat(UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF)
                 .setValue(any_obj.toByteString())

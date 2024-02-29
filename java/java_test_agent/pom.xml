@@ -29,13 +29,6 @@
             <artifactId>up-java</artifactId>
             <version>1.5.8</version>
         </dependency>
-        <!--
-        <dependency>
-            <groupId>org.eclipse.uprotocol</groupId>
-            <artifactId>uprotocol-core-api</artifactId>
-            <version>1.5.5</version>
-        </dependency>
-        -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>

@@ -35,11 +35,7 @@ from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.proto.uuid_pb2 import UUID
 
-import logging
-logging.basicConfig(format='%(asctime)s %(message)s')
-# Create logger
-logger = logging.getLogger('simple_example')
-logger.setLevel(logging.INFO)
+from logger.logger import logger
 
 class SocketRPCClient(RpcClient):
     """
@@ -87,7 +83,7 @@ class SocketRPCClient(RpcClient):
         # Now serialized, then send
         umsg_serialized: bytes = umsg.SerializeToString()
 
-        self.socket.send(umsg_serialized)
+        self.socket.sendall(umsg_serialized)
 
         while True:
             # Wait and receive data from server
@@ -110,8 +106,7 @@ class SocketRPCClient(RpcClient):
             
             response_reqid: UUID = response_umsg.attributes.reqid
             
-            print(request_id_b)
-            print(response_reqid.SerializeToString())
+            logger.info(f"Req-id {request_id_b} vs. Resp-id {response_reqid.SerializeToString()}")
 
             if request_id_b == response_reqid.SerializeToString():
                 # Got response

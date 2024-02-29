@@ -31,18 +31,18 @@ from typing import Dict
 
 from uprotocol.cloudevent.serialize.base64protobufserializer import Base64ProtobufSerializer
 
+from logger.logger import logger
+
 BYTES_MSG_LENGTH: int = 32767
 
 def send_socket_data(s: socket.socket , msg: bytes):
-    # filler =  b' ' * (BYTES_MSG_LENGTH - len(msg))
-    # s.send(msg + filler)
-    s.send(msg)
+    s.sendall(msg)
 
 def receive_socket_data(s: socket.socket) -> bytes:
     try:
         return s.recv(BYTES_MSG_LENGTH)
     except OSError as oserr:  # in case if socket is closed
-        print(oserr)
+        logger.info(oserr)
         return b''
 
 def protobuf_to_base64(obj: Any) -> str:

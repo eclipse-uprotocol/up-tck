@@ -23,97 +23,184 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
-
-
 import socket
-from typing import Dict
+from typing import Callable, Dict, Tuple
 from threading import Thread
 from threading import Lock
-import uuid
-import logging 
 import sys
+import selectors
 
+from logger.logger import logger
+
+from up_client_socket_python.utils.socket_message_processing_utils import receive_socket_data
 
 PORT = 44444
 IP = "127.0.0.1" 
 ADDR = (IP, PORT)
 
-logging.basicConfig(format='%(asctime)s %(message)s')
-# create logger
-logger = logging.getLogger('simple_example')
-logger.setLevel(logging.INFO)
-
-
-# Holds all client connections
-clients: Dict[str, socket.socket] = {}
-# Create the shared lock
-lock = Lock()
-
-def close_socket(client_id: str, locket: Lock):
-    with locket:
-        clients[client_id].close()
-        del clients[client_id]
-
-def handle_client(clientsocket: socket.socket, client_id: str, locket: Lock):
-    while True: 
-        
-        try: 
-            recv_data: bytes = clientsocket.recv(32767) 
-
-            if recv_data == b"":
-                continue
-
-            logger.info (f"received data: {recv_data}")
-            
-            for peer_id, peer_socket in clients.items():
-                # Send if peer client is connected... 
-                try:
-                    peer_socket.send(recv_data) 
-                    
-                except ConnectionAbortedError as i_e:
-                    # Close and delete peer socket if peer client closed...
-                    logger.error(f"Peer socket exception: {i_e}")
-                    close_socket(client_id, locket)
-
-                    if peer_id == client_id:
-                        return 
-                    continue 
-
-        except ConnectionAbortedError as o_e:
-            # If client socket cannot receive, then close client 
-            logger.error(f"Client socket receive exception: {o_e}")
-            close_socket(client_id, locket)
-            return
-
-
-def run_server():
-    # Create a socket object 
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)         
-    logger.info("Server Socket successfully created")
-
-    # Prerequisite for server to listen for incoming conn. requests
-    server.bind(ADDR)  
-    logger.info("Socket binded to " + str(ADDR)) 
-
-    # Put the socket into listening mode 
-    # NOTE: 5 connections are kept waiting 
-    # if the server is busy and if a 6th socket tries to connect, then the connection is refused.
-    server.listen(5)  
-    logger.info ("Socket is listening")  
-
-    # Where server is always listening for incoming clients
-    while True:
-        # Establish connection with client. 
-        clientsocket, addr = server.accept()   
-        print(clientsocket)
-        client_id: str = str(uuid.uuid4())
-        clients[client_id] = clientsocket
-
-        thread = Thread(target=handle_client, args=(clientsocket, client_id, lock))
-        thread.start()
     
+class Dispatcher:
+    def __init__(self) -> None:
+        # holds all SocketUTransporters: client's (ip, port) -> socket conn.
+        self.utransport_clients: Dict[Tuple[str, int], socket.socket] = {}
+        
+        # locks for writers priority and thread safe performance
+        self.count_writers_lock: Lock = Lock()
+        self.count_readers_lock: Lock = Lock()
+        self.block_readers_lock: Lock = Lock()
+        self.access_clients_lock: Lock = Lock()
+        self.num_writers: int = 0
+        self.num_readers: int = 0
+        
+        # Creates Dispatcher socket server so it can accept connections from SocketUTransports
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Give server an IP and Port, so other clients can conn to
+        self.server.bind(ADDR)  
+        # Prerequisite to listen for incoming conn. requests
+        self.server.listen(100)  
+        
+        logger.info ("Dispatcher server is running/listening")  
+        
+        self.server.setblocking(False)
+        
+        # Selector allows high-level and efficient I/O multiplexing, built upon the select module primitives.
+        self.selector = selectors.DefaultSelector()
+        # Register server socket so selector can monitor for incoming client conn. and calls provided callback() in listen_for_client_connections()
+        self.selector.register(self.server, selectors.EVENT_READ, self.__accept_client_conn)
+        
+    def listen_for_client_connections(self):
+        """
+        Listens for Socket UTransport Connections and creates a thread to start the init process
+        """
+        
+        while True:
+            # Wait until some registered file objects or sockets become ready, or the timeout expires.
+            events = self.selector.select()
+            for key, mask in events:
+                callback = key.data
+                callback(key.fileobj)
+                
+    def __accept_client_conn(self, server: socket.socket):
+        socket_utransport, addr = server.accept() 
+        logger.info(f'accepted conn. {addr}')
+        
+        self.__writer_priority_write_sockets(self.__save_socket, socket_utransport)
 
+        # Never wait for the operation to complete. 
+        # So when call send(), it will put as much data in the buffer as possible and return.
+        socket_utransport.setblocking(False)
+        # Register client socket so selector can monitor for incoming TA data and calls provided callback()
+        self.selector.register(socket_utransport, selectors.EVENT_READ, self.__receive_from_socketutransport)
+    
+    def __save_socket(self, socket_utransport: socket.socket):
+        """saves newly connected Socket UTransport client sockets
+
+        Args:
+            socket_utransport (socket.socket): Socket UTransport client socket
+        """
+        addr: Tuple[str, int] = socket_utransport.getpeername()
+        self.utransport_clients[addr] = socket_utransport
+        
+    def __writer_priority_write_sockets(self, func: Callable, socket_utransport: socket.socket):
+        """gives write priority when changing add or remove sockets
+
+        Args:
+            func (Callable): save or close/remove sockets
+            socket_utransport (socket.socket): 
+        """
+        with self.count_writers_lock:
+            if self.num_writers == 0:
+                self.block_readers_lock.acquire()
+            self.num_writers += 1
+        
+        with self.access_clients_lock:
+            func(socket_utransport)  # writing 
+            
+        with self.count_writers_lock:
+            self.num_writers -= 1
+            if self.num_writers == 0:
+                self.block_readers_lock.release()
+    
+    def __close_socket(self, socket_utransport: socket.socket):
+        """
+        closes socket connection and dont listen to incoming messages anymore from respective socket
+        """        
+        utransport_addr: Tuple[str, int] = socket_utransport.getpeername()
+        logger.info(f"closing socket {utransport_addr}")
+
+        client_socket: socket.socket = self.utransport_clients.pop(utransport_addr, None)
+        
+        if client_socket:
+            client_socket.close()
+            self.selector.unregister(client_socket)
+    
+    def __writer_priority_read_sockets(self, func: Callable, data: bytes):
+        """when doing any reading/iterating over connected SocketUTransports, we give writer priority using locks/mutexes
+        Reasoning is if socket is closed/added, we want it to be updated 1st before we read/send data again
+
+        Args:
+            func (Callable): reading functions (e.g. iteration sending)
+            data (bytes): data used to send (so far...)
+        """
+        with self.block_readers_lock:
+            with self.count_readers_lock:
+                if self.num_readers == 0:
+                    self.access_clients_lock.acquire()
+                self.num_readers += 1
+                
+        func(data)
+        
+        with self.count_readers_lock:
+            self.num_readers -= 1
+            if self.num_readers == 0:
+                self.access_clients_lock.release()
+            
+                
+    def __flood_to_sockets(self, data: bytes):
+        """sends data to all connected SocketUTransport client sockets
+
+        Args:
+            data (bytes): data sent
+        """
+        for peer_addr, peer_socket in self.utransport_clients.items():
+            # Send if peer client is connected... 
+            try:
+                peer_socket.sendall(data) 
+                
+            except ConnectionAbortedError as i_e:
+                # Close and delete peer socket if peer client closed...
+                logger.error(f"Peer socket exception: {i_e}")
+                
+                # queues close socket thru mutex
+                self.__writer_priority_write_sockets(self.__close_socket, peer_socket)
+    
+    def __receive_from_socketutransport(self, utransport: socket.socket):
+        """floods incoming data from one client to every connected clients
+
+        Args:
+            utransport (socket.socket): SocketUTransport client socket
+        """
+            
+        recv_data: bytes = receive_socket_data(utransport)
+        
+        if recv_data == b"":
+            try: 
+                self.__writer_priority_write_sockets(self.__close_socket, utransport)
+                
+            except OSError as oserr:
+                logger.error(oserr)
+            return
+        
+        logger.info (f"received data: {recv_data}")
+        
+        self.__writer_priority_read_sockets(self.__flood_to_sockets, recv_data)
+        
+        
 if __name__ == '__main__':
 
-    print(sys.byteorder)
-    run_server()
+    logger.info(f"endian: {sys.byteorder}")
+    dispatcher = Dispatcher()
+    thread = Thread(target=dispatcher.listen_for_client_connections)
+    thread.start()
+    
+    

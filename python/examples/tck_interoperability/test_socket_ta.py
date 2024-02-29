@@ -48,6 +48,8 @@ from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 
 from up_client_socket_python.utils.socket_message_processing_utils import convert_json_to_jsonstring, convert_str_to_bytes, protobuf_to_base64, send_socket_data
 
+from logger.logger import logger
+
 class SocketUListener(UListener):
     def __init__(self, test_manager_conn: socket.socket) -> None:
         """
@@ -66,8 +68,7 @@ class SocketUListener(UListener):
         @return Returns an Ack every time a message is received and processed.
         """
         # global on_receive_items
-        print("Listener onreceived")
-        print(f"{payload}")
+        logger.info("Listener onreceived")
 
         if topic is not None:
             attributes.source.CopyFrom(topic)
@@ -83,13 +84,13 @@ class SocketUListener(UListener):
 
         message: bytes = convert_str_to_bytes(json_message_str) 
 
-        print("Sending onReceive to Test Manager Directly!")
+        logger.info("Sending onReceive msg to Test Manager Directly!")
         send_socket_data(self.test_manager_conn, message) 
 
         return UStatus(code=UCode.OK, message="all good") 
     
 
-uri: str = "/body.access//door.front_left#Door"
+
 
 def build_cloud_event():
     return CloudEvent(spec_version="1.0", source="https://example.com", id="HARTLEY IS THE BEST")
@@ -104,6 +105,7 @@ def build_uattributes():
 
 
 if __name__ == "__main__":
+    uri: str = "/body.access//door.front_left#Door"
     dispatcher_IP: str = "127.0.0.1"
     dispatcher_PORT: int = 44444
 

@@ -27,7 +27,6 @@
 
 from typing import Dict
 import socket
-import logging
 from google.protobuf.any_pb2 import Any
 from concurrent.futures import Future
 
@@ -41,13 +40,10 @@ from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.rpc.rpcmapper import RpcMapper
-from uprotocol.rpc.rpcclient import RpcClient
 
 from up_client_socket_python.socket_rpcclient import SocketRPCClient
 
-logging.basicConfig(format='%(asctime)s %(message)s')
-logger = logging.getLogger('simple_example')
-logger.setLevel(logging.INFO)
+from logger.logger import logger
 
 
 class SocketUTransport(UTransport):
@@ -147,7 +143,7 @@ class SocketUTransport(UTransport):
         umsg_serialized: bytes = umsg.SerializeToString()
 
         try:
-            num_bytes_sent: int = self.socket.send(umsg_serialized)
+            num_bytes_sent: int = self.socket.sendall(umsg_serialized)
             if num_bytes_sent == 0:
                 return UStatus(code=UCode.INTERNAL, message="INTERNAL ERROR: Socket Connection Broken")
             logger.info(f"{self.__class__.__name__} uMessage Sent")
