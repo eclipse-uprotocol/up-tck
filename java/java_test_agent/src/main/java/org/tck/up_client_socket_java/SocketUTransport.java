@@ -42,10 +42,9 @@ import org.eclipse.uprotocol.transport.UTransport;
 import org.eclipse.uprotocol.v1.*;
 import org.tck.testagent.TestAgent;
 
-public class SocketUTransport implements UTransport, RpcClient {
+public class SocketUTransport implements UTransport {
     private static final Logger logger = Logger.getLogger(SocketUTransport.class.getName());
     private final Socket socket;
-    SocketRPCClient socketRPCClient;
     private final Map<UUri, ArrayList<UListener>> topicToListener = new ConcurrentHashMap<>();
 
     public SocketUTransport(String hostIp, int port) throws IOException {
@@ -137,11 +136,5 @@ public class SocketUTransport implements UTransport, RpcClient {
                 .setMessage("OK")
                 .build();
     }
-
-
-    @Override
-    public CompletionStage<UMessage> invokeMethod(UUri methodURI, UPayload payload, CallOptions callOptions) {
-        CompletionStage<UMessage> response = socketRPCClient.invokeMethod(methodURI, payload, callOptions);
-        return response;
-    }
+    
 }
