@@ -332,18 +332,14 @@ class SocketTestManager():
                 sink_bytes: bytes = sink.encode()
                 #sink.ParseFromString(sink_bytes)
 
-            attributes: UAttributes = UAttributesBuilder(id, umsg_type, priority).withSink(sink).build()
-            # return self.send_command(sdk_name, command, topic, upayload, attributes)
-
-            if topic is not None:
-                attributes.source.CopyFrom(topic)
+            attributes: UAttributes = UAttributesBuilder(topic, id, umsg_type, priority).withSink(sink).build()
 
             umsg: UMessage = UMessage(attributes=attributes, payload=upayload)
             return self.request(sdk_name, command, umsg)
 
         elif command == "registerlistener":
             umsg: UMessage = UMessage(attributes=UAttributes(source=topic))
-            # return self.register_listener_command(sdk_name, command, topic, listener)
+
             return self.request(sdk_name, command, umsg)
         
         else:

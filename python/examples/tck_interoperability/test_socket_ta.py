@@ -100,8 +100,8 @@ def build_upayload():
     any_obj.Pack(build_cloud_event())
     return UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=any_obj.SerializeToString())
 
-def build_uattributes():
-    return UAttributesBuilder.publish(UPriority.UPRIORITY_CS4).build()
+def build_uattributes(uuri: UUri):
+    return UAttributesBuilder.publish(uuri, UPriority.UPRIORITY_CS4).build()
 
 
 if __name__ == "__main__":
@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
     topic = LongUriSerializer().deserialize(uri)
     payload: UPayload = build_upayload()
-    attributes: UAttributes = build_uattributes()
+    attributes: UAttributes = build_uattributes(topic)
 
 
     agent.send_to_TM({'SDK_name': "python"})
