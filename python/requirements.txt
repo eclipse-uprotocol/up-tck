@@ -1,5 +1,8 @@
-cloudevents
-multipledispatch
 behave >= 1.2.6
 behave-html-formatter
+cloudevents
 GitPython
+multipledispatch
+psutil
+PyHamcrest
+up-python==0.1.1-dev0

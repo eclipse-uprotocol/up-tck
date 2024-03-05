@@ -9,13 +9,6 @@ This Test Framework allows users to implement their own interoperability tests u
 == Getting Started
 
 === Prerequisites
-Set up up-python
-
-----
-$ git clone https://github.com/eclipse-uprotocol/up-python.git
-$ cd up-python
-$ pip install .
-----
 
 === Importing the up-tck-python
  
@@ -26,7 +19,7 @@ $ git clone https://github.com/eclipse-uprotocol/up-tck.git
 $ cd up-tck/python
 $ pip install .
 ----
-*This will install the up-tck-python, making its classes and modules available for import in your python code.*
+*This will install the up-tck, making its classes and modules available for import in your python code.*
 
 === Building Java Test Agent Jar
 
