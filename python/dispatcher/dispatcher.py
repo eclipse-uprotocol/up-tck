@@ -30,9 +30,11 @@ from threading import Lock
 import sys
 import selectors
 
-from logger.logger import logger
+sys.path.append("../")
 
-from up_client_socket_python.utils.socket_message_processing_utils import receive_socket_data
+from python.logger.logger import logger
+
+from python.up_client_socket_python.utils.socket_message_processing_utils import receive_socket_data
 
 PORT = 44444
 IP = "127.0.0.1" 

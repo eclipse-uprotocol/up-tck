@@ -16,9 +16,9 @@ Set up upclient-socket-python local repository and install
 ----
 $ git clone https://github.com/eclipse-uprotocol/up-tck.git
 $ cd up-tck/python
-$ pip install .
+$ pip install -r requirements.txt
 ----
-*This will install the up-tck, making its classes and modules available for import in your python code.*
+*This will install the up-tck dependencies, making its classes and modules available for import in your python code.*
 
 === Building Java Test Agent Jar
 
@@ -29,7 +29,7 @@ If you would like to run any tests with the Java Test Agent, follow these instru
 
 === Running BDD Tests
 
-For information about running BDD Tests, refer to https://github.com/hostilechild007/uprotocol-tck/blob/ulink_socket_python/BDD/README.adoc[BDD/README.adoc]
+For information about running BDD Tests, refer to  https://github.com/eclipse-uprotocol/up-tck/BDD/README.adoc[BDD/README.adoc]
 
 === Cleaning Up
 

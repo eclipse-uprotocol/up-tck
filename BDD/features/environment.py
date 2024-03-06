@@ -32,9 +32,18 @@ import subprocess
 import sys
 from behave.runner import Context
 
-from up_client_socket_python.utils.file_pathing_utils import get_git_root
-from up_client_socket_python.transport_layer import TransportLayer
-from test_manager.testmanager import SocketTestManager
+sys.path.append("../")
+
+from python.test_manager.testmanager import SocketTestManager
+
+import os
+import git
+
+def get_git_root():
+    curr_path = os.getcwd()
+    git_repo = git.Repo(curr_path, search_parent_directories=True)
+    git_root = git_repo.git.rev_parse("--show-toplevel")
+    return git_root
 
 def create_file_path(filepath_from_root_repo: str) -> str:
     return get_git_root() + filepath_from_root_repo
@@ -43,7 +52,6 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []
     
     if sys.platform == "win32":
-        # command.append("start")
         pass
     elif sys.platform == "linux" or sys.platform == "linux2":
         command.append('gnome-terminal')
@@ -96,10 +104,7 @@ def before_all(context):
     context.logger.info("Created Dispatcher...")
     time.sleep(5)
 
-
-    transport = TransportLayer()
-    transport.set_socket_config("127.0.0.1", 44444)
-    test_manager = SocketTestManager("127.0.0.5", 12345, transport)
+    test_manager = SocketTestManager("127.0.0.5", 12345)
     thread = Thread(target=test_manager.listen_for_client_connections)
     thread.start()
     context.tm = test_manager
@@ -108,12 +113,10 @@ def before_all(context):
     
     command = create_command("/python/examples/tck_interoperability/test_socket_ta.py")
     process: subprocess.Popen = create_subprocess(command)
-    # process.wait()
     context.python_ta_process = process
 
     command = create_command("/java/java_test_agent/target/JavaTestAgent-jar-with-dependencies.jar")
     process: subprocess.Popen = create_subprocess(command)
-    # process.wait()
     context.java_ta_process = process
 
     context.logger.info("Created All Test Agents...")
@@ -128,42 +131,12 @@ def after_all(context: Context):
     test_manager.close()
     
     try:
-        
-        # The os.setsid() is passed in the argument preexec_fn so
-        # it's run after the fork() and before  exec() to run the shell.
-
-
-        # print(os.getpid())
-        # print(context.java_ta_process.pid)
-
-        # print(context.python_ta_process.pid)
-        # print(context.java_ta_process.terminate())
-        # print(context.java_ta_process.wait())
-
-        # subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=context.java_ta_process.pid))
-        # subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=context.python_ta_process.pid))
-
-        # os.killpg(os.getpid, signal.SIGTERM)  # Send the signal to all the process groups
-
-
-        # pobj = psutil.Process(context.python_ta_process.pid)
-        # print(pobj)
-        # # list children & kill them
-        # for c in pobj.children(recursive=True):
-        #     c.kill()
-        # pobj.kill()
 
         context.java_ta_process.kill()
         context.java_ta_process.communicate()
         context.python_ta_process.kill()
         context.python_ta_process.communicate()
 
-        # pidvalue=context.java_ta_process.pid
-        # print(context.java_ta_process)
-        # subprocess.Popen('taskkill /F /T /PID %i' % pidvalue)
-        
-        # pidvalue=context.python_ta_process.pid
-        # subprocess.Popen('taskkill /F /T /PID %i' % pidvalue)
         pass
     except Exception as e:
         context.logger.error(e)

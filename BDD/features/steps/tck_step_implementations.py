@@ -24,12 +24,16 @@
 #
 # -------------------------------------------------------------------------
 import time
+import sys
 from behave import when, then, given, step
 from behave.runner import Context
 from hamcrest import assert_that, equal_to
 
 from uprotocol.proto.upayload_pb2 import UPayload
-from test_manager.testmanager import SocketTestManager
+
+sys.path.append("../")
+
+from python.test_manager.testmanager import SocketTestManager
 
 @given(u'“{sdk_name}” creates data for "{command}"')
 @when(u'“{sdk_name}” creates data for "{command}"')

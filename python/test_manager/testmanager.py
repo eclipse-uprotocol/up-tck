@@ -27,28 +27,29 @@
 import socket
 import selectors
 import threading
-import logging
 import re
 from collections import defaultdict
 from typing import Dict, List
+import sys
+
 from google.protobuf.any_pb2 import Any
 
 from uprotocol.proto.uattributes_pb2 import UAttributes, UPriority, UMessageType
-from uprotocol.proto.uri_pb2 import UUri, UAuthority, UEntity, UResource
+from uprotocol.proto.uri_pb2 import UUri, UEntity, UResource
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.ustatus_pb2 import UStatus
-from uprotocol.transport.ulistener import UListener
 from uprotocol.cloudevent.cloudevents_pb2 import CloudEvent
 from uprotocol.proto.uuid_pb2 import UUID
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.rpc.rpcmapper import RpcMapper
 
-from up_client_socket_python.transport_layer import TransportLayer
-from up_client_socket_python.utils.socket_message_processing_utils import receive_socket_data, convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, protobuf_to_base64, base64_to_protobuf_bytes, send_socket_data
-from up_client_socket_python.utils.grammar_parsing_utils import get_priority, get_umessage_type
+sys.path.append("../")
 
-from logger.logger import logger
+from python.up_client_socket_python.utils.socket_message_processing_utils import receive_socket_data, convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, protobuf_to_base64, base64_to_protobuf_bytes, send_socket_data
+from python.up_client_socket_python.utils.grammar_parsing_utils import get_priority, get_umessage_type
+
+from python.logger.logger import logger
 
 class SocketTestManager():
     """
@@ -64,7 +65,7 @@ class SocketTestManager():
     message passing is blocking/sychronous 
 
     """
-    def __init__(self, ip_addr: str, port: int, utransport: TransportLayer) -> None:
+    def __init__(self, ip_addr: str, port: int) -> None:
         """Starts Test Manager by creating the server and accepting Test Agent client socket connections
 
         Args:
@@ -75,10 +76,7 @@ class SocketTestManager():
 
         self.received_umessage: UMessage = None
 
-        # Lowlevel transport implementation (ex: Ulink's UTransport, Zenoh, etc).
-        self.utransport: TransportLayer = utransport
-
-        # Bc every sdk connection is unqiue, map the socket connection.
+        # Because every sdk connection is unqiue, map the socket connection.
         self.sdk_to_test_agent_socket: Dict[str, socket.socket] = defaultdict(socket.socket)
         self.sdk_to_received_ustatus: Dict[str, UStatus] = defaultdict(lambda: None)  # maybe thread safe
         self.sdk_to_received_ustatus_lock = threading.Lock()

@@ -27,10 +27,12 @@
 
 from typing import Dict, List
 import socket
+from threading import Thread
+import sys
+
 from google.protobuf.any_pb2 import Any
 from concurrent.futures import Future
 
-from threading import Thread
 from uprotocol.proto.uattributes_pb2 import UAttributes, UMessageType
 from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.proto.uri_pb2 import UEntity, UUri
@@ -41,9 +43,9 @@ from uprotocol.transport.utransport import UTransport
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.rpc.rpcmapper import RpcMapper
 
-from up_client_socket_python.socket_rpcclient import SocketRPCClient
+sys.path.append("../")
 
-from logger.logger import logger
+from python.logger.logger import logger
 
 
 class SocketUTransport(UTransport):

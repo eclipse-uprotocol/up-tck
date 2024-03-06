@@ -17,7 +17,7 @@ Set up upclient-socket-python local repository and install
 ----
 $ git clone https://github.com/eclipse-uprotocol/up-tck.git
 $ cd up-tck/python
-$ pip install .
+$ pip install -r requirements.txt
 ----
 *This will install the up-tck, making its classes and modules available for import in your python code.*
 
@@ -32,21 +32,20 @@ If you would like to run any tests with the Java Test Agent, follow these instru
 
 Behave is a python implementation of the BDD (Behavior Driven Development) style of testing. With Behave, users can create files called "feature files," within which a test is written out in natural language.
 
-For testing interoperability between different language test agents, users can create these feature files, specifying which languages are under test. Specific step definitions for the test manager and test agents are located under BDD/README.adoc.
+For testing interoperability between different language test agents, users can create these feature files, specifying which languages are under test. Specific step definitions for the test manager and test agents are located below.
 
 ==== Running BDD Example Test
 
 Example scripts for TCK Interoperability are supplied under BDD/features/tests. To run these example tests:
 
 1. Go to the BDD Folder (cd BDD)
-2. Run "pip install -r requirements.txt"
-3. If in Windows, run "testrunner.bat". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature"). If in Linux, run "testrunner.sh". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
+2. If in Windows, run "testrunner.bat". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature"). If in Linux, run "sh testrunner.sh". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
 
 After running a BDD test, ensure that you close all opened command prompt windows before running a new test. Your report will be located in BDD/reports. It will be labeled with the date and time that the test was run.
 
 If you receive a "/usr/bin/python: No module named behave" error, go into "testrunner.sh" and change "python" to "python3".
 
-If you run into any errors related to "Connection refused", this means that something is still listening on the sockets being used to communicate. Please try to shut those sockets down, or restart your computer.
+If you run into any errors related to "Connection refused", this means that something is still listening on the sockets being used to communicate. Please try to shut those sockets down, or wait a few moments before starting the test again.
 
 ==== Writing your own BDD Tests
 

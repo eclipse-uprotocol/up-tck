@@ -30,6 +30,7 @@ from typing import Dict
 from multipledispatch import dispatch
 from google.protobuf.any_pb2 import Any
 from concurrent.futures import Future
+import sys
 
 from uprotocol.proto.uattributes_pb2 import UAttributes
 from uprotocol.proto.uri_pb2 import UUri
@@ -38,13 +39,14 @@ from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.rpc.rpcmapper import RpcMapper
 from uprotocol.proto.ustatus_pb2 import UCode
-
-from up_client_socket_python.transport_layer import TransportLayer
-from up_client_socket_python.utils.socket_message_processing_utils import send_socket_data, receive_socket_data, convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, protobuf_to_base64, base64_to_protobuf_bytes
-from up_client_socket_python.utils.constants import SEND_COMMAND, REGISTER_LISTENER_COMMAND, UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND
 from uprotocol.transport.ulistener import UListener
 
-from logger.logger import logger
+sys.path.append("../")
+
+from python.test_agent.transport_layer import TransportLayer
+from python.up_client_socket_python.utils.socket_message_processing_utils import send_socket_data, receive_socket_data, convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, protobuf_to_base64, base64_to_protobuf_bytes
+from python.up_client_socket_python.utils.constants import SEND_COMMAND, REGISTER_LISTENER_COMMAND, UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND
+from python.logger.logger import logger
 
 class SocketTestAgent:
     def __init__(self, test_clientsocket: socket.socket, utransport: TransportLayer, listener: UListener) -> None:

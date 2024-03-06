@@ -26,12 +26,16 @@
 
 import socket
 import json
-from google.protobuf.any_pb2 import Any
+import sys
 from typing import Dict
+
+from google.protobuf.any_pb2 import Any
 
 from uprotocol.cloudevent.serialize.base64protobufserializer import Base64ProtobufSerializer
 
-from logger.logger import logger
+sys.path.append("../")
+
+from python.logger.logger import logger
 
 BYTES_MSG_LENGTH: int = 32767
 
