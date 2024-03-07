@@ -1,0 +1,23 @@
+# Distribution / packaging
+.Python
+__pycache__/
+downloads/
+testing/
+lib/
+lib64/
+parts/
+sdist/
+var/
+.vscode/
+.installed.cfg
+MANIFEST
+.idea/
+.venv/
+*.log
+*.log.lck
+*.log.1
+*.html
+*.xml
+*.json
+**/jar_files/**
+*.jar
