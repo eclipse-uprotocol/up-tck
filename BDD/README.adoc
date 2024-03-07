@@ -5,31 +5,6 @@
 
 This Test Framework allows users to implement their own interoperability tests using the python Behave library.
 
-== Getting Started
-
-=== Prerequisites
-
-=== Importing the up-tck-python
-
-Set up upclient-socket-python local repository and install
-
-[source]
-----
-$ git clone https://github.com/eclipse-uprotocol/up-tck.git
-$ cd up-tck/python
-$ pip install -r requirements.txt
-----
-
-*This will install the up-tck, making its classes and modules available for import in your python code.*
-
-=== Building Java Test Agent Jar
-
-If you would like to run any tests with the Java Test Agent, follow these instructions:
-
-1. Inside a terminal/command prompt, go to java_test_agent folder (cd java/java_test_agent).
-2. Run "mvn clean install".
-This will generate the JavaTestAgent JAR file under the target folder.
-
 === Running BDD Tests
 
 Behave is a python implementation of the BDD (Behavior Driven Development) style of testing.
