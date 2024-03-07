@@ -45,7 +45,7 @@ from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 
 sys.path.append("../")
 
-from python.up_client_socket_python.utils.socket_message_processing_utils import receive_socket_data, \
+from python.utils.socket_message_processing_utils import receive_socket_data, \
     convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, \
     protobuf_to_base64, base64_to_protobuf_bytes, send_socket_data
 

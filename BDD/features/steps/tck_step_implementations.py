@@ -91,29 +91,10 @@ def step_impl(context, sdk_name, key, value):
 def tm_connects_to_ta_socket(context, sdk_name: str):
     test_manager: SocketTestManager = context.tm
 
-    start_time: float = time.time()
-    end_time: float = start_time
-    wait_sec: float = 7.0
-
     while not test_manager.has_sdk_connection(sdk_name):
         time.sleep(1)
-        end_time = time.time()
     if not test_manager.has_sdk_connection(sdk_name):
         context.logger.error(sdk_name + " Test Agent didn't connect in time")
         raise Exception(sdk_name + " Test Agent didn't connect in time")
 
     context.logger.info(f"{sdk_name} TA connects to TM {test_manager.sdk_to_test_agent_socket.keys()}")
-
-
-@when('"{sdk_name}" closes its client socket connection')
-def tm_closing_ta_socket(context, sdk_name: str):
-    test_manager: SocketTestManager = context.tm
-    # test_manager.close_ta(sdk_name)
-    context.logger.info(f"TM closed TA connection {sdk_name} {test_manager.sdk_to_test_agent_socket.keys()}")
-    pass
-
-
-@then('Test Manager closes server socket connection to the "{sdk_name}"')
-def step_impl(context, sdk_name: str):
-    # context.logger.info("YOOOO SERVER cLOSED")
-    pass

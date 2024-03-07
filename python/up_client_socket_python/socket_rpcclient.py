@@ -35,6 +35,8 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.uuid_pb2 import UUID
 from uprotocol.rpc.rpcclient import RpcClient
 
+from python.utils.constants import BYTES_MSG_LENGTH
+
 
 class SocketRPCClient(RpcClient):
     """
@@ -87,8 +89,7 @@ class SocketRPCClient(RpcClient):
 
         while True:
             # Wait and receive data from server
-            msg_len: int = 32767
-            recv_data: bytes = self.socket.recv(msg_len)
+            recv_data: bytes = self.socket.recv(BYTES_MSG_LENGTH)
 
             if recv_data == b'':
                 continue

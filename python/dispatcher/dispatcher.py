@@ -34,11 +34,9 @@ sys.path.append("../")
 
 from python.logger.logger import logger
 
-from python.up_client_socket_python.utils.socket_message_processing_utils import receive_socket_data
+from python.utils.socket_message_processing_utils import receive_socket_data
 
-PORT = 44444
-IP = "127.0.0.1"
-ADDR = (IP, PORT)
+from python.utils.constants import DISPATCHER_ADDR
 
 
 class Dispatcher:
@@ -57,7 +55,7 @@ class Dispatcher:
         # Creates Dispatcher socket server so it can accept connections from SocketUTransports
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Give server an IP and Port, so other clients can conn to
-        self.server.bind(ADDR)
+        self.server.bind(DISPATCHER_ADDR)
         # Prerequisite to listen for incoming conn. requests
         self.server.listen(100)
 

@@ -35,8 +35,7 @@ from uprotocol.cloudevent.serialize.base64protobufserializer import Base64Protob
 sys.path.append("../")
 
 from python.logger.logger import logger
-
-BYTES_MSG_LENGTH: int = 32767
+from python.utils.constants import BYTES_MSG_LENGTH
 
 
 def send_socket_data(s: socket.socket, msg: bytes):

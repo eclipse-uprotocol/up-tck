@@ -28,3 +28,6 @@ SEND_COMMAND: str = "send"
 REGISTER_LISTENER_COMMAND: str = "registerlistener"
 UNREGISTER_LISTENER_COMMAND: str = "unregisterlistener"
 INVOKE_METHOD_COMMAND: str = "invokemethod"
+DISPATCHER_ADDR: tuple = ("127.0.0.1", 44444)
+TEST_MANAGER_ADDR: tuple = ("127.0.0.5", 12345)
+BYTES_MSG_LENGTH: int = 32767

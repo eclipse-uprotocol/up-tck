@@ -43,13 +43,15 @@ from uprotocol.transport.utransport import UTransport
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.rpc.rpcmapper import RpcMapper
 
+from python.utils.constants import DISPATCHER_ADDR, BYTES_MSG_LENGTH
+
 sys.path.append("../")
 
 from python.logger.logger import logger
 
 
 class SocketUTransport(UTransport):
-    def __init__(self, dipatcher_ip: str, dipatcher_port: int) -> None:
+    def __init__(self) -> None:
         """
         Creates a uEntity with Socket Connection, as well as a map of registered topics.
         @param dipatcher_ip: IP address of Dispatcher.
@@ -57,7 +59,7 @@ class SocketUTransport(UTransport):
         """
         
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-        self.socket.connect((dipatcher_ip, dipatcher_port))  
+        self.socket.connect(DISPATCHER_ADDR)  
 
         # self.rpcclient: RpcClient = SocketRPCClient(None, None, server_conn=self.socket)
         self.reqid_to_future: Dict[bytes, Future] = {}
@@ -75,8 +77,7 @@ class SocketUTransport(UTransport):
 
         while True:
             try: 
-                msg_len: int = 32767
-                recv_data: bytes = self.socket.recv(msg_len) 
+                recv_data: bytes = self.socket.recv(BYTES_MSG_LENGTH) 
 
                 if recv_data == b"":
                     continue
@@ -84,22 +85,10 @@ class SocketUTransport(UTransport):
                 umsg: UMessage = RpcMapper.unpack_payload(Any(value=recv_data), UMessage ) # unpack(recv_data , UMessage())
                 logger.info(f"{self.__class__.__name__} Received uMessage")
                 
-                
-                """
-                NEED TO CHECK MESSAGE TYPE!!! and respond accordinly
-                
-                if if attributes.type == UMessageType.UMESSAGE_TYPE_PUBLISH:
-                    THEN do listener.onrecieve()
-                elif attributes.type == UMessageType.UMESSAGE_TYPE_RESPONSE:
-                    set REPSONSE to the FUTURE
-                """
-                # uuri: UUri = umsg.source
-                uuri: UUri = umsg.attributes.source
-                payload: UPayload = umsg.payload
                 attributes: UAttributes = umsg.attributes
                 
                 if attributes.type == UMessageType.UMESSAGE_TYPE_PUBLISH or attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
-                    self._handle_publish_message(uuri, payload, attributes)
+                    self._handle_publish_message(umsg)
 
                 elif attributes.type == UMessageType.UMESSAGE_TYPE_RESPONSE:
                     self._handle_response_message(umsg)
@@ -118,18 +107,18 @@ class SocketUTransport(UTransport):
 
             del self.reqid_to_future[request_id_b]
                     
-    def _handle_publish_message(self, topic: UUri, payload: UPayload, attributes: UAttributes):
-        topic_b: bytes = topic.SerializeToString()
+    def _handle_publish_message(self, umsg: UMessage):
+        topic_b: bytes = umsg.attributes.source.SerializeToString()
         if topic_b in self.topic_to_listener:
             logger.info(f"{self.__class__.__name__} Handle Topic")
 
             for listener in self.topic_to_listener[topic_b]:
-                listener.on_receive(topic, payload, attributes)
+                listener.on_receive(umsg)
         else:
             logger.info(f"{self.__class__.__name__} Topic not found in Listener Map, discarding...")
 
 
-    def send(self, topic: UUri, payload: UPayload, attributes: UAttributes) -> UStatus:
+    def send(self, umsg: UMessage) -> UStatus:
         """
         Transmits UPayload to the topic using the attributes defined in UTransportAttributes.<br><br>
         @param topic:Resolved UUri topic to send the payload to.
@@ -138,10 +127,7 @@ class SocketUTransport(UTransport):
         @return:Returns OKSTATUS if the payload has been successfully sent (ACK'ed), otherwise it returns FAILSTATUS
         with the appropriate failure.
         """
-                
-        if topic is not None:
-            attributes.source.CopyFrom(topic)
-        umsg = UMessage(attributes=attributes, payload=payload) 
+
         umsg_serialized: bytes = umsg.SerializeToString()
 
         try:
