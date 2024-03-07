@@ -26,27 +26,28 @@
 
 import socket
 import sys
-from google.protobuf.any_pb2 import Any
 
+from google.protobuf.any_pb2 import Any
+from uprotocol.cloudevent.cloudevents_pb2 import CloudEvent
 from uprotocol.proto.uattributes_pb2 import UAttributes
+from uprotocol.proto.uattributes_pb2 import UPriority
+from uprotocol.proto.umessage_pb2 import UMessage
+from uprotocol.proto.upayload_pb2 import UPayload
+from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.ustatus_pb2 import UStatus, UCode
-from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.transport.ulistener import UListener
-
-from uprotocol.cloudevent.cloudevents_pb2 import CloudEvent
-from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
+from uprotocol.transport.ulistener import UListener
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 
 sys.path.append("../")
 
 from python.test_agent.transport_layer import TransportLayer
 from python.test_agent.testagent import SocketTestAgent
-from python.up_client_socket_python.utils.socket_message_processing_utils import convert_json_to_jsonstring, convert_str_to_bytes, protobuf_to_base64, send_socket_data
+from python.up_client_socket_python.utils.socket_message_processing_utils import convert_json_to_jsonstring, \
+    convert_str_to_bytes, protobuf_to_base64, send_socket_data
 from python.logger.logger import logger
+
 
 class SocketUListener(UListener):
     def __init__(self, test_manager_conn: socket.socket) -> None:
@@ -70,33 +71,30 @@ class SocketUListener(UListener):
 
         if topic is not None:
             attributes.source.CopyFrom(topic)
-        
+
         umsg: UMessage = UMessage(attributes=attributes, payload=payload)
-        
-        json_message = {
-            "action": "onReceive",
-            "message": protobuf_to_base64(umsg) 
-        }
 
-        json_message_str: str = convert_json_to_jsonstring(json_message) 
+        json_message = {"action": "onReceive", "message": protobuf_to_base64(umsg)}
 
-        message: bytes = convert_str_to_bytes(json_message_str) 
+        json_message_str: str = convert_json_to_jsonstring(json_message)
+
+        message: bytes = convert_str_to_bytes(json_message_str)
 
         logger.info("Sending onReceive msg to Test Manager Directly!")
-        send_socket_data(self.test_manager_conn, message) 
+        send_socket_data(self.test_manager_conn, message)
 
-        return UStatus(code=UCode.OK, message="all good") 
-    
-
+        return UStatus(code=UCode.OK, message="all good")
 
 
 def build_cloud_event():
     return CloudEvent(spec_version="1.0", source="https://example.com", id="HARTLEY IS THE BEST")
 
+
 def build_upayload():
     any_obj = Any()
     any_obj.Pack(build_cloud_event())
     return UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF, value=any_obj.SerializeToString())
+
 
 def build_uattributes(uuri: UUri):
     return UAttributesBuilder.publish(uuri, UPriority.UPRIORITY_CS4).build()
@@ -109,20 +107,18 @@ if __name__ == "__main__":
 
     transport = TransportLayer()
     transport.set_socket_config(dispatcher_IP, dispatcher_PORT)
-    
+
     test_manager_IP: str = "127.0.0.5"
     test_manager_PORT: int = 12345
     test_agent_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    test_agent_socket.connect((test_manager_IP, test_manager_PORT))  
+    test_agent_socket.connect((test_manager_IP, test_manager_PORT))
 
     listener: UListener = SocketUListener(test_agent_socket)
 
     agent = SocketTestAgent(test_agent_socket, transport, listener)
 
-
     topic = LongUriSerializer().deserialize(uri)
     payload: UPayload = build_upayload()
     attributes: UAttributes = build_uattributes(topic)
-
 
     agent.send_to_TM({'SDK_name': "python"})

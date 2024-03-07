@@ -36,6 +36,7 @@ class Assert(object):
         Assert.assert_not_equals(actual,expected, message)
         Assert.fail(message)
     """
+
     @staticmethod
     def assert_true(condition, message=None):
         """Assert a condition is True

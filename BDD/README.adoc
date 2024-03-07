@@ -5,20 +5,21 @@
 
 This Test Framework allows users to implement their own interoperability tests using the python Behave library.
 
-
 == Getting Started
 
 === Prerequisites
 
 === Importing the up-tck-python
- 
+
 Set up upclient-socket-python local repository and install
+
 [source]
 ----
 $ git clone https://github.com/eclipse-uprotocol/up-tck.git
 $ cd up-tck/python
 $ pip install -r requirements.txt
 ----
+
 *This will install the up-tck, making its classes and modules available for import in your python code.*
 
 === Building Java Test Agent Jar
@@ -26,30 +27,41 @@ $ pip install -r requirements.txt
 If you would like to run any tests with the Java Test Agent, follow these instructions:
 
 1. Inside a terminal/command prompt, go to java_test_agent folder (cd java/java_test_agent).
-2. Run "mvn clean install". This will generate the JavaTestAgent JAR file under the target folder.
+2. Run "mvn clean install".
+This will generate the JavaTestAgent JAR file under the target folder.
 
 === Running BDD Tests
 
-Behave is a python implementation of the BDD (Behavior Driven Development) style of testing. With Behave, users can create files called "feature files," within which a test is written out in natural language.
+Behave is a python implementation of the BDD (Behavior Driven Development) style of testing.
+With Behave, users can create files called "feature files," within which a test is written out in natural language.
 
-For testing interoperability between different language test agents, users can create these feature files, specifying which languages are under test. Specific step definitions for the test manager and test agents are located below.
+For testing interoperability between different language test agents, users can create these feature files, specifying which languages are under test.
+Specific step definitions for the test manager and test agents are located below.
 
 ==== Running BDD Example Test
 
-Example scripts for TCK Interoperability are supplied under BDD/features/tests. To run these example tests:
+Example scripts for TCK Interoperability are supplied under BDD/features/tests.
+To run these example tests:
 
 1. Go to the BDD Folder (cd BDD)
-2. If in Windows, run "testrunner.bat". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature"). If in Linux, run "sh testrunner.sh". When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
+2. If in Windows, run "testrunner.bat".
+When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
+If in Linux, run "sh testrunner.sh".
+When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
 
-After running a BDD test, ensure that you close all opened command prompt windows before running a new test. Your report will be located in BDD/reports. It will be labeled with the date and time that the test was run.
+After running a BDD test, ensure that you close all opened command prompt windows before running a new test.
+Your report will be located in BDD/reports.
+It will be labeled with the date and time that the test was run.
 
 If you receive a "/usr/bin/python: No module named behave" error, go into "testrunner.sh" and change "python" to "python3".
 
-If you run into any errors related to "Connection refused", this means that something is still listening on the sockets being used to communicate. Please try to shut those sockets down, or wait a few moments before starting the test again.
+If you run into any errors related to "Connection refused", this means that something is still listening on the sockets being used to communicate.
+Please try to shut those sockets down, or wait a few moments before starting the test again.
 
 ==== Writing your own BDD Tests
 
-You can follow the format in BDD/features/tests/register_and_send.feature to see how different tests are created and formatted. All steps in the feature file are implemented in BDD/features/steps/tck_step_implementations.py.
+You can follow the format in BDD/features/tests/register_and_send.feature to see how different tests are created and formatted.
+All steps in the feature file are implemented in BDD/features/steps/tck_step_implementations.py.
 
 ===== Register Listener
 
@@ -64,7 +76,8 @@ Given “<uE1>” creates data for "registerlistener"
     And sends "registerlistener" request
 ----
 
-In this example, <uE1> is the uEntity that will be doing the uTransport "registerlistener" method. The language specified will run the "registerlistener" method.
+In this example, <uE1> is the uEntity that will be doing the uTransport "registerlistener" method.
+The language specified will run the "registerlistener" method.
 
 ==== Send
 
@@ -84,11 +97,14 @@ When “<uE2>” creates data for "send"
     And sends "send" request
 ----
 
-In this example, <uE2> is the uEntity that will be doing the uTransport "send" method. The language specified will run the "send" method.
+In this example, <uE2> is the uEntity that will be doing the uTransport "send" method.
+The language specified will run the "send" method.
 
 ==== Examples section
 
-This section specifies the individual tests that will be run as part of the scenario. You create as many rows in this section as you want. The first row specifies the variable name, and subsequent rows specify what those variables will be set to during the test.
+This section specifies the individual tests that will be run as part of the scenario.
+You create as many rows in this section as you want.
+The first row specifies the variable name, and subsequent rows specify what those variables will be set to during the test.
 
 ----
 Examples: topic_names

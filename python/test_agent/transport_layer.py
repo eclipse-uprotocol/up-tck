@@ -24,8 +24,8 @@
 #
 # -------------------------------------------------------------------------
 
-from concurrent.futures import Future
 import sys
+from concurrent.futures import Future
 
 from uprotocol.proto.uattributes_pb2 import UAttributes
 from uprotocol.proto.upayload_pb2 import UPayload
@@ -39,6 +39,7 @@ sys.path.append("../")
 from python.up_client_socket_python.socket_utransport import SocketUTransport
 
 from python.logger.logger import logger
+
 
 class TransportLayer:
     _instance = None

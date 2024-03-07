@@ -24,18 +24,17 @@
 #
 # -------------------------------------------------------------------------
 
-from concurrent.futures import Future, ThreadPoolExecutor
 import socket
-
-from uprotocol.proto.uattributes_pb2 import UAttributes
-from uprotocol.proto.uri_pb2 import UUri
-from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.rpc.rpcclient import RpcClient
-from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.proto.uuid_pb2 import UUID
+from concurrent.futures import Future, ThreadPoolExecutor
 
 from logger.logger import logger
+from uprotocol.proto.uattributes_pb2 import UAttributes
+from uprotocol.proto.umessage_pb2 import UMessage
+from uprotocol.proto.upayload_pb2 import UPayload
+from uprotocol.proto.uri_pb2 import UUri
+from uprotocol.proto.uuid_pb2 import UUID
+from uprotocol.rpc.rpcclient import RpcClient
+
 
 class SocketRPCClient(RpcClient):
     """
@@ -47,6 +46,7 @@ class SocketRPCClient(RpcClient):
     <a href=https://github.com/eclipse-uprotocol/uprotocol-spec/blob/main/up-l2/README.adoc>[RpcClient
     Specifications]</a>
     """
+
     def __init__(self, server_ip: str, server_port: int, server_conn: socket.socket = None) -> None:
         '''
         @param server_ip: the ip address for the socket to connect to
@@ -57,8 +57,8 @@ class SocketRPCClient(RpcClient):
         if server_conn is not None:
             self.socket = server_conn
         else:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-            self.socket.connect((server_ip, server_port))  
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.connect((server_ip, server_port))
 
     def __send_to_service_socket(self, topic: UUri, payload: UPayload, attributes: UAttributes):
         """
@@ -78,7 +78,7 @@ class SocketRPCClient(RpcClient):
         if topic is not None:
             attributes.source.CopyFrom(topic)
 
-        umsg = UMessage(attributes=attributes, payload=payload) 
+        umsg = UMessage(attributes=attributes, payload=payload)
 
         # Now serialized, then send
         umsg_serialized: bytes = umsg.SerializeToString()
@@ -88,7 +88,7 @@ class SocketRPCClient(RpcClient):
         while True:
             # Wait and receive data from server
             msg_len: int = 32767
-            recv_data: bytes = self.socket.recv(msg_len) 
+            recv_data: bytes = self.socket.recv(msg_len)
 
             if recv_data == b'':
                 continue
@@ -102,10 +102,10 @@ class SocketRPCClient(RpcClient):
                 logger.info("Data isn't type UMessage: \n" + str(ae))
                 continue
             except Exception as err:
-                raise Exception(err)   
-            
+                raise Exception(err)
+
             response_reqid: UUID = response_umsg.attributes.reqid
-            
+
             logger.info(f"Req-id {request_id_b} vs. Resp-id {response_reqid.SerializeToString()}")
 
             if request_id_b == response_reqid.SerializeToString():
@@ -116,7 +116,6 @@ class SocketRPCClient(RpcClient):
                 # If response wasn't meant for current client
                 logger.info("Response wasn't meant for current client: \n" + str(response_umsg))
                 continue
-            
 
     def invoke_method(self, topic: UUri, payload: UPayload, attributes: UAttributes) -> Future:
         """
