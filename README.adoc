@@ -31,11 +31,6 @@ If you would like to run any tests with the Java Test Agent, follow these instru
 
 For information about running BDD Tests, refer to  https://github.com/eclipse-uprotocol/up-tck/BDD/README.adoc[BDD/README.adoc]
 
-=== Cleaning Up
-
-Clean up by running the command:
-`python ./python/clean_project.py`
-
 == Diagrams
 
 image::screenshots/RegisterListenerv2.drawio.svg[]
