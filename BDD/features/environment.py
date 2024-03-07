@@ -29,16 +29,19 @@ import sys
 import time
 from threading import Thread
 from typing import List
-
-from behave.runner import Context
-
-from utils import loggerutils
-
-sys.path.append("../")
-from python.test_manager.testmanager import SocketTestManager
 import os
 import git
 
+from behave.runner import Context
+from utils import loggerutils
+
+sys.path.append("../")
+
+from python.test_manager.testmanager import SocketTestManager
+
+
+PYTHON_TA_PATH = "/python/examples/tck_interoperability/test_socket_ta.py"
+JAVA_TA_PATH = "/java/java_test_agent/target/tck-test-agent-java-jar-with-dependencies.jar"
 
 def get_git_root():
     curr_path = os.getcwd()
@@ -114,11 +117,11 @@ def before_all(context):
 
     context.logger.info("Created Test Manager...")
 
-    command = create_command("/python/examples/tck_interoperability/test_socket_ta.py")
+    command = create_command(PYTHON_TA_PATH)
     process: subprocess.Popen = create_subprocess(command)
     context.python_ta_process = process
 
-    command = create_command("/java/java_test_agent/target/JavaTestAgent-jar-with-dependencies.jar")
+    command = create_command(JAVA_TA_PATH)
     process: subprocess.Popen = create_subprocess(command)
     context.java_ta_process = process
 

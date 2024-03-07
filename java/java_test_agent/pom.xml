@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.eclipse.uprotocol</groupId>
-    <artifactId>up-test-agent-java</artifactId>
+    <artifactId>tck-test-agent-java</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -48,11 +48,11 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>org.tck.testagent.Main</mainClass>
+                            <mainClass>org.eclipse.uprotocol.tck.testagent.Main</mainClass>
                             <!-- Specify your main class here -->
                         </manifest>
                     </archive>
-                    <finalName>JavaTestAgent</finalName>
+                    <finalName>tck-test-agent-java</finalName>
                 </configuration>
                 <executions>
                     <execution>

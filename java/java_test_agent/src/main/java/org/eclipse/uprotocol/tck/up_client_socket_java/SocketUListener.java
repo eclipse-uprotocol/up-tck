@@ -22,7 +22,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.tck.up_client_socket_java;
+package org.eclipse.uprotocol.tck.up_client_socket_java;
 
 import java.io.IOException;
 import java.io.OutputStream;
