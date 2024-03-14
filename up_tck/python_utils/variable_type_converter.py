@@ -24,11 +24,11 @@
 #
 # -------------------------------------------------------------------------
 
-from uprotocol.proto.upayload_pb2 import UPayloadFormat 
+from uprotocol.proto.upayload_pb2 import UPayloadFormat
 
 def type_converter(type: str, data: str):
     type = type.lower().strip()
-    
+
     if type in ["int", "integer"]:
         return int(data)
     elif type in ["bytes"]:
@@ -39,4 +39,3 @@ def type_converter(type: str, data: str):
         return UPayloadFormat.Value(data)
     else:
         raise ValueError(f"type_converter() doesn't handle type {type}")
-    

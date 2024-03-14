@@ -28,7 +28,6 @@
 from typing import Dict, List
 import socket
 from threading import Thread
-import sys
 
 from google.protobuf.any_pb2 import Any
 from concurrent.futures import Future

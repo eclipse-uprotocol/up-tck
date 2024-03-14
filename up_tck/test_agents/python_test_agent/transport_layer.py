@@ -24,12 +24,9 @@
 #
 # -------------------------------------------------------------------------
 
-import sys
 from concurrent.futures import Future
 
-from uprotocol.proto.uattributes_pb2 import UAttributes
 from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.proto.uri_pb2 import UEntity
 from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.proto.umessage_pb2 import UMessage
@@ -87,6 +84,6 @@ class TransportLayer:
 
     def unregister_listener(self, topic: UUri, listener: UListener) -> UStatus:
         return self.__instance.unregister_listener(topic, listener)
-    
+
     def invoke_method(self, topic: UUri, payload: UPayload, options: CallOptions) -> Future:
         return self.__instance.invoke_method(topic, payload, options)

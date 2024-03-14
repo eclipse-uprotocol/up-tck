@@ -25,7 +25,6 @@
 # -------------------------------------------------------------------------
 
 import socket
-import sys
 import threading
 from concurrent.futures import Future
 from typing import Dict
@@ -49,7 +48,7 @@ from up_tck.python_utils.socket_message_processing_utils import (send_socket_dat
     convert_bytes_to_string, convert_json_to_jsonstring, convert_jsonstring_to_json, convert_str_to_bytes, \
     protobuf_to_base64, base64_to_protobuf_bytes, is_json_message, create_json_message)
 from up_tck.python_utils.constants import SEND_COMMAND, REGISTER_LISTENER_COMMAND, \
-    UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND, COMMANDS, SERIALIZERS
+    UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND, COMMANDS
 from up_tck.python_utils.logger import logger
 
 
@@ -60,7 +59,7 @@ class SocketTestAgent:
         Idea: acts as validator to validate data sent in up-client-socket-xxx
         @param test_clientsocket: socket connection to Test Manager
         @param utransport: actual implementation transportation medium (ex: Zenoh, UTransport, or Binder etc)
-        @param listener: handler for a topic received 
+        @param listener: handler for a topic received
         """
         # Socket Connection to Dispatcher
         self.utransport: TransportLayer = utransport
@@ -77,7 +76,7 @@ class SocketTestAgent:
 
     def receive_from_tm(self, listener: UListener):
         """
-        Listening thread that receives UMessages from Test Manager 
+        Listening thread that receives UMessages from Test Manager
         @param listener: UListener that reacts to a UMessage for a specific topic Uuri
         """
         while True:
@@ -88,28 +87,28 @@ class SocketTestAgent:
                 self.clientsocket.close()
                 return
 
-            if is_json_message(recv_data): 
+            if is_json_message(recv_data):
                 self._handle_json_message(recv_data, listener)
-                
-            
+
+
     def _handle_json_message(self, recv_data: bytes, listener: UListener):
-        json_str: str = convert_bytes_to_string(recv_data) 
-        json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str) 
+        json_str: str = convert_bytes_to_string(recv_data)
+        json_msg: Dict[str, str] = convert_jsonstring_to_json(json_str)
 
         if json_msg["action"] in COMMANDS:
             self._handle_command_json(json_msg, listener)
-    
-        
+
+
     def _handle_command_json(self, json_msg: Dict[str, str], listener: UListener):
         action: str = json_msg["action"]
         umsg_base64: str = json_msg["message"]
-        protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)  
-        
+        protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)
+
         received_proto: UMessage = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), UMessage)
         logger.info('action: ' + action)
         logger.info("received_proto: ")
         logger.info(received_proto)
-        
+
         source: UUri = received_proto.attributes.source
         payload: UPayload = received_proto.payload
         status: UStatus = None
@@ -121,29 +120,29 @@ class SocketTestAgent:
             status = self.utransport.unregister_listener(received_proto.attributes.source, listener)
         elif action == INVOKE_METHOD_COMMAND:
             future_umsg: Future = self.utransport.invoke_method(source, payload, CallOptions())
-            
+
             # Need to have service that sends data back above
             # Currently the Test Agent is the Client_door, and can act as service
-            status = UStatus(code=UCode.OK, message="OK") 
+            status = UStatus(code=UCode.OK, message="OK")
         self.send(status)
-        
+
         if action == INVOKE_METHOD_COMMAND:
             # Wait for response, and if havent gotten response in 10 sec then continue
-            
+
             # When got response, sub/reg waits until Future is completed/filled
             logger.info("Waiting for future UMessage")
             start_time = time.time()
             wait_time_secs = 10.0
             while not future_umsg.done() and time.time() - start_time < wait_time_secs:
                 continue
-            
+
             if future_umsg.done():
                 umsg: UMessage = future_umsg.result()
                 self.utransport.register_listener(umsg.attributes.source, listener)
                 logger.info("----invoke_method registered----")
             else:
                 logger.warn("----invoke_method Failed to register----")
-            
+
 
     @dispatch(UUri, UPayload, UAttributes)
     def send(self, topic: UUri, payload: UPayload, attributes: UAttributes):
@@ -156,7 +155,7 @@ class SocketTestAgent:
 
         if topic is not None:
             attributes.source.CopyFrom(topic)
-        
+
         umsg: UMessage = UMessage(attributes=attributes, payload=payload)
 
         json_message = create_json_message("send", protobuf_to_base64(umsg) )
@@ -166,7 +165,7 @@ class SocketTestAgent:
     @dispatch(UStatus)
     def send(self, status: UStatus):
         """
-        Sends UStatus to Test Manager 
+        Sends UStatus to Test Manager
         @param status: the reply after receiving a message
         """
         json_message = create_json_message("uStatus", protobuf_to_base64(status) )
@@ -182,7 +181,7 @@ class SocketTestAgent:
         json_message_str: str = convert_json_to_jsonstring(json_message)
 
         message: bytes = convert_str_to_bytes(json_message_str)
-        
+
         send_socket_data(self.clientsocket, message)
         logger.info(f"Sent to TM {message}")
 

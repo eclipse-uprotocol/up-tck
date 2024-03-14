@@ -93,10 +93,10 @@ def before_all(context):
     """
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
-    
-    # create global json data storage 
+
+    # create global json data storage
     context.initialized_data = {}
-    
+
     # create global received response status storage
     sdk_to_status: Dict[str, UStatus] = {}
     context.sdk_to_status = sdk_to_status

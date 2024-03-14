@@ -26,12 +26,10 @@
 
 # -*- coding: UTF-8 -*-
 
-import os
 import logging
 import time
 
 from logging.config import dictConfig
-from time import strftime
 
 # Log folder directory
 LOG_DIR = "logs"

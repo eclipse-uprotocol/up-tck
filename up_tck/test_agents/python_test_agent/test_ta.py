@@ -25,10 +25,8 @@
 # -------------------------------------------------------------------------
 
 import socket
-import sys
 
 from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.proto.uattributes_pb2 import UAttributes, UMessageType
 from uprotocol.proto.uri_pb2 import UUri
@@ -72,15 +70,15 @@ class SocketUListener(UListener):
 
         logger.info("Sending onReceive msg to Test Manager Directly!")
         send_socket_data(self.test_manager_conn, message)
-        
+
         # when invoke method is called  w/ a type Request UMessage, we handle and respond w a UMsg directly in SocketUTransport
         if umsg.attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
-            topic: UUri = umsg.attributes.source 
+            topic: UUri = umsg.attributes.source
             payload: UPayload = umsg.payload
             attributes: UAttributes = umsg.attributes
-            
+
             attributes = UAttributesBuilder(topic, attributes.id, UMessageType.UMESSAGE_TYPE_RESPONSE, attributes.priority).withReqId(attributes.id).build()
-            
+
             transport = TransportLayer()
             msg = UMessage(attributes=attributes, payload=payload)
             transport.send(msg)

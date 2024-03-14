@@ -89,7 +89,7 @@ class Dispatcher:
 
         self.__writer_priority_write_sockets(self.__save_socket, socket_utransport)
 
-        # Never wait for the operation to complete. 
+        # Never wait for the operation to complete.
         # So when call send(), it will put as much data in the buffer as possible and return.
         socket_utransport.setblocking(False)
         # Register client socket so selector can monitor for incoming TA data and calls provided callback()
@@ -109,7 +109,7 @@ class Dispatcher:
 
         Args:
             write_func (Callable): save or close/remove sockets
-            socket_utransport (socket.socket): 
+            socket_utransport (socket.socket):
         """
         with self.count_writers_lock:
             if self.num_writers == 0:
@@ -117,7 +117,7 @@ class Dispatcher:
             self.num_writers += 1
 
         with self.access_clients_lock:
-            write_func(socket_utransport)  # writing 
+            write_func(socket_utransport)  # writing
 
         with self.count_writers_lock:
             self.num_writers -= 1
@@ -166,7 +166,7 @@ class Dispatcher:
             data (bytes): data sent
         """
         for peer_addr, peer_socket in self.utransport_clients.items():
-            # Send if peer client is connected... 
+            # Send if peer client is connected...
             try:
                 peer_socket.sendall(data)
 

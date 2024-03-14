@@ -77,7 +77,7 @@ def convert_str_to_bytes(string: str) -> bytes:
 
 def is_close_socket_signal(received_data: bytes) -> bool:
     return received_data == b''
-    
+
 def is_serialized_protobuf(received_data: bytes, protobuf_class=UUri) -> bool:
     try:
         RpcMapper.unpack_payload(Any(value=received_data), protobuf_class)
@@ -86,8 +86,8 @@ def is_serialized_protobuf(received_data: bytes, protobuf_class=UUri) -> bool:
         return False
 
 def is_json_message(received_data: bytes) -> bool:
-    json_str: str = convert_bytes_to_string(received_data) 
-    
+    json_str: str = convert_bytes_to_string(received_data)
+
     return "{" in json_str and "}" in json_str and ":" in json_str and (("\"action\"" in json_str and "\"message\"" in json_str) or ("\"SDK_name\"" in json_str))
 
 def is_serialized_string(received_data: bytes) -> bool:
@@ -99,5 +99,5 @@ def create_json_message(action: str, message: str) -> Dict[str, str]:
         "action": action,
         "message": message
     }
-    
+
     return json

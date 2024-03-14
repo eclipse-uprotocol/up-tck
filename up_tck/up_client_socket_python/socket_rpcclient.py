@@ -23,7 +23,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
-import sys
 import socket
 from concurrent.futures import Future, ThreadPoolExecutor
 
