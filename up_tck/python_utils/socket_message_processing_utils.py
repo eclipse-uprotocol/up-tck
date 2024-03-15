@@ -91,7 +91,7 @@ def is_json_message(received_data: bytes) -> bool:
     json_str: str = convert_bytes_to_string(received_data)
 
     return "{" in json_str and "}" in json_str and ":" in json_str and \
-          (("\"action\"" in json_str and "\"message\"" in json_str) or ("\"SDK_name\"" in json_str))
+           (("\"action\"" in json_str and "\"message\"" in json_str) or ("\"SDK_name\"" in json_str))
 
 
 def is_serialized_string(received_data: bytes) -> bool:

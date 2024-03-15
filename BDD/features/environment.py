@@ -141,6 +141,11 @@ def after_all(context: Context):
 
     test_manager.close()
 
+    if sys.platform == "linux" or sys.platform == "linux2":
+        dispatcher.close()
+        os.system("killall -9 python3")
+        os.system("killall -9 java")
+
     try:
         context.java_ta_process.kill()
         context.java_ta_process.communicate()

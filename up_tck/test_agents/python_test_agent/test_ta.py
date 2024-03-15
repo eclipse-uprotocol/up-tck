@@ -31,7 +31,7 @@ from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.proto.uattributes_pb2 import UAttributes, UMessageType
 from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.transport.ulistener import UListener
-from uprotocol.transport.builder.uattributesbuilder import  UAttributesBuilder
+from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 
 from up_tck.test_agents.python_test_agent.testagent import SocketTestAgent
 from up_tck.test_agents.python_test_agent.transport_layer import TransportLayer
@@ -70,17 +70,19 @@ class SocketUListener(UListener):
         logger.info("Sending onReceive msg to Test Manager Directly!")
         send_socket_data(self.test_manager_conn, message)
 
-        # when invoke method is called  w/ a type Request UMessage, we handle and respond w a UMsg directly in SocketUTransport
+        # when invoke method is called  w/ a type Request UMessage, send a response to the TM
         if umsg.attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
             topic: UUri = umsg.attributes.source
             payload: UPayload = umsg.payload
             attributes: UAttributes = umsg.attributes
 
-            attributes = UAttributesBuilder(topic, attributes.id, UMessageType.UMESSAGE_TYPE_RESPONSE, attributes.priority).withReqId(attributes.id).build()
+            attributes = UAttributesBuilder(topic, attributes.id, UMessageType.UMESSAGE_TYPE_RESPONSE,
+                                            attributes.priority).withReqId(attributes.id).build()
 
             transport = TransportLayer()
             msg = UMessage(attributes=attributes, payload=payload)
             transport.send(msg)
+
 
 if __name__ == "__main__":
 

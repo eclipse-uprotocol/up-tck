@@ -57,7 +57,7 @@ def begin_test(context, sdk_name: str, command: str):
 
 
 @given('sets "{uattr}" creates publish message with parameter source equal to created protobuf "{value}"')
-def initialize_protobuf(context, uattr: str, value: str):
+def initialize_attribute_protobuf(context, uattr: str, value: str):
     value: Any = context.initialized_data[value]
 
     new_builder: UAttributesBuilder = UAttributesBuilder.publish(value, UPriority.UPRIORITY_CS1)
@@ -66,8 +66,8 @@ def initialize_protobuf(context, uattr: str, value: str):
 
 
 @given('sets "{field}" field "{param}" equal to "{type}" "{value}"')
-def initialize_protobuf(context, field: str, param: str, type: str, value: str):
-    
+def initialize_generic_protobuf(context, field: str, param: str, type: str, value: str):
+
     proto_matchers = {
         "upayload": UPayload(),
         "uattributes": UAttributes(),
@@ -76,7 +76,7 @@ def initialize_protobuf(context, field: str, param: str, type: str, value: str):
         "uresource": UResource(),
         "uentity": UEntity()
     }
-    
+
     if field not in context.initialized_data:
         context.initialized_data[field] = proto_matchers[field]
 
@@ -92,7 +92,7 @@ def initialize_protobuf(context, field: str, param: str, type: str, value: str):
 @when('Test Agent "{sdk_name}" executes "{command}" on given UUri')
 def tm_sends_request(context, command: str, sdk_name: str):
     command = command.lower().strip()
-    umsg : UMessage = UMessage()
+    umsg: UMessage = UMessage()
 
     if command in [REGISTER_LISTENER_COMMAND, UNREGISTER_LISTENER_COMMAND]:
         uuri: UUri = context.initialized_data["source"]
@@ -112,7 +112,6 @@ def tm_sends_request(context, command: str, sdk_name: str):
         set_umessage_fields(umsg, "attributes", attributes)
         set_umessage_fields(umsg, "payload", upayload)
 
-
     # Wait until TA is connected
     while not context.tm.has_sdk_connection(sdk_name):
         continue
@@ -131,14 +130,14 @@ def tm_sends_request(context, command: str, sdk_name: str):
 def tm_receives_response(context, status_code: str, sdk_name: str):
     response_status: UStatus = context.sdk_to_status[sdk_name]
     if response_status is None:
-        raise ValueError(f"Request did not receive a response UStatus")
+        raise ValueError("Request did not receive a response UStatus")
 
     status_code = status_code.lower().strip()
     if status_code == "ok":
         assert_that(response_status.code, equal_to(UCode.OK))
 
     # Reset status variable
-    context.sdk_to_status[sdk_name] =  None
+    context.sdk_to_status[sdk_name] = None
 
 
 @then('Test Agent "{sdk_name}" builds OnReceive UMessage with parameter UPayload "{param}" with parameter "{inner_param}" as "{expected}"')
