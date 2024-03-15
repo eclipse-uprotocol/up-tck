@@ -47,6 +47,7 @@ from uprotocol.transport.ulistener import UListener
 
 import signal
 
+PYTHON_TA_PATH = "/up_tck/test_agents/python_test_agent/test_ta.py"
 JAVA_TA_PATH = "/up_tck/test_agents/java_test_agent/target/tck-test-agent-java-jar-with-dependencies.jar"
 
 def get_git_root():
@@ -124,12 +125,16 @@ def before_all(context):
 
     context.logger.info("Created Test Manager...")
 
-    transport = TransportLayer()
-    context.test_agent_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    context.test_agent_socket.connect(TEST_MANAGER_ADDR)
-    listener: UListener = SocketUListener(context.test_agent_socket)
-    agent = SocketTestAgent(context.test_agent_socket, transport, listener)
-    agent.send_to_TM({'SDK_name': "python"})
+    # transport = TransportLayer()
+    # context.test_agent_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # context.test_agent_socket.connect(TEST_MANAGER_ADDR)
+    # listener: UListener = SocketUListener(context.test_agent_socket)
+    # agent = SocketTestAgent(context.test_agent_socket, transport, listener)
+    # agent.send_to_TM({'SDK_name': "python"})
+
+    command = create_command(PYTHON_TA_PATH)
+    process: subprocess.Popen = create_subprocess(command)
+    context.python_ta_process = process
 
     command = create_command(JAVA_TA_PATH)
     process: subprocess.Popen = create_subprocess(command)
@@ -150,11 +155,12 @@ def after_all(context: Context):
     test_manager.close_ta_socket("java")
 
     test_manager.close()
+    dispatcher.close()
 
     try:
         context.java_ta_process.kill()
         context.java_ta_process.communicate()
-        dispatcher.close()
-        context.test_agent_socket.close()
+        context.python_ta_process.kill()
+        context.python_ta_process.communicate()
     except Exception as e:
         context.logger.error(e)

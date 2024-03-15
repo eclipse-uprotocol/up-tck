@@ -33,11 +33,12 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.builder.uattributesbuilder import  UAttributesBuilder
 
-
+from up_tck.test_agents.python_test_agent.testagent import SocketTestAgent
 from up_tck.test_agents.python_test_agent.transport_layer import TransportLayer
 from up_tck.python_utils.socket_message_processing_utils import convert_json_to_jsonstring, \
     convert_str_to_bytes, protobuf_to_base64, send_socket_data, create_json_message
 from up_tck.python_utils.logger import logger
+from up_tck.python_utils.constants import TEST_MANAGER_ADDR
 
 
 class SocketUListener(UListener):
@@ -80,3 +81,16 @@ class SocketUListener(UListener):
             transport = TransportLayer()
             msg = UMessage(attributes=attributes, payload=payload)
             transport.send(msg)
+
+if __name__ == "__main__":
+
+    transport = TransportLayer()
+
+    test_agent_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    test_agent_socket.connect(TEST_MANAGER_ADDR)
+
+    listener: UListener = SocketUListener(test_agent_socket)
+
+    agent = SocketTestAgent(test_agent_socket, transport, listener)
+
+    agent.send_to_TM({'SDK_name': "python"})
