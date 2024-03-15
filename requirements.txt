@@ -1,0 +1,6 @@
+behave >= 1.2.6
+behave-html-formatter
+psutil
+PyHamcrest
+multimethod
+up-python==0.1.1-dev0
