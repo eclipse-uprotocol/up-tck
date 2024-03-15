@@ -65,11 +65,15 @@ class SocketTestManager():
             port (int): Test Manager's port number
             utransport (TransportLayer): Real message passing medium (sockets)
         """
+
+        logger.info("Beginning Test Manager...")
+
         self.received_umessage: UMessage = None
 
         self.exit_manager = False
 
         #saves onreceives based on received order
+        logger.info("Initializing Test Manager Maps...")
         self.sdk_to_received_onreceives: Dict[str, Deque[UMessage] ]= defaultdict(deque)
         self.sdk_to_received_onreceives_lock = threading.Lock()
 
@@ -82,18 +86,25 @@ class SocketTestManager():
 
         self.sock_addr_to_sdk: Dict[tuple[str, int], str] = defaultdict(str)
 
+        logger.info("Initializing Test Manager Maps...Done")
+        logger.info("Creating Test Manager Server Socket...")
         # Creates test manager socket server so it can accept connections from Test Agents.
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Binds to socket server.
+        logger.info(f"Binding to {ip_addr}:{port}")
         self.server.bind((ip_addr, port))
         # Puts the socket into listening mode.
+        logger.info("Listening for incoming connections...")
         self.server.listen(100)
 
+        logger.info("Setting server to non-blocking...")
         self.server.setblocking(False)
 
         # Selector allows high-level and efficient I/O multiplexing, built upon the select module primitives.
+        logger.info("Creating Selector...")
         self.selector = selectors.DefaultSelector()
         # Register server socket so selector can monitor for incoming client conn. and calls provided callback()
+        logger.info("Registering server socket...")
         self.selector.register(self.server, selectors.EVENT_READ, self.__accept)
 
     def __accept(self, server: socket.socket):
