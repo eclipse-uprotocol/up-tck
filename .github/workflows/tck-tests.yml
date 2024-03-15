@@ -46,6 +46,7 @@ jobs:
     - name: TCK Behave Tests
       run: |
           behave  --format json --outfile ./BDD/reports/send_report.json --format plain --outfile ./BDD/reports/send_report.txt ./BDD/features/tests/send.feature
+          ps -ef
           behave  --format json --outfile ./BDD/reports/register_listener_report.json --format plain --outfile ./BDD/reports/register_listener_report.txt ./BDD/features/tests/register_listener.feature
           behave  --format json --outfile ./BDD/reports/invoke_method_report.json --format plain --outfile ./BDD/reports/invoke_method_report.txt ./BDD/features/tests/invoke_method.feature
 
