@@ -152,12 +152,8 @@ def after_all(context: Context):
     context.test_agent_socket.close()
 
     try:
-
         context.java_ta_process.kill()
         context.java_ta_process.communicate()
-        context.python_ta_process.kill()
-        context.python_ta_process.communicate()
-
         pass
     except Exception as e:
         context.logger.error(e)
