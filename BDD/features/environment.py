@@ -84,7 +84,7 @@ def create_subprocess(command: List[str]) -> subprocess.Popen:
     if sys.platform == "win32":
         process = subprocess.Popen(command, shell=True)
     elif sys.platform == "linux" or sys.platform == "linux2":
-        process = subprocess.Popen(command, preexec_fn=os.setsid)
+        process = subprocess.Popen(command)
     else:
         raise Exception("only handle Windows and Linux commands for now")
     return process
@@ -152,13 +152,9 @@ def after_all(context: Context):
     test_manager.close()
 
     try:
-        if sys.platform == "linux" or sys.platform == "linux2":
-            os.killpg(os.getpgid(context.java_ta_process.pid), signal.SIGHUP)
-            os.killpg(os.getpgid(context.java_ta_process.pid), signal.SIGTERM)
-            dispatcher.close()
-            context.test_agent_socket.close()
-        elif sys.platform == "win32":
-            context.java_ta_process.kill()
-            context.java_ta_process.communicate()
+        context.java_ta_process.kill()
+        context.java_ta_process.communicate()
+        dispatcher.close()
+        context.test_agent_socket.close()
     except Exception as e:
         context.logger.error(e)

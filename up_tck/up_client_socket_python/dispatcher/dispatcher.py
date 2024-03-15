@@ -93,8 +93,6 @@ class Dispatcher:
         self.dispatcher_exit = True
         self.selector.close()
         self.server.close()
-        for client_socket in self.utransport_clients.values():
-            client_socket.close()
 
     def __accept_client_conn(self, server: socket.socket):
         socket_utransport, addr = server.accept()
