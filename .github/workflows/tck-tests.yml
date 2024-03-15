@@ -77,7 +77,7 @@ jobs:
               for (var prop in json_list[i][0]){
                 core.info(prop + " = " + json_list[i][0][prop])
               }
-              if (json_list[i].status != "passed") {
+              if (json_list[i][0].status != "passed") {
                 core.setFailed("One or more features failed")
                 core.error("Feature:" + json_list[i][0].name + " failed")
               } else{
