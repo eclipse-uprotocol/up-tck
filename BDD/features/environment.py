@@ -28,20 +28,20 @@ import subprocess
 import sys
 import time
 from threading import Thread
-from typing import List
+from typing import Dict, List
 import os
 import git
-
 from behave.runner import Context
 from utils import loggerutils
 
-sys.path.append("../")
+from up_tck.test_manager.testmanager import SocketTestManager
+from up_tck.up_client_socket_python.dispatcher.dispatcher import Dispatcher
 
-from python.test_manager.testmanager import SocketTestManager
+from uprotocol.proto.ustatus_pb2 import UStatus
 
+PYTHON_TA_PATH = "/up_tck/test_agents/python_test_agent/test_ta.py"
+JAVA_TA_PATH = "/up_tck/test_agents/java_test_agent/target/tck-test-agent-java-jar-with-dependencies.jar"
 
-PYTHON_TA_PATH = "/python/examples/tck_interoperability/test_socket_ta.py"
-JAVA_TA_PATH = "/java/java_test_agent/target/tck-test-agent-java-jar-with-dependencies.jar"
 
 def get_git_root():
     curr_path = os.getcwd()
@@ -56,14 +56,6 @@ def create_file_path(filepath_from_root_repo: str) -> str:
 
 def create_command(filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []
-
-    if sys.platform == "win32":
-        pass
-    elif sys.platform == "linux" or sys.platform == "linux2":
-        command.append('gnome-terminal')
-        command.append('--')
-    else:
-        raise Exception("only handle Windows and Linux commands for now")
 
     if filepath_from_root_repo.endswith('.jar'):
         command.append("java")
@@ -104,8 +96,17 @@ def before_all(context):
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
-    command = create_command("/python/dispatcher/dispatcher.py")
-    process: subprocess.Popen = create_subprocess(command)
+    # create global json data storage
+    context.initialized_data = {}
+
+    # create global received response status storage
+    sdk_to_status: Dict[str, UStatus] = {}
+    context.sdk_to_status = sdk_to_status
+
+    dispatcher = Dispatcher()
+    thread = Thread(target=dispatcher.listen_for_client_connections)
+    thread.start()
+    context.dispatcher = dispatcher
 
     context.logger.info("Created Dispatcher...")
     time.sleep(5)
@@ -129,6 +130,9 @@ def before_all(context):
 
 
 def after_all(context: Context):
+    # bandaid on race condition between onReceive mesg Test vs. closing sockets
+    time.sleep(3)
+
     # Closes sockets and releases memory
     test_manager: SocketTestManager = context.tm
 
@@ -137,13 +141,15 @@ def after_all(context: Context):
 
     test_manager.close()
 
-    try:
+    if sys.platform == "linux" or sys.platform == "linux2":
+        context.dispatcher.close()
+        os.system("killall -9 python3")
+        os.system("killall -9 java")
 
+    try:
         context.java_ta_process.kill()
         context.java_ta_process.communicate()
         context.python_ta_process.kill()
         context.python_ta_process.communicate()
-
-        pass
     except Exception as e:
         context.logger.error(e)

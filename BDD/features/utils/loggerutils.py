@@ -26,12 +26,10 @@
 
 # -*- coding: UTF-8 -*-
 
-import os
 import logging
 import time
 
 from logging.config import dictConfig
-from time import strftime
 
 # Log folder directory
 LOG_DIR = "logs"
@@ -42,36 +40,36 @@ LOG_SETTINGS = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'formatted_console': {
-            'class': 'logging.StreamHandler',
-            'level': 'INFO',
-            'formatter': 'detailed',
-            'stream': 'ext://sys.stdout',
-        },
-        'formatted_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'level': 'INFO',
-            'formatter': 'detailed',
-            'filename': "logs" + os.path.sep + "uitests_" + strftime("%Y-%m-%d_%H_%M_%S") + ".log",
-            'mode': 'a',
-            'maxBytes': 10485760,
-            'backupCount': 5,
-        },
-        'unformatted_console': {
-            'class': 'logging.StreamHandler',
-            'level': 'INFO',
-            'formatter': 'blank',
-            'stream': 'ext://sys.stdout',
-        },
-        'unformatted_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'level': 'INFO',
-            'formatter': 'blank',
-            'filename': "logs" + os.path.sep + "uitests_" + strftime("%Y-%m-%d_%H_%M_%S") + ".log",
-            'mode': 'a',
-            'maxBytes': 10485760,
-            'backupCount': 5,
-        },
+        # 'formatted_console': {
+        #     'class': 'logging.StreamHandler',
+        #     'level': 'INFO',
+        #     'formatter': 'detailed',
+        #     'stream': 'ext://sys.stdout',
+        # },
+        # 'formatted_file': {
+        #     'class': 'logging.handlers.RotatingFileHandler',
+        #     'level': 'INFO',
+        #     'formatter': 'detailed',
+        #     'filename': "logs" + os.path.sep + "uitests_" + strftime("%Y-%m-%d_%H_%M_%S") + ".log",
+        #     'mode': 'a',
+        #     'maxBytes': 10485760,
+        #     'backupCount': 5,
+        # },
+        # 'unformatted_console': {
+        #     'class': 'logging.StreamHandler',
+        #     'level': 'INFO',
+        #     'formatter': 'blank',
+        #     'stream': 'ext://sys.stdout',
+        # },
+        # 'unformatted_file': {
+        #     'class': 'logging.handlers.RotatingFileHandler',
+        #     'level': 'INFO',
+        #     'formatter': 'blank',
+        #     'filename': "logs" + os.path.sep + "uitests_" + strftime("%Y-%m-%d_%H_%M_%S") + ".log",
+        #     'mode': 'a',
+        #     'maxBytes': 10485760,
+        #     'backupCount': 5,
+        # },
     },
     'formatters': {
         'detailed': {
@@ -82,14 +80,14 @@ LOG_SETTINGS = {
         },
     },
     'loggers': {
-        'formatted_log': {
-                'level': 'DEBUG',
-                'handlers': ['formatted_file', 'formatted_console']
-            },
-        'unformatted_log': {
-            'level': 'DEBUG',
-            'handlers': ['unformatted_file', 'unformatted_console']
-        },
+        # 'formatted_log': {
+        #         'level': 'DEBUG',
+        #         'handlers': ['formatted_file', 'formatted_console']
+        #     },
+        # 'unformatted_log': {
+        #     'level': 'DEBUG',
+        #     'handlers': ['unformatted_file', 'unformatted_console']
+        # },
     }
 }
 
