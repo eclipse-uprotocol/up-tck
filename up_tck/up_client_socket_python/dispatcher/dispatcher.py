@@ -23,6 +23,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
+from up_tck.python_utils.constants import DISPATCHER_ADDR
+from up_tck.python_utils.socket_message_processing_utils import receive_socket_data
+from up_tck.python_utils.logger import logger
 import selectors
 import socket
 import sys
@@ -33,12 +36,6 @@ import git
 
 repo = git.Repo('.', search_parent_directories=True)
 sys.path.append(repo.working_tree_dir)
-
-from up_tck.python_utils.logger import logger
-
-from up_tck.python_utils.socket_message_processing_utils import receive_socket_data
-
-from up_tck.python_utils.constants import DISPATCHER_ADDR
 
 
 class Dispatcher:
@@ -72,7 +69,8 @@ class Dispatcher:
         self.selector = selectors.DefaultSelector()
         # Register server socket so selector can monitor for incoming client conn. and calls provided callback() in
         # listen_for_client_connections()
-        self.selector.register(self.server, selectors.EVENT_READ, self.__accept_client_conn)
+        self.selector.register(
+            self.server, selectors.EVENT_READ, self.__accept_client_conn)
 
     def listen_for_client_connections(self):
         """
@@ -98,13 +96,15 @@ class Dispatcher:
         socket_utransport, addr = server.accept()
         logger.info(f'accepted conn. {addr}')
 
-        self.__writer_priority_write_sockets(self.__save_socket, socket_utransport)
+        self.__writer_priority_write_sockets(
+            self.__save_socket, socket_utransport)
 
         # Never wait for the operation to complete.
         # So when call send(), it will put as much data in the buffer as possible and return.
         socket_utransport.setblocking(False)
         # Register client socket so selector can monitor for incoming TA data and calls provided callback()
-        self.selector.register(socket_utransport, selectors.EVENT_READ, self.__receive_from_socketutransport)
+        self.selector.register(
+            socket_utransport, selectors.EVENT_READ, self.__receive_from_socketutransport)
 
     def __save_socket(self, socket_utransport: socket.socket):
         """saves newly connected Socket UTransport client sockets
@@ -142,7 +142,8 @@ class Dispatcher:
         utransport_addr: Tuple[str, int] = socket_utransport.getpeername()
         logger.info(f"closing socket {utransport_addr}")
 
-        client_socket: socket.socket = self.utransport_clients.pop(utransport_addr, None)
+        client_socket: socket.socket = self.utransport_clients.pop(
+            utransport_addr, None)
 
         if client_socket:
             client_socket.close()
@@ -186,7 +187,8 @@ class Dispatcher:
                 logger.error(f"Peer socket exception: {i_e}")
 
                 # queues close socket thru mutex
-                self.__writer_priority_write_sockets(self.__close_socket, peer_socket)
+                self.__writer_priority_write_sockets(
+                    self.__close_socket, peer_socket)
 
     def __receive_from_socketutransport(self, utransport: socket.socket):
         """floods incoming data from one client to every connected clients
@@ -200,7 +202,8 @@ class Dispatcher:
         if recv_data == b"":
             logger.info(f"received empty data: {recv_data}")
             try:
-                self.__writer_priority_write_sockets(self.__close_socket, utransport)
+                self.__writer_priority_write_sockets(
+                    self.__close_socket, utransport)
 
             except OSError as oserr:
                 logger.error(oserr)

@@ -43,6 +43,7 @@ from up_tck.python_utils.socket_message_processing_utils import receive_socket_d
 
 from up_tck.python_utils.logger import logger
 
+
 class SocketTestManager():
     """
     Validates data received from Test Agent
@@ -57,6 +58,7 @@ class SocketTestManager():
     message passing is blocking/sychronous
 
     """
+
     def __init__(self, ip_addr: str, port: int) -> None:
         """Starts Test Manager by creating the server and accepting Test Agent client socket connections
 
@@ -72,16 +74,19 @@ class SocketTestManager():
 
         self.exit_manager = False
 
-        #saves onreceives based on received order
+        # saves onreceives based on received order
         logger.info("Initializing Test Manager Maps...")
-        self.sdk_to_received_onreceives: Dict[str, Deque[UMessage] ]= defaultdict(deque)
+        self.sdk_to_received_onreceives: Dict[str,
+                                              Deque[UMessage]] = defaultdict(deque)
         self.sdk_to_received_onreceives_lock = threading.Lock()
 
         # Bc every sdk connection is unqiue, map the socket connection.
-        self.sdk_to_test_agent_socket: Dict[str, socket.socket] = defaultdict(socket.socket)
+        self.sdk_to_test_agent_socket: Dict[str, socket.socket] = defaultdict(
+            socket.socket)
         self.sdk_to_test_agent_socket_lock = threading.Lock()
 
-        self.sdk_to_received_ustatus: Dict[str, UStatus] = defaultdict(lambda: None)  # maybe thread safe
+        self.sdk_to_received_ustatus: Dict[str, UStatus] = defaultdict(
+            lambda: None)  # maybe thread safe
         self.sdk_to_received_ustatus_lock = threading.Lock()
 
         self.sock_addr_to_sdk: Dict[tuple[str, int], str] = defaultdict(str)
@@ -105,7 +110,8 @@ class SocketTestManager():
         self.selector = selectors.DefaultSelector()
         # Register server socket so selector can monitor for incoming client conn. and calls provided callback()
         logger.info("Registering server socket...")
-        self.selector.register(self.server, selectors.EVENT_READ, self.__accept)
+        self.selector.register(
+            self.server, selectors.EVENT_READ, self.__accept)
 
     def __accept(self, server: socket.socket):
         """Accepts Test Agent client socket connect requests and listens for incoming data from the new TA conn.
@@ -120,7 +126,8 @@ class SocketTestManager():
         # So when call send(), it will put as much data in the buffer as possible and return.
         ta_socket.setblocking(False)
         # Register client socket so selector can monitor for incoming TA data and calls provided callback()
-        self.selector.register(ta_socket, selectors.EVENT_READ, self.__receive_from_test_agent)
+        self.selector.register(
+            ta_socket, selectors.EVENT_READ, self.__receive_from_test_agent)
 
     def __receive_from_test_agent(self, ta_socket):
         """handles incoming json data from Test Agent
@@ -148,9 +155,11 @@ class SocketTestManager():
             json_str: str = convert_bytes_to_string(recv_data)
 
             # In case if json messages are concatenated, we are splitting the json data and handling it separately
-            data_within_json : List[str]= re.findall('{(.+?)}', json_str)  # {json, action: ..., messge: "...."}{json, action: status messge: "...."}
+            # {json, action: ..., messge: "...."}{json, action: status messge: "...."}
+            data_within_json: List[str] = re.findall('{(.+?)}', json_str)
             for recv_json_data in data_within_json:
-                json_msg: Dict[str, str] = convert_jsonstring_to_json("{" + recv_json_data + "}")
+                json_msg: Dict[str, str] = convert_jsonstring_to_json(
+                    "{" + recv_json_data + "}")
                 self.__handle_recv_json_message(json_msg, ta_socket)
 
             return
@@ -186,28 +195,35 @@ class SocketTestManager():
         if "action" in json_msg and json_msg["action"] == "uStatus":
             # Update status if received UStatus message
             umsg_base64: str = json_msg["message"]
-            protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)
-            status: UStatus = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), UStatus)
+            protobuf_serialized_data: bytes = base64_to_protobuf_bytes(
+                umsg_base64)
+            status: UStatus = RpcMapper.unpack_payload(
+                Any(value=protobuf_serialized_data), UStatus)
 
             self.__save_status(sdk, status)
 
         elif "action" in json_msg and json_msg["action"] == "onReceive":
             # Update status if received UStatus message
             umsg_base64: str = json_msg["message"]
-            protobuf_serialized_data: bytes = base64_to_protobuf_bytes(umsg_base64)
-            onreceive_umsg: UMessage = RpcMapper.unpack_payload(Any(value=protobuf_serialized_data), UMessage)
+            protobuf_serialized_data: bytes = base64_to_protobuf_bytes(
+                umsg_base64)
+            onreceive_umsg: UMessage = RpcMapper.unpack_payload(
+                Any(value=protobuf_serialized_data), UMessage)
 
             with self.sdk_to_received_onreceives_lock:
                 self.sdk_to_received_onreceives[sdk].append(onreceive_umsg)
 
             self.received_umessage = onreceive_umsg
 
-            logger.info("---------------------OnReceive response from Test Agent!----------------------------")
+            logger.info(
+                "---------------------OnReceive response from Test Agent!----------------------------")
             logger.info(onreceive_umsg)
-            logger.info("------------------------------------------------------------------------------------")
+            logger.info(
+                "------------------------------------------------------------------------------------")
 
         else:
-            raise Exception("new client connection didn't initally send sdk name")
+            raise Exception(
+                "new client connection didn't initally send sdk name")
 
     def __save_status(self, sdk_name: str, status: UStatus):
         # NEED SEMAPHORE for each sdk so dont overwrite a status
@@ -243,7 +259,8 @@ class SocketTestManager():
             continue
 
         with self.sdk_to_received_onreceives_lock:
-            onreceive: UMessage = self.sdk_to_received_onreceives[sdk_name].popleft()
+            onreceive: UMessage = self.sdk_to_received_onreceives[sdk_name].popleft(
+            )
 
         return onreceive
 

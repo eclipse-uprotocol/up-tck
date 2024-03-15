@@ -26,6 +26,7 @@
 
 from uprotocol.proto.upayload_pb2 import UPayloadFormat
 
+
 def type_converter(type: str, data: str):
     type = type.lower().strip()
 
