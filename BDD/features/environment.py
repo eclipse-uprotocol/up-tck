@@ -45,6 +45,8 @@ from up_tck.python_utils.constants import TEST_MANAGER_ADDR
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.transport.ulistener import UListener
 
+import signal
+
 JAVA_TA_PATH = "/up_tck/test_agents/java_test_agent/target/tck-test-agent-java-jar-with-dependencies.jar"
 
 def get_git_root():
@@ -82,7 +84,7 @@ def create_subprocess(command: List[str]) -> subprocess.Popen:
     if sys.platform == "win32":
         process = subprocess.Popen(command, shell=True)
     elif sys.platform == "linux" or sys.platform == "linux2":
-        process = subprocess.Popen(command)
+        process = subprocess.Popen(command, preexec_fn=os.setsid)
     else:
         raise Exception("only handle Windows and Linux commands for now")
     return process
@@ -148,12 +150,15 @@ def after_all(context: Context):
     test_manager.close_ta_socket("java")
 
     test_manager.close()
-    dispatcher.close()
-    context.test_agent_socket.close()
 
     try:
-        context.java_ta_process.kill()
-        context.java_ta_process.communicate()
-        pass
+        if sys.platform == "linux" or sys.platform == "linux2":
+            os.killpg(os.getpgid(context.java_ta_process.pid), signal.SIGHUP)
+            os.killpg(os.getpgid(context.java_ta_process.pid), signal.SIGTERM)
+            dispatcher.close()
+            context.test_agent_socket.close()
+        elif sys.platform == "win32":
+            context.java_ta_process.kill()
+            context.java_ta_process.communicate()
     except Exception as e:
         context.logger.error(e)
