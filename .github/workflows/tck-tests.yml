@@ -43,14 +43,10 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: TCK Behave Tests - Send
+    - name: TCK Behave Tests
       run: |
           behave  --format json --outfile ./BDD/reports/send_report.json --format plain --outfile ./BDD/reports/send_report.txt ./BDD/features/tests/send.feature
-    - name: TCK Behave Tests - Register Listener
-      run: |
           behave  --format json --outfile ./BDD/reports/register_listener_report.json --format plain --outfile ./BDD/reports/register_listener_report.txt ./BDD/features/tests/register_listener.feature
-    - name: TCK Behave Tests - Invoke Method
-      run: |
           behave  --format json --outfile ./BDD/reports/invoke_method_report.json --format plain --outfile ./BDD/reports/invoke_method_report.txt ./BDD/features/tests/invoke_method.feature
 
     - name: Print Out Behave Report
