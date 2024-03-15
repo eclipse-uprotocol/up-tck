@@ -51,37 +51,12 @@ from up_tck.python_utils.variable_type_converter import type_converter
 from up_tck.python_utils.constants import SEND_COMMAND, REGISTER_LISTENER_COMMAND, UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND, LONG_URI_SERIALIZE, LONG_URI_DESERIALIZE, MICRO_URI_SERIALIZE, MICRO_URI_DESERIALIZE
 from up_tck.test_manager.testmanager import SocketTestManager
 
+@given('Test Agent "{sdk_name}" begins "{command}" test')
+def begin_test(context, sdk_name: str, command: str):
+    context.logger.info(f"sdk_name: {sdk_name}; command: {command}")
 
-@given('Test Agent sets UEntity "{entity}" field "{param}" equal to "{type}" "{value}"')
-def initialize_protobuf(context, entity: str, param: str, type: str, value: str):
-    if entity not in context.initialized_data:
-        context.initialized_data[entity] = UEntity()  # cant do THIS
 
-    entity: UEntity = context.initialized_data[entity]
-    setattr(entity, param, type_converter(type, value))
-
-@given('Test Agent sets UResource "{resrc}" field "{param}" equal to "{type}" "{value}"')
-def initialize_protobuf(context, resrc: str, param: str, type: str, value: str):
-    if resrc not in context.initialized_data:
-        context.initialized_data[resrc] = UResource()
-
-    resource: UResource = context.initialized_data[resrc]
-
-    setattr(resource, param, type_converter(type, value) )
-
-@given('Test Agent sets UUri "{uuri}" field "{param}" equal to created protobuf "{value}"')
-def initialize_protobuf(context, uuri: str, param: str, value: str):
-    if uuri not in context.initialized_data:
-        context.initialized_data[uuri] = UUri()
-
-        context.initialized_data["source"] = context.initialized_data[uuri]
-
-    uuri: UUri = context.initialized_data[uuri]
-    value: Any = context.initialized_data[value]
-
-    set_uuri_fields(uuri, param, value)
-
-@given('Test Agent sets UAttributes "{uattr}" creates publish message with parameter source equal to created protobuf "{value}"')
+@given('sets "{uattr}" creates publish message with parameter source equal to created protobuf "{value}"')
 def initialize_protobuf(context, uattr: str, value: str):
     value: Any = context.initialized_data[value]
 
@@ -89,16 +64,28 @@ def initialize_protobuf(context, uattr: str, value: str):
     context.initialized_data[uattr] = new_builder
     context.initialized_data["attributes"] = new_builder
 
-@given('Test Agent sets UPayload "{payload}" field "{param}" equal to "{type}" "{value}"')
-def initialize_protobuf(context, payload: str, param: str, type: str, value: str):
-    if payload not in context.initialized_data:
-        context.initialized_data[payload] = UPayload()
+@given('sets "{field}" field "{param}" equal to "{type}" "{value}"')
+def initialize_protobuf(context, field: str, param: str, type: str, value: str):
+    
+    proto_matchers = {
+        "upayload": UPayload(),
+        "uattributes": UAttributes(),
+        "umessage": UMessage(),
+        "uuri": UUri(),
+        "uresource": UResource(),
+        "uentity": UEntity()
+    }
+    
+    if field not in context.initialized_data:
+        context.initialized_data[field] = proto_matchers[field]
 
-        context.initialized_data["payload"] = context.initialized_data[payload]
-
-    payload: UPayload = context.initialized_data[payload]
-
-    setattr(payload, param, type_converter(type, value))
+    if field == "upayload":
+        context.initialized_data["payload"] = context.initialized_data[field]
+    if type == "protobuf" and field == "uuri":
+        context.initialized_data["source"] = context.initialized_data[field]
+        set_uuri_fields(context.initialized_data[field], param, context.initialized_data[value])
+    else:
+        setattr(context.initialized_data[field], param, type_converter(type, value))
 
 
 @when('Test Agent "{sdk_name}" executes "{command}" on given UUri')
@@ -137,30 +124,6 @@ def tm_sends_request(context, command: str, sdk_name: str):
 
     context.logger.info("context.sdk_to_status:")
     context.logger.info(context.sdk_to_status[sdk_name])
-
-
-@when('Test Manager sends "{command}" uri serializer request to Test Agent "{sdk_name}"')
-def tm_sends_uri_serializer_request(context, command: str, sdk_name: str):
-    command = command.lower().strip()
-
-    uuri: UUri = context.initialized_data["source"]
-
-    # Wait until TA is connected
-    while not context.tm.has_sdk_connection(sdk_name):
-        continue
-
-    test_manager: SocketTestManager = context.tm
-
-    if command == LONG_URI_SERIALIZE:
-        translation: str = test_manager.uriserializer_request(sdk_name, command, uuri)
-
-    elif command == LONG_URI_DESERIALIZE:
-        # Input String and TA should respond with UUri proto
-
-        topic_str: str = LongUriSerializer().deserialize(uuri)
-        translation: UUri = test_manager.uriserializer_request(sdk_name, command, topic_str)
-
-    context.translation = translation
 
 @then('Test Agent "{sdk_name}" receives an "{status_code}" status for latest execute')
 def tm_receives_response(context, status_code: str, sdk_name: str):

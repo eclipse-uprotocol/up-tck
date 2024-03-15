@@ -45,8 +45,40 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: TCK Behave Tests
       run: |
-          behave  --format plain --outfile ./BDD/reports/register_and_send_report.txt ./BDD/features/tests/register_and_send.feature
+          behave  --format json --outfile ./BDD/reports/send_report.json --format plain --outfile ./BDD/reports/send_report.txt ./BDD/features/tests/send.feature
+          behave  --format json --outfile ./BDD/reports/register_listener_report.json --format plain --outfile ./BDD/reports/register_listener_report.txt ./BDD/features/tests/register_listener.feature
+          behave  --format json --outfile ./BDD/reports/invoke_method_report.json --format plain --outfile ./BDD/reports/invoke_method_report.txt ./BDD/features/tests/invoke_method.feature
     - name: Print Out Behave Report
       run: |
           cd ./BDD/reports
-          cat register_and_send_report.txt
+          cat send_report.txt
+          cat register_listener_report.txt
+          cat invoke_method_report.txt
+    - name: "Read JSON"
+    uses: actions/github-script@v6
+    id: check-env
+    with:
+      result-encoding: string
+      script: |
+        try {
+          const fs = require('fs')
+          const send_json = fs.readFileSync('./BDD/reports/send_report.json')
+          const register_listener_json = fs.readFileSync('./BDD/reports/register_listener_report.json')
+          const invoke_method_json = fs.readFileSync('./BDD/reports/invoke_method_report.json')
+          const json_list = []
+          json_list.push(JSON.parse(send_json))
+          json_list.push(JSON.parse(register_listener_json))
+          json_list.push(JSON.parse(invoke_method_json))
+          for (let i = 0; i < json_list.length; i++) {
+            if (json_list[i]["status"] != "passed") {
+              core.setFailed("One or more features failed")
+              core.error("Feature:" + json_list[i]["name"] + " failed")
+            } else{
+              core.info("Feature:" + json_list[i]["name"] + " passed")
+            }
+          }
+        } catch(err) {
+          core.error("Error while reading or parsing the JSON")
+          core.setFailed(err)
+        }
+        if 
