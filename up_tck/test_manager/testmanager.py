@@ -276,6 +276,61 @@ class SocketTestManager():
                 callback = key.data
                 callback(key.fileobj)
 
+    @multimethod
+    def _send_to_test_agent(self, test_agent_socket: socket.socket, json_message: Dict[str, str]):
+
+        json_message_str: str = convert_json_to_jsonstring(json_message)
+
+        message: bytes = convert_str_to_bytes(json_message_str)
+
+        send_socket_data(test_agent_socket, message)
+
+    @multimethod
+    def _send_to_test_agent(self, test_agent_socket: socket.socket, command: str, umsg: UMessage):
+        """ Contains data preprocessing and sending UMessage steps to Test Agent
+
+        Args:
+            test_agent_socket (socket.socket): Test Agent Socket
+            command (str): message's action-type
+            umsg (UMessage): the raw protobuf message
+        """
+        json_message = {
+            "action": command,
+            "message": protobuf_to_base64(umsg)
+        }
+
+        self._send_to_test_agent(test_agent_socket, json_message)
+
+    @multimethod
+    def _send_to_test_agent(self, test_agent_socket: socket.socket, command: str, uri: UUri):
+        """ For uri serializer (serialize/deserialize) mostly
+        """
+        json_message = {
+            "action": command,
+            "message": protobuf_to_base64(uri)
+        }
+        self._send_to_test_agent(test_agent_socket, json_message)
+
+    @multimethod
+    def _send_to_test_agent(self, test_agent_socket: socket.socket, command: str, protobuf_serialized: str):
+        """ For uri serializer (serialize/deserialize) mostly
+        """
+        json_message = {
+            "action": command,
+            "message": protobuf_serialized
+        }
+        self._send_to_test_agent(test_agent_socket, json_message)
+
+    @multimethod
+    def _send_to_test_agent(self, test_agent_socket: socket.socket, command: str, protobuf_serialized: bytearray):
+        """ For uri serializer (serialize/deserialize) mostly
+        """
+        json_message = {
+            "action": command,
+            "message": protobuf_serialized.decode()
+        }
+        self._send_to_test_agent(test_agent_socket, json_message)
+
     def request(self, sdk_ta_destination: str, command: str, message: UMessage) -> UStatus:
         """Sends different requests to a specific SDK Test Agent
 
