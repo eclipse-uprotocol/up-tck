@@ -46,10 +46,9 @@ jobs:
     - name: TCK Behave Tests
       run: |
           behave  --format json --outfile ./BDD/reports/send_report.json --format plain --outfile ./BDD/reports/send_report.txt ./BDD/features/tests/send.feature
-          ps -ef
-          netstat -ltnp | grep -w ':12345'
-          netstat -ltnp | grep -w ':44444' 
+          sleep 90
           behave  --format json --outfile ./BDD/reports/register_listener_report.json --format plain --outfile ./BDD/reports/register_listener_report.txt ./BDD/features/tests/register_listener.feature
+          sleep 90
           behave  --format json --outfile ./BDD/reports/invoke_method_report.json --format plain --outfile ./BDD/reports/invoke_method_report.txt ./BDD/features/tests/invoke_method.feature
 
     - name: Print Out Behave Report
