@@ -54,6 +54,8 @@ class Dispatcher:
         self.num_writers: int = 0
         self.num_readers: int = 0
 
+        self.dispatcher_exit = False
+
         # Creates Dispatcher socket server so it can accept connections from SocketUTransports
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -77,12 +79,22 @@ class Dispatcher:
         Listens for Socket UTransport Connections and creates a thread to start the init process
         """
 
-        while True:
+        while not self.dispatcher_exit:
             # Wait until some registered file objects or sockets become ready, or the timeout expires.
-            events = self.selector.select()
+            events = self.selector.select(timeout=0)
             for key, mask in events:
                 callback = key.data
                 callback(key.fileobj)
+
+    def close(self):
+        """
+        Closes the server socket and all client sockets
+        """
+        self.dispatcher_exit = True
+        self.selector.close()
+        self.server.close()
+        for client_socket in self.utransport_clients.values():
+            client_socket.close()
 
     def __accept_client_conn(self, server: socket.socket):
         socket_utransport, addr = server.accept()
@@ -199,10 +211,3 @@ class Dispatcher:
         logger.info(f"received data: {recv_data}")
 
         self.__writer_priority_read_sockets(self.__flood_to_sockets, recv_data)
-
-
-if __name__ == '__main__':
-    logger.info(f"endian: {sys.byteorder}")
-    dispatcher = Dispatcher()
-    thread = Thread(target=dispatcher.listen_for_client_connections)
-    thread.start()

@@ -34,6 +34,7 @@ import git
 
 from behave.runner import Context
 from up_tck.test_manager.testmanager import SocketTestManager
+from up_tck.up_client_socket_python.dispatcher.dispatcher import Dispatcher
 from utils import loggerutils
 
 from uprotocol.proto.ustatus_pb2 import UStatus
@@ -100,9 +101,11 @@ def before_all(context):
     # create global received response status storage
     sdk_to_status: Dict[str, UStatus] = {}
     context.sdk_to_status = sdk_to_status
-
-    command = create_command("/up_tck/up_client_socket_python/dispatcher/dispatcher.py")
-    process: subprocess.Popen = create_subprocess(command)
+    
+    dispatcher = Dispatcher()
+    thread = Thread(target=dispatcher.listen_for_client_connections)
+    thread.start()
+    context.dispatcher = dispatcher
 
     context.logger.info("Created Dispatcher...")
     time.sleep(5)
@@ -131,11 +134,13 @@ def after_all(context: Context):
 
     # Closes sockets and releases memory
     test_manager: SocketTestManager = context.tm
+    dispatcher: Dispatcher = context.dispatcher
 
     test_manager.close_ta_socket("python")
     test_manager.close_ta_socket("java")
 
     test_manager.close()
+    dispatcher.close()
 
     try:
 
