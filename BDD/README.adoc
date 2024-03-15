@@ -20,9 +20,9 @@ To run these example tests:
 
 1. Go to the BDD Folder (cd BDD)
 2. If in Windows, run "testrunner.bat".
-When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
+When prompted, enter in the feature file name (for the example, it's "send.feature").
 If in Linux, run "sh testrunner.sh".
-When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
+When prompted, enter in the feature file name (for the example, it's "send.feature").
 
 After running a BDD test, ensure that you close all opened command prompt windows before running a new test.
 Your report will be located in BDD/reports.
@@ -35,7 +35,7 @@ Please try to shut those sockets down, or wait a few moments before starting the
 
 ==== Writing your own BDD Tests
 
-You can follow the format in BDD/features/tests/register_and_send.feature to see how different tests are created and formatted.
+You can follow the format in BDD/features/tests/send.feature to see how different tests are created and formatted.
 All steps in the feature file are implemented in BDD/features/steps/tck_step_implementations.py.
 
 ===== Register Listener
