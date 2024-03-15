@@ -26,7 +26,6 @@
 
 import json
 import socket
-import sys
 from typing import Dict
 
 from google.protobuf.any_pb2 import Any
@@ -78,21 +77,27 @@ def convert_str_to_bytes(string: str) -> bytes:
 def is_close_socket_signal(received_data: bytes) -> bool:
     return received_data == b''
 
+
 def is_serialized_protobuf(received_data: bytes, protobuf_class=UUri) -> bool:
     try:
         RpcMapper.unpack_payload(Any(value=received_data), protobuf_class)
         return True
-    except:
+    except Exception as e:
+        logger.error(f"Error: {e}")
         return False
+
 
 def is_json_message(received_data: bytes) -> bool:
     json_str: str = convert_bytes_to_string(received_data)
 
-    return "{" in json_str and "}" in json_str and ":" in json_str and (("\"action\"" in json_str and "\"message\"" in json_str) or ("\"SDK_name\"" in json_str))
+    return "{" in json_str and "}" in json_str and ":" in json_str and \
+          (("\"action\"" in json_str and "\"message\"" in json_str) or ("\"SDK_name\"" in json_str))
+
 
 def is_serialized_string(received_data: bytes) -> bool:
     s: str = received_data.decode()
     return "/" in s
+
 
 def create_json_message(action: str, message: str) -> Dict[str, str]:
     json: Dict[str, str] = {

@@ -26,8 +26,16 @@
 
 from behave import when, then, given
 from hamcrest import assert_that, equal_to
-from google.protobuf.any_pb2 import Any
+import sys
+import git
 
+from up_tck.python_utils.protobuf_setter_utils import set_umessage_fields, set_uuri_fields
+from up_tck.python_utils.variable_type_converter import type_converter
+from up_tck.python_utils.constants import SEND_COMMAND, REGISTER_LISTENER_COMMAND, \
+    UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND
+from up_tck.test_manager.testmanager import SocketTestManager
+
+from google.protobuf.any_pb2 import Any
 from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.proto.uri_pb2 import UResource
 from uprotocol.proto.ustatus_pb2 import UStatus
@@ -38,16 +46,10 @@ from uprotocol.proto.uattributes_pb2 import UAttributes, UPriority
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 
-import sys
-import git
+
 repo = git.Repo('.', search_parent_directories=True)
 sys.path.append(repo.working_tree_dir)
 
-from up_tck.python_utils.protobuf_setter_utils import set_umessage_fields, set_uuri_fields
-from up_tck.python_utils.variable_type_converter import type_converter
-from up_tck.python_utils.constants import SEND_COMMAND, REGISTER_LISTENER_COMMAND, \
-    UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND
-from up_tck.test_manager.testmanager import SocketTestManager
 
 @given('Test Agent "{sdk_name}" begins "{command}" test')
 def begin_test(context, sdk_name: str, command: str):
@@ -61,6 +63,7 @@ def initialize_protobuf(context, uattr: str, value: str):
     new_builder: UAttributesBuilder = UAttributesBuilder.publish(value, UPriority.UPRIORITY_CS1)
     context.initialized_data[uattr] = new_builder
     context.initialized_data["attributes"] = new_builder
+
 
 @given('sets "{field}" field "{param}" equal to "{type}" "{value}"')
 def initialize_protobuf(context, field: str, param: str, type: str, value: str):
@@ -123,6 +126,7 @@ def tm_sends_request(context, command: str, sdk_name: str):
     context.logger.info("context.sdk_to_status:")
     context.logger.info(context.sdk_to_status[sdk_name])
 
+
 @then('Test Agent "{sdk_name}" receives an "{status_code}" status for latest execute')
 def tm_receives_response(context, status_code: str, sdk_name: str):
     response_status: UStatus = context.sdk_to_status[sdk_name]
@@ -136,8 +140,8 @@ def tm_receives_response(context, status_code: str, sdk_name: str):
     # Reset status variable
     context.sdk_to_status[sdk_name] =  None
 
-@then('Test Agent "{sdk_name}" builds OnReceive UMessage with parameter UPayload "{param}" \
-       with parameter "{inner_param}" as "{expected}"')
+
+@then('Test Agent "{sdk_name}" builds OnReceive UMessage with parameter UPayload "{param}" with parameter "{inner_param}" as "{expected}"')
 def tm_receives_onreceive(context, sdk_name: str, param: str, inner_param: str, expected: str):
     test_manager: SocketTestManager = context.tm
 

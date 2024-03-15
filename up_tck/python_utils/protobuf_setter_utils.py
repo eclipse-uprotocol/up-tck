@@ -42,6 +42,7 @@ def set_uuri_fields(proto: UUri, field_name: str, field_value: Any):
     else:
         raise ValueError(f"UUri doesn't handle field {field_name}")
 
+
 def set_umessage_fields(proto: UMessage, field_name: str, field_value: Any):
     field_name = field_name.lower().strip()
 

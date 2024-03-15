@@ -135,7 +135,6 @@ def after_all(context: Context):
 
     # Closes sockets and releases memory
     test_manager: SocketTestManager = context.tm
-    dispatcher: Dispatcher = context.dispatcher
 
     test_manager.close_ta_socket("python")
     test_manager.close_ta_socket("java")
