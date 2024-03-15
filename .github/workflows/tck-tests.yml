@@ -46,9 +46,9 @@ jobs:
     - name: TCK Behave Tests
       run: |
           behave  --format json --outfile ./BDD/reports/send_report.json --format plain --outfile ./BDD/reports/send_report.txt ./BDD/features/tests/send.feature
-          sleep 90
+          sleep 70
           behave  --format json --outfile ./BDD/reports/register_listener_report.json --format plain --outfile ./BDD/reports/register_listener_report.txt ./BDD/features/tests/register_listener.feature
-          sleep 90
+          sleep 70
           behave  --format json --outfile ./BDD/reports/invoke_method_report.json --format plain --outfile ./BDD/reports/invoke_method_report.txt ./BDD/features/tests/invoke_method.feature
 
     - name: Print Out Behave Report
@@ -73,6 +73,7 @@ jobs:
             json_list.push(JSON.parse(register_listener_json))
             json_list.push(JSON.parse(invoke_method_json))
             for (let i = 0; i < json_list.length; i++) {
+              core.info(json_list[i])
               if (json_list[i]["status"] != "passed") {
                 core.setFailed("One or more features failed")
                 core.error("Feature:" + json_list[i]["name"] + " failed")
