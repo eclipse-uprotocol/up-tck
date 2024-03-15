@@ -23,9 +23,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
-import time
+
 from behave import when, then, given
-from behave.runner import Context
 from hamcrest import assert_that, equal_to
 from google.protobuf.any_pb2 import Any
 
@@ -37,8 +36,6 @@ from uprotocol.proto.uri_pb2 import UEntity
 from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.uattributes_pb2 import UAttributes, UPriority
 from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
-from uprotocol.uri.serializer.microuriserializer import MicroUriSerializer
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 
 import sys
@@ -48,7 +45,8 @@ sys.path.append(repo.working_tree_dir)
 
 from up_tck.python_utils.protobuf_setter_utils import set_umessage_fields, set_uuri_fields
 from up_tck.python_utils.variable_type_converter import type_converter
-from up_tck.python_utils.constants import SEND_COMMAND, REGISTER_LISTENER_COMMAND, UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND, LONG_URI_SERIALIZE, LONG_URI_DESERIALIZE, MICRO_URI_SERIALIZE, MICRO_URI_DESERIALIZE
+from up_tck.python_utils.constants import SEND_COMMAND, REGISTER_LISTENER_COMMAND, \
+    UNREGISTER_LISTENER_COMMAND, INVOKE_METHOD_COMMAND
 from up_tck.test_manager.testmanager import SocketTestManager
 
 @given('Test Agent "{sdk_name}" begins "{command}" test')
@@ -138,7 +136,8 @@ def tm_receives_response(context, status_code: str, sdk_name: str):
     # Reset status variable
     context.sdk_to_status[sdk_name] =  None
 
-@then('Test Agent "{sdk_name}" builds OnReceive UMessage with parameter UPayload "{param}" with parameter "{inner_param}" as "{expected}"')
+@then('Test Agent "{sdk_name}" builds OnReceive UMessage with parameter UPayload "{param}" \
+       with parameter "{inner_param}" as "{expected}"')
 def tm_receives_onreceive(context, sdk_name: str, param: str, inner_param: str, expected: str):
     test_manager: SocketTestManager = context.tm
 

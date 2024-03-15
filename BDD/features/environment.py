@@ -33,22 +33,15 @@ import os
 import git
 from behave.runner import Context
 from utils import loggerutils
-import socket
 
 from up_tck.test_manager.testmanager import SocketTestManager
-from up_tck.test_agents.python_test_agent.testagent import SocketTestAgent
-from up_tck.test_agents.python_test_agent.test_ta import SocketUListener
-from up_tck.test_agents.python_test_agent.transport_layer import TransportLayer
 from up_tck.up_client_socket_python.dispatcher.dispatcher import Dispatcher
-from up_tck.python_utils.constants import TEST_MANAGER_ADDR
 
 from uprotocol.proto.ustatus_pb2 import UStatus
-from uprotocol.transport.ulistener import UListener
-
-import signal
 
 PYTHON_TA_PATH = "/up_tck/test_agents/python_test_agent/test_ta.py"
 JAVA_TA_PATH = "/up_tck/test_agents/java_test_agent/target/tck-test-agent-java-jar-with-dependencies.jar"
+
 
 def get_git_root():
     curr_path = os.getcwd()
@@ -109,7 +102,7 @@ def before_all(context):
     # create global received response status storage
     sdk_to_status: Dict[str, UStatus] = {}
     context.sdk_to_status = sdk_to_status
-    
+
     dispatcher = Dispatcher()
     thread = Thread(target=dispatcher.listen_for_client_connections)
     thread.start()
@@ -124,13 +117,6 @@ def before_all(context):
     context.tm = test_manager
 
     context.logger.info("Created Test Manager...")
-
-    # transport = TransportLayer()
-    # context.test_agent_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # context.test_agent_socket.connect(TEST_MANAGER_ADDR)
-    # listener: UListener = SocketUListener(context.test_agent_socket)
-    # agent = SocketTestAgent(context.test_agent_socket, transport, listener)
-    # agent.send_to_TM({'SDK_name': "python"})
 
     command = create_command(PYTHON_TA_PATH)
     process: subprocess.Popen = create_subprocess(command)
@@ -155,7 +141,6 @@ def after_all(context: Context):
     test_manager.close_ta_socket("java")
 
     test_manager.close()
-    dispatcher.close()
 
     try:
         context.java_ta_process.kill()
