@@ -165,17 +165,6 @@ class SocketTestAgent:
 
         self.send_to_TM(json_message)
 
-    @dispatch(UStatus)
-    def send(self, status: UStatus):
-        """
-        Sends UStatus to Test Manager
-        @param status: the reply after receiving a message
-        """
-        json_message = create_json_message(
-            "uStatus", protobuf_to_base64(status))
-
-        self.send_to_TM(json_message)
-
     def send_to_TM(self, json_message: Dict[str, str]):
         """
         Sends json data to Test Manager

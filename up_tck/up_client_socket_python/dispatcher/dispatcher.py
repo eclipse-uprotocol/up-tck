@@ -30,7 +30,6 @@ import selectors
 import socket
 import sys
 from threading import Lock
-from threading import Thread
 from typing import Callable, Dict, Tuple
 import git
 
