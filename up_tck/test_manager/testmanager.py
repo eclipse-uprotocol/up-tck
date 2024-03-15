@@ -330,6 +330,8 @@ class SocketTestManager():
         self.exit_manager = True
         self.selector.close()
         self.server.close()
+        for client_socket in self.sdk_to_test_agent_socket.values():
+            client_socket.close()
 
     def close_ta_socket(self, sdk_name: str):
         logger.info(f"Closing {sdk_name} connection")
