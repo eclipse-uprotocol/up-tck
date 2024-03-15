@@ -56,6 +56,7 @@ class Dispatcher:
 
         # Creates Dispatcher socket server so it can accept connections from SocketUTransports
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # Give server an IP and Port, so other clients can conn to
         self.server.bind(DISPATCHER_ADDR)
         # Prerequisite to listen for incoming conn. requests
