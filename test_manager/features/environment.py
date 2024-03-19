@@ -24,24 +24,25 @@
 #
 # -------------------------------------------------------------------------
 
+import os
 import subprocess
 import sys
 import time
 from threading import Thread
 from typing import List
-import os
-import git
 
+import git
 from behave.runner import Context
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from testmanager import TestManager
 from utils import loggerutils
 
-sys.path.append("../")
-
-from python.test_manager.testmanager import SocketTestManager
+PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 
 
-PYTHON_TA_PATH = "/python/examples/tck_interoperability/test_socket_ta.py"
-JAVA_TA_PATH = "/java/java_test_agent/target/tck-test-agent-java-jar-with-dependencies.jar"
+# JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
+
 
 def get_git_root():
     curr_path = os.getcwd()
@@ -78,7 +79,6 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
 
     abs_file_path: str = create_file_path(filepath_from_root_repo)
     command.append(abs_file_path)
-
     return command
 
 
@@ -104,13 +104,13 @@ def before_all(context):
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
-    command = create_command("/python/dispatcher/dispatcher.py")
+    command = create_command("/dispatcher/dispatcher.py")
     process: subprocess.Popen = create_subprocess(command)
-
+    context.dispatcher_process = process
     context.logger.info("Created Dispatcher...")
     time.sleep(5)
 
-    test_manager = SocketTestManager("127.0.0.5", 12345)
+    test_manager = TestManager(context, "127.0.0.5", 12345)
     thread = Thread(target=test_manager.listen_for_client_connections)
     thread.start()
     context.tm = test_manager
@@ -121,29 +121,29 @@ def before_all(context):
     process: subprocess.Popen = create_subprocess(command)
     context.python_ta_process = process
 
-    command = create_command(JAVA_TA_PATH)
-    process: subprocess.Popen = create_subprocess(command)
-    context.java_ta_process = process
+    # command = create_command(JAVA_TA_PATH)
+    # process: subprocess.Popen = create_subprocess(command)
+    # context.java_ta_process = process
 
     context.logger.info("Created All Test Agents...")
 
 
 def after_all(context: Context):
-    # Closes sockets and releases memory
-    test_manager: SocketTestManager = context.tm
-
-    test_manager.close_ta_socket("python")
-    test_manager.close_ta_socket("java")
-
-    test_manager.close()
+    context.ue = None
+    context.action = None
+    context.json_dict = None
+    context.status_json =None
+    context.tm.close_socket(sdk="python")
+    context.tm.close_socket(sdk="java")
+    context.tm.close()
 
     try:
-
-        context.java_ta_process.kill()
-        context.java_ta_process.communicate()
+        context.dispatcher_process.kill()
+        context.dispatcher_process.communicate()
+        # context.java_ta_process.kill()
+        # context.java_ta_process.communicate()
         context.python_ta_process.kill()
         context.python_ta_process.communicate()
-
         pass
     except Exception as e:
         context.logger.error(e)

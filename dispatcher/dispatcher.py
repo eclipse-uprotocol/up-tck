@@ -100,7 +100,7 @@ class Dispatcher:
         """
         with self.lock:
             for up_client_socket in self.connected_sockets.copy():  # copy() to avoid RuntimeError
-                if up_client_socket != sender_socket:
+                # if up_client_socket != sender_socket:
                     try:
                         up_client_socket.sendall(data)
                     except ConnectionAbortedError as e:

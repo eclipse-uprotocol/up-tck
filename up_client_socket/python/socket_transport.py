@@ -66,14 +66,15 @@ class SocketUTransport(UTransport, RpcClient):
         """
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.bind(DISPATCHER_ADDR)
+        self.socket.connect(DISPATCHER_ADDR)
 
         self.reqid_to_future = {}
         self.uri_to_listener = defaultdict(list)
         self.lock = Lock()
-
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            executor.submit(self.__listen)
+        thread = threading.Thread(target=self.__listen)
+        thread.start()
+        # with ThreadPoolExecutor(max_workers=5) as executor:
+        #     executor.submit(self.__listen)
 
     def __listen(self):
         """
@@ -107,7 +108,6 @@ class SocketUTransport(UTransport, RpcClient):
                 break
             except Exception as e:
                 logger.error(f"Unexpected error: {e}")
-
 
     def _handle_publish_message(self, umsg):
         """
@@ -158,7 +158,7 @@ class SocketUTransport(UTransport, RpcClient):
         except OSError as e:
             logger.exception(f"INTERNAL ERROR: {e}")
             return UStatus(code=UCode.INTERNAL, message=f"INTERNAL ERROR: {e}")
-        return UStatus(code=UStatus.OK, message="OK")
+        return UStatus(code=UCode.OK, message="OK")
 
     def register_listener(self, topic: UUri, listener: UListener) -> UStatus:
         """
@@ -170,7 +170,7 @@ class SocketUTransport(UTransport, RpcClient):
             return status.to_status()
         uri: bytes = topic.SerializeToString()
         self.uri_to_listener[uri].append(listener)
-        return UStatus(code=UStatus.OK, message="OK")
+        return UStatus(code=UCode.OK, message="OK")
 
     def unregister_listener(self, topic: UUri, listener: UListener) -> UStatus:
         """
@@ -188,7 +188,7 @@ class SocketUTransport(UTransport, RpcClient):
             listeners.remove(listener)
             if not listeners:
                 del self.uri_to_listener[uri]
-            return UStatus(code=UStatus.OK, message="OK")
+            return UStatus(code=UCode.OK, message="OK")
 
         return UStatus(code=UCode.NOT_FOUND, message="Listener not found for the given UUri")
 
