@@ -23,6 +23,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
+import base64
+import json
 import sys
 import time
 
@@ -31,70 +33,90 @@ from behave.runner import Context
 from hamcrest import assert_that, equal_to
 from uprotocol.proto.upayload_pb2 import UPayload
 
-sys.path.append("../")
 
-from python.test_manager.testmanager import SocketTestManager
-
-
-@given(u'“{sdk_name}” creates data for "{command}"')
-@when(u'“{sdk_name}” creates data for "{command}"')
+@given(u'"{sdk_name}" creates data for "{command}"')
+@when(u'"{sdk_name}" creates data for "{command}"')
 def step_impl(context, sdk_name: str, command: str):
     context.logger.info("Inside create register listener data")
-    context.json_array = {}
+    context.json_dict = {}
+    context.status_json = None
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
 
     context.ue = sdk_name
-    context.json_array['ue'] = [sdk_name]
-    context.json_array['action'] = [command]
+    context.action = command
 
 
 @given(u'sets "{key}" to "{value}"')
 @when(u'sets "{key}" to "{value}"')
 def step_impl(context: Context, key: str, value: str):
-    context.logger.info("Json data: Key is " + str(key) + " value is " + str(value))
-    if key not in context.json_array:
-        context.json_array[key] = [value]
+    if key not in context.json_dict:
+        context.json_dict[key] = value
+
+
+@when(u'sets "{key}" to b"{value}"')
+def step_impl(context, key, value):
+    if key not in context.json_dict:
+        context.json_dict[key] = "BYTES:" + value
 
 
 @given(u'sends "{command}" request')
 @when(u'sends "{command}" request')
 def step_impl(context, command: str):
-    context.logger.info(f"Json request for {command} -> {str(context.json_array)}")
-    context.status = context.tm.receive_action_request(context.json_array)
-    context.logger.info(f"Status Received: {context.status}")
+    context.json_dict = unflatten_dict(context.json_dict)
+    context.logger.info(f"Json request for {command} -> {str(context.json_dict)}")
+    context.tm.receive_from_bdd(context.ue, context.action, context.json_dict)
 
 
-@step(u'the status for "{command}" request is "{status}"')
-def step_impl(context, command, status):
-    context.logger.info(f"Status for {command} is {context.status}")
-    assert_that(context.status.message, equal_to(status))
+@when(u'user waits "{sec}" second')
+@then(u'user waits "{sec}" second')
+def step_impl(context, sec):
+    time.sleep(int(sec))
 
 
-@then(u'"{sdk_name}" receives "{key}" as "{value}"')
-def step_impl(context, sdk_name, key, value):
+@then(u'the status received with "{field}" is "{field_value}"')
+def step_impl(context, field, field_value):
     try:
-        if context.tm.received_umessage not in ['', None]:
-            received_payload: UPayload = context.tm.received_umessage.payload
-            context.logger.info(f"Payload data for {sdk_name} is {received_payload}")
-            assert_that(received_payload.value.decode('utf-8'), equal_to(value))
-        else:
-            raise ValueError(f"Received empty payload for {sdk_name}")
-
+        rec_field_value = context.status_json[field]
+        assert_that(field_value, equal_to(rec_field_value))
     except AssertionError as ae:
-        raise AssertionError(f"Assertion error. Expected is {value} but "
-                             f"received {received_payload.value.decode('utf-8')}", exc_info=ae)
+        raise AssertionError(f"Assertion error. Expected is {field_value} but "
+                             f"received {context.status_json[field]}")
+    except Exception as ae:
+        raise ValueError(f"Expection occured. {ae}")
 
 
-@given('"{sdk_name}" is connected to the Test Manager')
-def tm_connects_to_ta_socket(context, sdk_name: str):
-    test_manager: SocketTestManager = context.tm
+@then(u'"{sdk_name}" receives "{key}" as b"{value}"')
+def step_impl(context, sdk_name, key, value):
+    val = access_nested_dict(context.on_receive_msg, key)
+    original_byte_string = base64.b64decode(val.encode('utf-8'))
+    try:
+        rec_field_value = original_byte_string
+        assert rec_field_value == value.encode()
+    except AssertionError as ae:
+        raise AssertionError(f"Assertion error. Expected is {value.encode()} but "
+                             f"received {rec_field_value}")
+    except Exception as ae:
+        raise ValueError(f"Expection occured. {ae}")
 
-    while not test_manager.has_sdk_connection(sdk_name):
-        time.sleep(1)
-    if not test_manager.has_sdk_connection(sdk_name):
-        context.logger.error(sdk_name + " Test Agent didn't connect in time")
-        raise Exception(sdk_name + " Test Agent didn't connect in time")
 
-    context.logger.info(f"{sdk_name} TA connects to TM {test_manager.sdk_to_test_agent_socket.keys()}")
+def access_nested_dict(dictionary, keys):
+    keys = keys.split('.')
+    value = dictionary
+    for key in keys:
+        value = value[key]
+    return value
+
+
+def unflatten_dict(d, delimiter='.'):
+    unflattened = {}
+    for key, value in d.items():
+        parts = key.split(delimiter)
+        temp = unflattened
+        for part in parts[:-1]:
+            if part not in temp:
+                temp[part] = {}
+            temp = temp[part]
+        temp[parts[-1]] = value
+    return unflattened

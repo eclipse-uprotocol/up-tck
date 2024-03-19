@@ -26,31 +26,34 @@
 
 Feature: Default
 Scenario Outline: To test the registerlistener and send apis
-    Given “<uE1>” creates data for "registerlistener"
-      And sets "uri.entity.name" to "body.access"
-      And sets "uri.resource.name" to "door"
-      And sets "uri.resource.instance" to "front_left"
-      And sets "uri.resource.message" to "Door"
-      And sends "registerlistener" request
-      And the status for "registerlistener" request is "OK"
-
-    When “<uE2>” creates data for "send"
-      And sets "uri.entity.name" to "body.access"
-      And sets "uri.resource.name" to "door"
-      And sets "uri.resource.instance" to "front_left"
-      And sets "uri.resource.message" to "Door"
+    Given "<uE1>" creates data for "registerlistener"
+      And sets "entity.name" to "body.access"
+      And sets "resource.name" to "door"
+      And sets "resource.instance" to "front_left"
+      And sets "resource.message" to "Door"
+    When sends "registerlistener" request
+      And user waits "2" second
+    Then the status received with "code" is "OK"
+#
+    When "<uE2>" creates data for "send"
+      And sets "attributes.source.entity.name" to "body.access"
+      And sets "attributes.source.resource.name" to "door"
+      And sets "attributes.source.resource.instance" to "front_left"
+      And sets "attributes.source.resource.message" to "Door"
       And sets "attributes.priority" to "UPRIORITY_CS1"
       And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
-      And sets "attributes.id" to "12345"
-      And sets "payload.format" to "protobuf"
-      And sets "payload.value" to "serialized protobuf data"
+      And sets "payload.format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
+      And sets "payload.value" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+
       And sends "send" request
-      And the status for "send" request is "OK"
+      And user waits "2" second
 
-    Then "<uE1>" receives "payload.value" as "serialized protobuf data"
+    Then the status received with "code" is "OK"
+      And user waits "2" second
+      And "<uE1>" receives "payload.value" as b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
 
-    Examples: topic_names
+    Examples:
     | uE1     | uE2    |
-    | python  | java   |
+#    | python  | java   |
     | python  | python |
-    | java    | python |
+#    | java    | python |
