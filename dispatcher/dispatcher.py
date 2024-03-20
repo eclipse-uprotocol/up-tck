@@ -82,14 +82,19 @@ class Dispatcher:
 
         :param up_client_socket: The client socket.
         """
-        recv_data = up_client_socket.recv(BYTES_MSG_LENGTH)
+        try:
 
-        if not recv_data:
+            recv_data = up_client_socket.recv(BYTES_MSG_LENGTH)
+
+            if recv_data == b"":
+                self._close_socket(up_client_socket)
+                return
+
+            logger.info(f"received data: {recv_data}")
+            self._flood_to_sockets(up_client_socket, recv_data)
+        except:
+            logger.error("Received error while reading data from up-client")
             self._close_socket(up_client_socket)
-            return
-
-        logger.info(f"received data: {recv_data}")
-        self._flood_to_sockets(up_client_socket, recv_data)
 
     def _flood_to_sockets(self, sender_socket, data):
         """
@@ -101,11 +106,11 @@ class Dispatcher:
         with self.lock:
             for up_client_socket in self.connected_sockets.copy():  # copy() to avoid RuntimeError
                 # if up_client_socket != sender_socket:
-                    try:
-                        up_client_socket.sendall(data)
-                    except ConnectionAbortedError as e:
-                        logger.error(f"Error sending data to {up_client_socket.getpeername()}: {e}")
-                        self._close_socket(up_client_socket)
+                try:
+                    up_client_socket.sendall(data)
+                except ConnectionAbortedError as e:
+                    logger.error(f"Error sending data to {up_client_socket.getpeername()}: {e}")
+                    self._close_socket(up_client_socket)
 
     def listen_for_client_connections(self):
         """
@@ -124,10 +129,13 @@ class Dispatcher:
         :param up_client_socket: The client socket to be closed.
         """
         logger.info(f"closing socket {up_client_socket.getpeername()}")
-        with self.lock:
-            self.connected_sockets.remove(up_client_socket)
-        self.selector.unregister(up_client_socket)
-        up_client_socket.close()
+        try:
+            with self.lock:
+                self.connected_sockets.remove(up_client_socket)
+            self.selector.unregister(up_client_socket)
+            up_client_socket.close()
+        except:
+            pass
 
 
 if __name__ == '__main__':

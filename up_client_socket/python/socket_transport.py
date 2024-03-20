@@ -29,7 +29,7 @@ import socket
 import threading
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import Future
 from threading import Lock
 
 from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
@@ -44,6 +44,7 @@ from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
 from uprotocol.uri.factory.uresource_builder import UResourceBuilder
 from uprotocol.uri.validator.urivalidator import UriValidator
+from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 
 logger = logging.getLogger(__name__)
 DISPATCHER_ADDR: tuple = ("127.0.0.1", 44444)
@@ -52,10 +53,10 @@ RESPONSE_URI = UUri(entity=UEntity(name="test_agent_py", version_major=1), resou
 
 
 def timeout_counter(response, req_id, timeout):
-    time.sleep(timeout)
+    time.sleep(timeout/1000)
     if not response.done():
         response.set_exception(
-            TimeoutError('Not received response for request ' + req_id + ' within ' + str(timeout) + ' ms'))
+            TimeoutError('Not received response for request ' + LongUuidSerializer.instance().serialize(req_id) + ' within ' + str(timeout/1000) + ' seconds'))
 
 
 class SocketUTransport(UTransport, RpcClient):
@@ -72,9 +73,7 @@ class SocketUTransport(UTransport, RpcClient):
         self.uri_to_listener = defaultdict(list)
         self.lock = Lock()
         thread = threading.Thread(target=self.__listen)
-        thread.start()
-        # with ThreadPoolExecutor(max_workers=5) as executor:
-        #     executor.submit(self.__listen)
+        thread.start()  # with ThreadPoolExecutor(max_workers=5) as executor:  #     executor.submit(self.__listen)
 
     def __listen(self):
         """
@@ -85,16 +84,15 @@ class SocketUTransport(UTransport, RpcClient):
             try:
                 recv_data = self.socket.recv(BYTES_MSG_LENGTH)
 
-                if not recv_data:
-                    continue
-
+                if recv_data == b"":
+                    self.socket.close()
+                    return
                 umsg = UMessage()
                 umsg.ParseFromString(recv_data)
 
                 logger.info(f"{self.__class__.__name__} Received uMessage")
 
                 attributes = umsg.attributes
-
                 if attributes.type == UMessageType.UMESSAGE_TYPE_PUBLISH:
                     self._handle_publish_message(umsg)
                 elif attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
@@ -120,6 +118,7 @@ class SocketUTransport(UTransport, RpcClient):
         """
         Handles incoming request messages.
         """
+
         uri = umsg.attributes.sink.SerializeToString()
         self._notify_listeners(uri, umsg)
 
@@ -141,7 +140,6 @@ class SocketUTransport(UTransport, RpcClient):
         Handles incoming response messages.
         """
         request_id = umsg.attributes.reqid.SerializeToString()
-
         with self.lock:
             response_future = self.reqid_to_future.pop(request_id, None)
             if response_future:
@@ -154,7 +152,7 @@ class SocketUTransport(UTransport, RpcClient):
         umsg_serialized: bytes = message.SerializeToString()
         try:
             self.socket.sendall(umsg_serialized)
-            logger.info(f"{self.__class__.__name__} uMessage Sent")
+            logger.info(f"uMessage Sent to dispatcher from python socket transport")
         except OSError as e:
             logger.exception(f"INTERNAL ERROR: {e}")
             return UStatus(code=UCode.INTERNAL, message=f"INTERNAL ERROR: {e}")
@@ -203,7 +201,6 @@ class SocketUTransport(UTransport, RpcClient):
 
         response = Future()
         self.reqid_to_future[request_id.SerializeToString()] = response
-
         # Start a thread to count the timeout
         timeout_thread = threading.Thread(target=timeout_counter, args=(response, request_id, options.get_timeout()))
         timeout_thread.start()

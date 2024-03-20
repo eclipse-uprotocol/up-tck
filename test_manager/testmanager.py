@@ -75,10 +75,9 @@ class TestManager:
         """
         recv_data = ta_socket.recv(BYTES_MSG_LENGTH)
 
-        if not recv_data:
-            self.close_socket(ta_socket=ta_socket)
+        if recv_data == b'':
             return
-        json_data = json.loads(recv_data.decode())
+        json_data = json.loads(recv_data.decode('utf-8'))
         logger.info('Received from test agent: %s', json_data)
         self._process_message(json_data, ta_socket)
 
@@ -89,10 +88,11 @@ class TestManager:
                 if sdk not in self.connected_sockets:
                     self.connected_sockets[sdk] = ta_socket
         elif json_data['action'] in ['send', 'registerlistener', 'unregisterlistener']:
-            print('receive response from test agents')
             self.bdd_context.status_json = json_data['data']
         elif json_data['action'] == 'onreceive':
-            self.bdd_context.on_receive_msg = json_data['data']
+            self.bdd_context.on_receive_msg[json_data['ue']] = json_data['data']
+        elif json_data['action'] == 'rpcresponse':
+            self.bdd_context.on_receive_rpc_response[json_data['ue']] = json_data['data']
 
     def close_socket(self, sdk=None, ta_socket=None):
         if ta_socket is not None:

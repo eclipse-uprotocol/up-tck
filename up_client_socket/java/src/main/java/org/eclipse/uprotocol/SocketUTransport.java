@@ -34,17 +34,18 @@ import org.eclipse.uprotocol.uri.validator.UriValidator;
 import org.eclipse.uprotocol.v1.*;
 import org.eclipse.uprotocol.validation.ValidationResult;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class SocketUTransport implements UTransport, RpcClient {
-    private static final Logger logger = Logger.getLogger(SocketUTransport.class.getName());
+    private static final Logger logger = Logger.getLogger("JavaSocketUTransport");
     private static final String DISPATCHER_IP = "127.0.0.1";
     private static final Integer DISPATCHER_PORT = 44444;
     private static final int BYTES_MSG_LENGTH = 32767;
@@ -56,8 +57,8 @@ public class SocketUTransport implements UTransport, RpcClient {
     }
 
     private final Socket socket;
-    private final ConcurrentHashMap<byte[], CompletionStage<UMessage>> reqid_to_future;
-    private final ConcurrentHashMap<byte[], CopyOnWriteArrayList<UListener>> uri_to_listener;
+    private final ConcurrentHashMap<UUID, CompletionStage<UMessage>> reqid_to_future;
+    private final ConcurrentHashMap<UUri, ArrayList<UListener>> uri_to_listener;
     private final Object lock = new Object();
 
 
@@ -65,7 +66,6 @@ public class SocketUTransport implements UTransport, RpcClient {
         reqid_to_future = new ConcurrentHashMap<>();
         uri_to_listener = new ConcurrentHashMap<>();
         socket = new Socket(DISPATCHER_IP, DISPATCHER_PORT);
-
         ExecutorService executor = Executors.newFixedThreadPool(5);
         executor.submit(this::listen);
         executor.shutdown();
@@ -77,17 +77,21 @@ public class SocketUTransport implements UTransport, RpcClient {
      * Handles each message accordingly by invoking corresponding handler methods.
      */
     private void listen() {
-        try (InputStream inputStream = new BufferedInputStream(socket.getInputStream())) {
+        try {
             while (true) {
-                byte[] recvData = new byte[BYTES_MSG_LENGTH];
-                int bytesRead = inputStream.read(recvData);
-                if (bytesRead == -1) {
-                    continue; // No need to process empty reads
-                }
+                byte[] buffer = new byte[BYTES_MSG_LENGTH];
+                InputStream inputStream = socket.getInputStream();
+                int readSize = inputStream.read(buffer);
 
-                UMessage umsg = UMessage.parseFrom(recvData);
+                if (readSize < 0) {
+                    if (!socket.isClosed()) {
+                        socket.close();
+                    }
+                    return;
+                }
+                UMessage umsg = UMessage.parseFrom(Arrays.copyOfRange(buffer, 0, readSize));
                 UAttributes attributes = umsg.getAttributes();
-                String logMessage = getClass().getSimpleName() + " Received uMessage";
+                String logMessage = " Received uMessage";
 
                 switch (attributes.getType()) {
                     case UMESSAGE_TYPE_PUBLISH:
@@ -106,15 +110,14 @@ public class SocketUTransport implements UTransport, RpcClient {
                 logger.info(logMessage);
             }
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Error while listening for messages: " + e.getMessage(), e);
-        } finally {
             try {
-                if (socket != null && !socket.isClosed()) {
+                if (!socket.isClosed()) {
                     socket.close();
                 }
             } catch (IOException ioException) {
                 logger.log(Level.SEVERE, "Error while closing socket: " + ioException.getMessage(), ioException);
             }
+            logger.log(Level.SEVERE, "Error while listening for messages: " + e.getMessage(), e);
         }
     }
 
@@ -124,7 +127,7 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param umsg The publish message to handle.
      */
     private void handlePublishMessage(UMessage umsg) {
-        byte[] uri = umsg.getAttributes().getSource().toByteArray();
+        UUri uri = umsg.getAttributes().getSource();
         notifyListeners(uri, umsg);
     }
 
@@ -134,7 +137,7 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param umsg The request message to handle.
      */
     private void handleRequestMessage(UMessage umsg) {
-        byte[] uri = umsg.getAttributes().getSink().toByteArray();
+        UUri uri = umsg.getAttributes().getSink();
         notifyListeners(uri, umsg);
     }
 
@@ -144,12 +147,13 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param uri  The URI for which listeners are to be notified.
      * @param umsg The message to be delivered to the listeners.
      */
-    private void notifyListeners(byte[] uri, UMessage umsg) {
+    private void notifyListeners(UUri uri, UMessage umsg) {
 
         synchronized (lock) {
-            CopyOnWriteArrayList<UListener> listeners = uri_to_listener.get(uri);
+
+            ArrayList<UListener> listeners = uri_to_listener.get(uri);
             if (listeners != null) {
-                logger.info(getClass().getSimpleName() + " Handle Uri");
+                logger.info("Handle Uri");
                 listeners.forEach(listener -> listener.onReceive(umsg));
             } else {
                 logger.info(getClass().getSimpleName() + " Uri not found in Listener Map, discarding...");
@@ -165,9 +169,9 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param umsg The response message to handle.
      */
     private void handleResponseMessage(UMessage umsg) {
-        byte[] requestId = umsg.getAttributes().getReqid().toByteArray();
+        UUID requestId = umsg.getAttributes().getReqid();
         CompletionStage<UMessage> responseFuture = reqid_to_future.remove(requestId);
-        if (responseFuture.toCompletableFuture() != null) {
+        if (responseFuture != null) {
             responseFuture.toCompletableFuture().complete(umsg);
         }
     }
@@ -183,7 +187,7 @@ public class SocketUTransport implements UTransport, RpcClient {
         try {
             OutputStream outputStream = socket.getOutputStream();
             outputStream.write(umsgSerialized);
-            logger.info(getClass().getSimpleName() + " uMessage Sent");
+            logger.info("uMessage Sent to dispatcher fron java socket transport");
             return UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build();
         } catch (IOException e) {
             logger.log(Level.SEVERE, "INTERNAL ERROR: ", e);
@@ -203,8 +207,7 @@ public class SocketUTransport implements UTransport, RpcClient {
         if (result.isFailure()) {
             return result.toStatus();
         }
-        byte[] uri = topic.toByteArray();
-        uri_to_listener.computeIfAbsent(uri, k -> new CopyOnWriteArrayList<>()).add(listener);
+        uri_to_listener.computeIfAbsent(topic, k -> new ArrayList<>()).add(listener);
         return UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build();
     }
 
@@ -220,12 +223,10 @@ public class SocketUTransport implements UTransport, RpcClient {
         if (result.isFailure()) {
             return result.toStatus();
         }
-        byte[] uri = topic.toByteArray();
-
-        CopyOnWriteArrayList<UListener> listeners = uri_to_listener.get(uri);
+        ArrayList<UListener> listeners = uri_to_listener.get(topic);
         if (listeners != null && listeners.remove(listener)) {
             if (listeners.isEmpty()) {
-                uri_to_listener.remove(uri);
+                uri_to_listener.remove(topic);
             }
             return UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build();
         }
@@ -244,7 +245,7 @@ public class SocketUTransport implements UTransport, RpcClient {
     public CompletionStage<UMessage> invokeMethod(UUri methodUri, UPayload requestPayload, CallOptions options) {
         UAttributes attributes = UAttributesBuilder.request(RESPONSE_URI, methodUri, UPriority.UPRIORITY_CS4,
                 options.timeout()).build();
-        byte[] requestId = attributes.getId().toByteArray();
+        UUID requestId = attributes.getId();
         CompletableFuture<UMessage> responseFuture = new CompletableFuture<>();
         reqid_to_future.put(requestId, responseFuture);
 
@@ -263,12 +264,12 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param requestId      The request ID associated with the response.
      * @param timeout        The timeout duration.
      */
-    private void timeoutCounter(CompletableFuture<UMessage> responseFuture, byte[] requestId, int timeout) {
+    private void timeoutCounter(CompletableFuture<UMessage> responseFuture, UUID requestId, int timeout) {
         try {
             Thread.sleep(timeout);
             if (!responseFuture.isDone()) {
                 responseFuture.completeExceptionally(new TimeoutException(
-                        "Not received response for request " + new String(requestId) + " within " + timeout + " ms"));
+                        "Not received response for request " + requestId.toString() + " within " + timeout + " ms"));
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

@@ -25,14 +25,13 @@
 # -------------------------------------------------------------------------
 import json
 import logging
-import os
 import socket
 import sys
 from threading import Thread
 
 from google.protobuf import any_pb2
 from google.protobuf.json_format import MessageToDict
-from google.protobuf.wrappers_pb2 import Int32Value
+from google.protobuf.wrappers_pb2 import StringValue
 from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
@@ -42,6 +41,7 @@ from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 
 import constants as CONSTANTS
+
 sys.path.append("../")
 from up_client_socket.python.socket_transport import SocketUTransport
 
@@ -55,11 +55,12 @@ class SocketUListener(UListener):
     def on_receive(self, umsg: UMessage) -> None:
         logger.info("Listener received")
         if umsg.attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
+            logger.info("REQUEST RECEIVED")
             # send hardcoded response
             attributes = UAttributesBuilder.response(umsg.attributes.sink, umsg.attributes.source,
-                                                     UPriority.UPRIORITY_CS4, umsg.id).build()
+                                                     UPriority.UPRIORITY_CS4, umsg.attributes.id).build()
             any_obj = any_pb2.Any()
-            any_obj.Pack(Int32Value(value=3))
+            any_obj.Pack(StringValue(value="SuccessRPCResponse"))
             res_msg = UMessage(attributes=attributes, payload=UPayload(value=any_obj.SerializeToString(),
                                                                        format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY))
             transport.send(res_msg)
@@ -72,8 +73,8 @@ def send_to_test_manager(response, action):
         response = MessageToDict(response, including_default_value_fields=True, preserving_proto_field_name=True)
 
     # Create a new dictionary
-    response_dict = {'data': response, 'action': action}
-    response_dict = json.dumps(response_dict).encode()
+    response_dict = {'data': response, 'action': action, 'ue': 'python'}
+    response_dict = json.dumps(response_dict).encode('utf-8')
     ta_socket.sendall(response_dict)
     logger.info(f"Sent to TM {response_dict}")
 
@@ -83,7 +84,7 @@ def dict_to_proto(parent_json_obj, parent_proto_obj):
         for key, value in json_obj.items():
             if 'BYTES:' in value:
                 value = value.replace('BYTES:', '')
-                value = value.encode()
+                value = value.encode('utf-8')
             if hasattr(proto_obj, key):
                 if isinstance(value, dict):
                     # Recursively update the nested message object
@@ -114,17 +115,20 @@ def handle_unregister_listener_command(json_msg):
 
 def handle_invoke_method_command(json_msg):
     uri = dict_to_proto(json_msg["data"], UUri())
-    payload = dict_to_proto(json_msg["payload"], UPayload())
-    transport.invoke_method(uri, payload, CallOptions())
-    return None
+    payload = dict_to_proto(json_msg["data"]["payload"], UPayload())
+    res_future = transport.invoke_method(uri, payload, CallOptions())
+
+    def handle_response(message):
+        message = message.result()
+        send_to_test_manager(message, CONSTANTS.RESPONSE_RPC)
+
+    res_future.add_done_callback(handle_response)
 
 
-action_handlers = {
-    CONSTANTS.SEND_COMMAND: handle_send_command,
-    CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
-    CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
-    CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command
-}
+action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
+                   CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
+                   CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
+                   CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command}
 
 
 def process_message(json_data):
@@ -141,10 +145,9 @@ def receive_from_tm():
     while True:
         recv_data = ta_socket.recv(CONSTANTS.BYTES_MSG_LENGTH)
         if recv_data == b"":
-            logger.info("Closing TA Client Socket")
-            ta_socket.close()
-            return  # Deserialize the JSON data
-        json_data = json.loads(recv_data.decode())
+            return
+        # Deserialize the JSON data
+        json_data = json.loads(recv_data.decode('utf-8'))
         logger.info('Received data from test manager: %s', json_data)
         process_message(json_data)
 
@@ -154,7 +157,6 @@ if __name__ == '__main__':
     transport = SocketUTransport()
     ta_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ta_socket.connect(CONSTANTS.TEST_MANAGER_ADDR)
-
     thread = Thread(target=receive_from_tm)
     thread.start()
     send_to_test_manager({'SDK_name': "python"}, "initialize")
