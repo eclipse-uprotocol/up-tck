@@ -15,17 +15,17 @@ Specific step definitions for the test manager and test agents are located below
 
 ==== Running BDD Example Test
 
-Example scripts for TCK Interoperability are supplied under BDD/features/tests.
+Example scripts for TCK Interoperability are supplied under test_manager/features/tests.
 To run these example tests:
 
-1. Go to the BDD Folder (cd BDD)
+1. Go to the Test Manager Folder (cd test_manager)
 2. If in Windows, run "testrunner.bat".
 When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
 If in Linux, run "sh testrunner.sh".
 When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
 
 After running a BDD test, ensure that you close all opened command prompt windows before running a new test.
-Your report will be located in BDD/reports.
+Your report will be located in test_manager/reports.
 It will be labeled with the date and time that the test was run.
 
 If you receive a "/usr/bin/python: No module named behave" error, go into "testrunner.sh" and change "python" to "python3".
@@ -35,8 +35,8 @@ Please try to shut those sockets down, or wait a few moments before starting the
 
 ==== Writing your own BDD Tests
 
-You can follow the format in BDD/features/tests/register_and_send.feature to see how different tests are created and formatted.
-All steps in the feature file are implemented in BDD/features/steps/tck_step_implementations.py.
+You can follow the format in test_manager/features/tests/register_and_send.feature to see how different tests are created and formatted.
+All steps in the feature file are implemented in test_manager/features/steps/tck_step_implementations.py.
 
 ===== Register Listener
 
@@ -44,10 +44,10 @@ If you would like to trigger the "registerlistener" method within an individual 
 
 ----
 Given “<uE1>” creates data for "registerlistener"
-    And sets "uri.entity.name" to "body.access"
-    And sets "uri.resource.name" to "door"
-    And sets "uri.resource.instance" to "front_left"
-    And sets "uri.resource.message" to "Door"
+    And sets "entity.name" to "body.access"
+    And sets "resource.name" to "door"
+    And sets "resource.instance" to "front_left"
+    And sets "resource.message" to "Door"
     And sends "registerlistener" request
 ----
 
@@ -59,17 +59,16 @@ The language specified will run the "registerlistener" method.
 If you would like to trigger the "send" method within an individual Test Agent's uTransport, use the following format:
 
 ----
-When “<uE2>” creates data for "send"
-    And sets "uri.entity.name" to "body.access"
-    And sets "uri.resource.name" to "door"
-    And sets "uri.resource.instance" to "front_left"
-    And sets "uri.resource.message" to "Door"
-    And sets "attributes.priority" to "UPRIORITY_CS1"
-    And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
-    And sets "attributes.id" to "12345"
-    And sets "payload.format" to "protobuf"
-    And sets "payload.value" to "serialized protobuf data"
-    And sends "send" request
+ When "<uE2>" creates data for "send"
+      And sets "attributes.source.entity.name" to "body.access"
+      And sets "attributes.source.resource.name" to "door"
+      And sets "attributes.source.resource.instance" to "front_left"
+      And sets "attributes.source.resource.message" to "Door"
+      And sets "attributes.priority" to "UPRIORITY_CS1"
+      And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
+      And sets "payload.format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
+      And sets "payload.value" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+      And sends "send" request
 ----
 
 In this example, <uE2> is the uEntity that will be doing the uTransport "send" method.
@@ -82,7 +81,7 @@ You create as many rows in this section as you want.
 The first row specifies the variable name, and subsequent rows specify what those variables will be set to during the test.
 
 ----
-Examples: topic_names
+Examples:
 | uE1       | uE2    |
 | java      | python |
 | python    | java   |

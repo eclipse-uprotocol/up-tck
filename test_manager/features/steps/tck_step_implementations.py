@@ -24,14 +24,12 @@
 #
 # -------------------------------------------------------------------------
 import base64
-import json
-import sys
+import codecs
 import time
 
-from behave import when, then, given, step
+from behave import when, then, given
 from behave.runner import Context
 from hamcrest import assert_that, equal_to
-from uprotocol.proto.upayload_pb2 import UPayload
 
 
 @given(u'"{sdk_name}" creates data for "{command}"')
@@ -40,6 +38,10 @@ def step_impl(context, sdk_name: str, command: str):
     context.logger.info("Inside create register listener data")
     context.json_dict = {}
     context.status_json = None
+    if command == "send":
+        context.on_receive_msg.pop(sdk_name, None)
+    if command == "invokemethod":
+        context.on_receive_rpc_response.pop(sdk_name, None)
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
@@ -55,6 +57,7 @@ def step_impl(context: Context, key: str, value: str):
         context.json_dict[key] = value
 
 
+@given(u'sets "{key}" to b"{value}"')
 @when(u'sets "{key}" to b"{value}"')
 def step_impl(context, key, value):
     if key not in context.json_dict:
@@ -89,14 +92,34 @@ def step_impl(context, field, field_value):
 
 @then(u'"{sdk_name}" receives "{key}" as b"{value}"')
 def step_impl(context, sdk_name, key, value):
-    val = access_nested_dict(context.on_receive_msg, key)
-    original_byte_string = base64.b64decode(val.encode('utf-8'))
     try:
-        rec_field_value = original_byte_string
-        assert rec_field_value == value.encode()
+        value = value.strip()
+        val = access_nested_dict(context.on_receive_msg[sdk_name], key)
+        rec_field_value = base64.b64decode(val.encode('utf-8'))
+        assert rec_field_value.split(b'googleapis.com/')[1] == value.encode('utf-8').split(b'googleapis.com/')[1]
+    except KeyError as ke:
+        raise KeyError(f"Key error. {sdk_name} has not received topic update.")
     except AssertionError as ae:
-        raise AssertionError(f"Assertion error. Expected is {value.encode()} but "
+        raise AssertionError(f"Assertion error. Expected is {value.encode('utf-8')} but "
                              f"received {rec_field_value}")
+    except Exception as ae:
+        raise ValueError(f"Expection occured. {ae}")
+
+
+@then(u'"{sdk_name}" receives rpc response having "{key}" as b"{value}"')
+def step_impl(context, sdk_name, key, value):
+    try:
+        val = access_nested_dict(context.on_receive_rpc_response[sdk_name], key)
+        rec_field_value = base64.b64decode(val.encode('utf-8'))
+        print(rec_field_value)
+        # Convert bytes to byte string with escape sequences
+        rec_field_value = codecs.encode(rec_field_value.decode('utf-8'), 'unicode_escape')
+        assert rec_field_value.split(b'googleapis.com/')[1] == value.encode('utf-8').split(b'googleapis.com/')[1]
+    except KeyError as ke:
+        raise KeyError(f"Key error. {sdk_name} has not received rpc response.")
+    except AssertionError as ae:
+        raise AssertionError(f"Assertion error. Expected is {value.encode('utf-8')} but "
+                             f"received {repr(rec_field_value)}")
     except Exception as ae:
         raise ValueError(f"Expection occured. {ae}")
 

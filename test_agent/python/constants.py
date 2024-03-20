@@ -30,4 +30,5 @@ REGISTER_LISTENER_COMMAND = "registerlistener"
 UNREGISTER_LISTENER_COMMAND = "unregisterlistener"
 INVOKE_METHOD_COMMAND = "invokemethod"
 RESPONSE_ON_RECEIVE = "onreceive"
+RESPONSE_RPC = "rpcresponse"
 
