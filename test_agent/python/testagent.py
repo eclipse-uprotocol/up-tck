@@ -39,6 +39,7 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.rpc.calloptions import CallOptions
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
+from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 
 import constants as CONSTANTS
 
@@ -69,9 +70,8 @@ class SocketUListener(UListener):
 
 
 def send_to_test_manager(response, action):
-    if not isinstance(response, dict):
+    if not isinstance(response, (dict, str)):
         response = MessageToDict(response, including_default_value_fields=True, preserving_proto_field_name=True)
-
     # Create a new dictionary
     response_dict = {'data': response, 'action': action, 'ue': 'python'}
     response_dict = json.dumps(response_dict).encode('utf-8')
@@ -90,6 +90,11 @@ def dict_to_proto(parent_json_obj, parent_proto_obj):
                     # Recursively update the nested message object
                     populate_fields(value, getattr(proto_obj, key))
                 else:
+                    field_type = type(getattr(proto_obj, key))
+                    if field_type == int:
+                        value = int(value)
+                    elif field_type == float:
+                        value = float(value)
                     setattr(proto_obj, key, value)
         return proto_obj
 
@@ -125,10 +130,21 @@ def handle_invoke_method_command(json_msg):
     res_future.add_done_callback(handle_response)
 
 
+def handle_uri_serialize_command(json_msg):
+    uri = dict_to_proto(json_msg["data"], UUri())
+    send_to_test_manager(LongUriSerializer().serialize(uri), CONSTANTS.SERIALIZE_URI)
+
+
+def handle_uri_deserialize_command(json_msg):
+    send_to_test_manager(LongUriSerializer().deserialize(json_msg["data"]), CONSTANTS.DESERIALIZE_URI)
+
+
 action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
                    CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
                    CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
-                   CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command}
+                   CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
+                   CONSTANTS.SERIALIZE_URI: handle_uri_serialize_command,
+                   CONSTANTS.DESERIALIZE_URI : handle_uri_deserialize_command}
 
 
 def process_message(json_data):

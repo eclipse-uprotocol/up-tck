@@ -86,7 +86,7 @@ class Dispatcher:
 
             recv_data = up_client_socket.recv(BYTES_MSG_LENGTH)
 
-            if recv_data == b"":
+            if not recv_data or recv_data == b"":
                 self._close_socket(up_client_socket)
                 return
 

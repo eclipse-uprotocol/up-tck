@@ -40,8 +40,12 @@ def step_impl(context, sdk_name: str, command: str):
     context.status_json = None
     if command == "send":
         context.on_receive_msg.pop(sdk_name, None)
-    if command == "invokemethod":
+    elif command == "invokemethod":
         context.on_receive_rpc_response.pop(sdk_name, None)
+    elif command == "uri_serialize":
+        context.on_receive_serialized_uri = None
+    elif command == "uri_serialize":
+        context.on_receive_deserialized_uri = None
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
@@ -50,11 +54,49 @@ def step_impl(context, sdk_name: str, command: str):
     context.action = command
 
 
+@then(u'the serialized uri received is "{expected_uri}"')
+def step_impl(context, expected_uri):
+    try:
+        rec_field_value = context.on_receive_serialized_uri
+        assert_that(expected_uri, equal_to(rec_field_value))
+    except AssertionError as ae:
+        raise AssertionError(f"Assertion error. Expected is {expected_uri} but "
+                             f"received {context.on_receive_serialized_uri}")
+    except Exception as ae:
+        raise ValueError(f"Expection occured. {ae}")
+
+
+@when(u'sends a "{command}" request with the value "{serialized_uri}"')
+def step_impl(context, command, serialized_uri):
+    context.logger.info(f"Json request for {command} -> {serialized_uri}")
+    context.tm.receive_from_bdd(context.ue, command, serialized_uri)
+
+
+@then(u'the deserialized uri received should have the following properties')
+def verify_received_properties(context):
+    assert context.on_receive_deserialized_uri is not None
+    deserialized_uri_dict = flatten_dict(context.on_receive_deserialized_uri)
+    # Iterate over the rows of the table and verify the received properties
+    try:
+        for row in context.table:
+            field = row['Field']
+            expected_value = row['Value']
+            if len(expected_value)>0:
+                assert_that(deserialized_uri_dict[field], expected_value)
+    except AssertionError as ae:
+        raise AssertionError(f"Assertion error. {ae}")
+
+
 @given(u'sets "{key}" to "{value}"')
 @when(u'sets "{key}" to "{value}"')
 def step_impl(context: Context, key: str, value: str):
     if key not in context.json_dict:
         context.json_dict[key] = value
+
+
+@given(u'sets "{key}" to ""')
+def step_impl(context, key):
+    pass
 
 
 @given(u'sets "{key}" to b"{value}"')
@@ -130,6 +172,17 @@ def access_nested_dict(dictionary, keys):
     for key in keys:
         value = value[key]
     return value
+
+
+def flatten_dict(nested_dict, parent_key='', sep='.'):
+    flattened = {}
+    for k, v in nested_dict.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, dict):
+            flattened.update(flatten_dict(v, new_key, sep=sep))
+        else:
+            flattened[new_key] = v
+    return flattened
 
 
 def unflatten_dict(d, delimiter='.'):

@@ -43,6 +43,7 @@ from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
 from uprotocol.uri.factory.uresource_builder import UResourceBuilder
+from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from uprotocol.uri.validator.urivalidator import UriValidator
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 
@@ -53,10 +54,11 @@ RESPONSE_URI = UUri(entity=UEntity(name="test_agent_py", version_major=1), resou
 
 
 def timeout_counter(response, req_id, timeout):
-    time.sleep(timeout/1000)
+    time.sleep(timeout / 1000)
     if not response.done():
         response.set_exception(
-            TimeoutError('Not received response for request ' + LongUuidSerializer.instance().serialize(req_id) + ' within ' + str(timeout/1000) + ' seconds'))
+            TimeoutError('Not received response for request ' + LongUuidSerializer.instance().serialize(
+                req_id) + ' within ' + str(timeout / 1000) + ' seconds'))
 
 
 class SocketUTransport(UTransport, RpcClient):
