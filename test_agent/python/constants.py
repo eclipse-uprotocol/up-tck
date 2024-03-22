@@ -31,4 +31,5 @@ UNREGISTER_LISTENER_COMMAND = "unregisterlistener"
 INVOKE_METHOD_COMMAND = "invokemethod"
 RESPONSE_ON_RECEIVE = "onreceive"
 RESPONSE_RPC = "rpcresponse"
-
+SERIALIZE_URI = "uri_serialize"
+DESERIALIZE_URI = "uri_deserialize"

@@ -31,6 +31,7 @@ import com.google.protobuf.StringValue;
 import org.eclipse.uprotocol.rpc.CallOptions;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
+import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
 import org.eclipse.uprotocol.v1.*;
 import org.json.JSONObject;
 
@@ -58,6 +59,9 @@ public class TestAgent {
         actionHandlers.put(Constant.REGISTER_LISTENER_COMMAND, TestAgent::handleRegisterListenerCommand);
         actionHandlers.put(Constant.UNREGISTER_LISTENER_COMMAND, TestAgent::handleUnregisterListenerCommand);
         actionHandlers.put(Constant.INVOKE_METHOD_COMMAND, TestAgent::handleInvokeMethodCommand);
+        actionHandlers.put(Constant.SERIALIZE_URI, TestAgent::handleSerializeUriCommand);
+        actionHandlers.put(Constant.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
+
     }
 
     static {
@@ -73,7 +77,7 @@ public class TestAgent {
     public static void processMessage(Map<String, Object> jsonData) throws IOException {
         String action = (String) jsonData.get("action");
         if (actionHandlers.containsKey(action)) {
-            UStatus status = actionHandlers.get(action).handle(jsonData);
+            UStatus status = (UStatus) actionHandlers.get(action).handle(jsonData);
             if (status != null) {
                 sendToTestManager(status, action);
             }
@@ -104,7 +108,7 @@ public class TestAgent {
         }
     }
 
-    private static void sendToTestManager(JSONObject json, String action) {
+    private static void sendToTestManager(Object json, String action) {
         // Create a new dictionary
         JSONObject responseDict = new JSONObject();
         responseDict.put("data", json);
@@ -128,7 +132,7 @@ public class TestAgent {
         return transport.unregisterListener(uri, listener);
     }
 
-    private static UStatus handleInvokeMethodCommand(Map<String, Object> jsonData) {
+    private static Object handleInvokeMethodCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         // Convert data and payload to protocol buffers
         UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
@@ -138,6 +142,19 @@ public class TestAgent {
                 CallOptions.newBuilder().build());
         responseFuture.whenComplete(
                 (responseMessage, exception) -> sendToTestManager(responseMessage, Constant.RESPONSE_RPC));
+        return null;
+    }
+
+    private static Object handleSerializeUriCommand(Map<String, Object> jsonData) {
+        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
+        UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
+        sendToTestManager(LongUriSerializer.instance().serialize(uri), Constant.SERIALIZE_URI);
+        return null;
+    }
+
+    private static Object handleDeserializeUriCommand(Map<String, Object> jsonData) {
+        sendToTestManager(LongUriSerializer.instance().deserialize(jsonData.get("data").toString()),
+                Constant.DESERIALIZE_URI);
         return null;
     }
 
@@ -196,7 +213,7 @@ public class TestAgent {
 
     @FunctionalInterface
     private interface ActionHandler {
-        UStatus handle(Map<String, Object> jsonData);
+        Object handle(Map<String, Object> jsonData);
     }
 
 

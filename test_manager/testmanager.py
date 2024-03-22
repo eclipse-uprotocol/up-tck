@@ -75,7 +75,7 @@ class TestManager:
         """
         recv_data = ta_socket.recv(BYTES_MSG_LENGTH)
 
-        if recv_data == b'':
+        if not recv_data or recv_data == b'':
             return
         json_data = json.loads(recv_data.decode('utf-8'))
         logger.info('Received from test agent: %s', json_data)
@@ -93,6 +93,10 @@ class TestManager:
             self.bdd_context.on_receive_msg[json_data['ue']] = json_data['data']
         elif json_data['action'] == 'rpcresponse':
             self.bdd_context.on_receive_rpc_response[json_data['ue']] = json_data['data']
+        elif json_data['action'] == 'uri_serialize':
+            self.bdd_context.on_receive_serialized_uri = json_data['data']
+        elif json_data['action'] == 'uri_deserialize':
+            self.bdd_context.on_receive_deserialized_uri = json_data['data']
 
     def close_socket(self, sdk=None, ta_socket=None):
         if ta_socket is not None:
@@ -128,11 +132,11 @@ class TestManager:
                 callback = key.data
                 callback(key.fileobj)
 
-    def receive_from_bdd(self, sdk_name, action, json_data, payload=None):
+    def receive_from_bdd(self, sdk_name, action, data, payload=None):
         ta_socket: socket.socket = self.connected_sockets[sdk_name.lower().strip()]
 
         # Create a new dictionary
-        response_dict = {'data': json_data, 'action': action}
+        response_dict = {'data': data, 'action': action}
         if payload is not None:
             response_dict['payload'] = payload
         response_dict = json.dumps(response_dict).encode()

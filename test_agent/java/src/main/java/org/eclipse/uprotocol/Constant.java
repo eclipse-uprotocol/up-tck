@@ -34,5 +34,7 @@ public class Constant {
     public static final String INVOKE_METHOD_COMMAND = "invokemethod";
     public static final String RESPONSE_ON_RECEIVE = "onreceive";
     public static final String RESPONSE_RPC = "rpcresponse";
+    public static final String SERIALIZE_URI = "uri_serialize";
+    public static final String DESERIALIZE_URI = "uri_deserialize";
 
 }

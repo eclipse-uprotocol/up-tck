@@ -24,7 +24,7 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Default
+Feature: Testing register and unregister
 
   Scenario Outline: To test the registerlistener and unregisterlistener apis
     Given "<uE1>" creates data for "registerlistener"
@@ -36,7 +36,7 @@ Feature: Default
     And user waits "2" second
     Then the status received with "code" is "OK"
 
-    Given "<uE1>" creates data for "unregisterlistener"
+    When "<uE1>" creates data for "unregisterlistener"
     And sets "entity.name" to "body.access"
     And sets "resource.name" to "door"
     And sets "resource.instance" to "front_left"
