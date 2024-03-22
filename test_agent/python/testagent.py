@@ -91,10 +91,13 @@ def dict_to_proto(parent_json_obj, parent_proto_obj):
                     populate_fields(value, getattr(proto_obj, key))
                 else:
                     field_type = type(getattr(proto_obj, key))
-                    if field_type == int:
-                        value = int(value)
-                    elif field_type == float:
-                        value = float(value)
+                    try:
+                        if field_type == int:
+                            value = int(value)
+                        elif field_type == float:
+                            value = float(value)
+                    except:
+                        pass
                     setattr(proto_obj, key, value)
         return proto_obj
 
@@ -144,7 +147,7 @@ action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
                    CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
                    CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
                    CONSTANTS.SERIALIZE_URI: handle_uri_serialize_command,
-                   CONSTANTS.DESERIALIZE_URI : handle_uri_deserialize_command}
+                   CONSTANTS.DESERIALIZE_URI: handle_uri_deserialize_command}
 
 
 def process_message(json_data):
@@ -160,7 +163,7 @@ def process_message(json_data):
 def receive_from_tm():
     while True:
         recv_data = ta_socket.recv(CONSTANTS.BYTES_MSG_LENGTH)
-        if recv_data == b"":
+        if not recv_data or recv_data == b"":
             return
         # Deserialize the JSON data
         json_data = json.loads(recv_data.decode('utf-8'))

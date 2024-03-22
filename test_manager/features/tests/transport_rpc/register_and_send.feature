@@ -24,37 +24,38 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Default
-Scenario Outline: To test the registerlistener and send apis
+Feature: Testing Publish and Subscribe Functionality
+
+  Scenario Outline: To test the registerlistener and send apis
     Given "<uE1>" creates data for "registerlistener"
-      And sets "entity.name" to "body.access"
-      And sets "resource.name" to "door"
-      And sets "resource.instance" to "front_left"
-      And sets "resource.message" to "Door"
-     When sends "registerlistener" request
-      And user waits "3" second
-     Then the status received with "code" is "OK"
+    And sets "entity.name" to "body.access"
+    And sets "resource.name" to "door"
+    And sets "resource.instance" to "front_left"
+    And sets "resource.message" to "Door"
+    When sends "registerlistener" request
+    And user waits "3" second
+    Then the status received with "code" is "OK"
 #
-     When "<uE2>" creates data for "send"
-      And sets "attributes.source.entity.name" to "body.access"
-      And sets "attributes.source.resource.name" to "door"
-      And sets "attributes.source.resource.instance" to "front_left"
-      And sets "attributes.source.resource.message" to "Door"
-      And sets "attributes.priority" to "UPRIORITY_CS1"
-      And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
-      And sets "payload.format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
-      And sets "payload.value" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+    When "<uE2>" creates data for "send"
+    And sets "attributes.source.entity.name" to "body.access"
+    And sets "attributes.source.resource.name" to "door"
+    And sets "attributes.source.resource.instance" to "front_left"
+    And sets "attributes.source.resource.message" to "Door"
+    And sets "attributes.priority" to "UPRIORITY_CS1"
+    And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
+    And sets "payload.format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
+    And sets "payload.value" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
 
-      And sends "send" request
-      And user waits "3" second
+    And sends "send" request
+    And user waits "3" second
 
-     Then the status received with "code" is "OK"
-      And user waits "5" second
-      And "<uE2>" receives "payload.value" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+    Then the status received with "code" is "OK"
+    And user waits "5" second
+    And "<uE2>" receives "payload.value" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
 
     Examples:
-    | uE1     | uE2    |
-    | python  | python |
-    | java    | java   |
-    | java    | python |
-    | python  | java   |
+      | uE1    | uE2    |
+      | python | python |
+      | java   | java   |
+      | java   | python |
+      | python | java   |

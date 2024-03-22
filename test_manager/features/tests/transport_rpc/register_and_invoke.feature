@@ -24,7 +24,7 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Default
+Feature: Testing RPC Functionality
 
   Scenario Outline: To test the registerlistener and invoke_method apis
     Given "<uE1>" creates data for "registerlistener"

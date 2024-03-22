@@ -86,7 +86,7 @@ class SocketUTransport(UTransport, RpcClient):
             try:
                 recv_data = self.socket.recv(BYTES_MSG_LENGTH)
 
-                if recv_data == b"":
+                if not recv_data or recv_data == b"":
                     self.socket.close()
                     return
                 umsg = UMessage()

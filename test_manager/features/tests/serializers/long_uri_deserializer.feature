@@ -23,22 +23,22 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
-Feature: Default
+Feature: Local and Remote URI de-serialization
 
   Scenario Outline: Testing the local uri deserializer
     Given "<uE1>" creates data for "uri_deserialize"
     When sends a "uri_deserialize" request with the value "<serialized_uri>"
     And user waits "1" second
     Then the deserialized uri received should have the following properties:
-      | Field                | Value                    |
+      | Field                | Value                  |
       | entity.name          | <entity_name>          |
       | entity.version_major | <entity_version_major> |
-      | resource.name        | <resource_name>       |
+      | resource.name        | <resource_name>        |
       | resource.instance    | <resource_instance>    |
-      | resource.message     | <resource_message>    |
+      | resource.message     | <resource_message>     |
     Examples:
-      | uE1    | entity_name | resource_name | resource_instance | resource_message | entity_version_major | serialized_uri    |
-      | python | neelam      | rpc           | test              |                  |                      | /neelam//rpc.test |
+      | uE1    | entity_name | resource_name | resource_instance | resource_message | entity_version_major | serialized_uri            |
+      | python | neelam      | rpc           | test              |                  |                      | /neelam//rpc.test         |
       | python | neelam      |               |                   |                  |                      | /neelam                   |
       | python | neelam      |               |                   |                  | 1                    | /neelam/1                 |
       | python | neelam      | test          |                   |                  |                      | /neelam//test             |
@@ -56,3 +56,38 @@ Feature: Default
       | java   | neelam      | test          | front             |                  | 1                    | /neelam/1/test.front      |
       | java   | neelam      | test          | front             | Test             |                      | /neelam//test.front#Test  |
       | java   | neelam      | test          | front             | Test             | 1                    | /neelam/1/test.front#Test |
+
+
+  Scenario Outline: Testing the remote uri deserializer
+    Given "<uE1>" creates data for "uri_deserialize"
+    When sends a "uri_deserialize" request with the value "<serialized_uri>"
+    And user waits "1" second
+    Then the deserialized uri received should have the following properties:
+      | Field                | Value                  |
+      | authority.name       | <authority_name>       |
+
+      | entity.name          | <entity_name>          |
+      | entity.version_major | <entity_version_major> |
+      | resource.name        | <resource_name>        |
+      | resource.instance    | <resource_instance>    |
+      | resource.message     | <resource_message>     |
+    Examples:
+      | uE1    | authority_name | entity_name | resource_name | resource_instance | resource_message | entity_version_major | serialized_uri                              |
+      | python | vcu.my_car_vin | neelam      |               |                   |                  |                      | //vcu.my_car_vin/neelam                   |
+      | python | vcu.my_car_vin | neelam      |               |                   |                  | 1                    | //vcu.my_car_vin/neelam/1                 |
+      | python | vcu.my_car_vin | neelam      | test          |                   |                  | 1                    | //vcu.my_car_vin/neelam/1/test            |
+      | python | vcu.my_car_vin | neelam      | test          |                   |                  |                      | //vcu.my_car_vin/neelam//test             |
+      | python | vcu.my_car_vin | neelam      | test          | front             |                  | 1                    | //vcu.my_car_vin/neelam/1/test.front      |
+      | python | vcu.my_car_vin | neelam      | test          | front             |                  |                      | //vcu.my_car_vin/neelam//test.front       |
+      | python | vcu.my_car_vin | neelam      | test          | front             | Test             | 1                    | //vcu.my_car_vin/neelam/1/test.front#Test |
+      | python | vcu.my_car_vin | neelam      | test          | front             | Test             |                      | //vcu.my_car_vin/neelam//test.front#Test  |
+      | python | vcu.my_car_vin | petapp      | rpc           | response          |                  |                      | //vcu.my_car_vin/petapp//rpc.response     |
+      | java   | vcu.my_car_vin | neelam      |               |                   |                  |                      | //vcu.my_car_vin/neelam                   |
+      | java   | vcu.my_car_vin | neelam      |               |                   |                  | 1                    | //vcu.my_car_vin/neelam/1                 |
+      | java   | vcu.my_car_vin | neelam      | test          |                   |                  | 1                    | //vcu.my_car_vin/neelam/1/test            |
+      | java   | vcu.my_car_vin | neelam      | test          |                   |                  |                      | //vcu.my_car_vin/neelam//test             |
+      | java   | vcu.my_car_vin | neelam      | test          | front             |                  | 1                    | //vcu.my_car_vin/neelam/1/test.front      |
+      | java   | vcu.my_car_vin | neelam      | test          | front             |                  |                      | //vcu.my_car_vin/neelam//test.front       |
+      | java   | vcu.my_car_vin | neelam      | test          | front             | Test             | 1                    | //vcu.my_car_vin/neelam/1/test.front#Test |
+      | java   | vcu.my_car_vin | neelam      | test          | front             | Test             |                      | //vcu.my_car_vin/neelam//test.front#Test  |
+      | java   | vcu.my_car_vin | petapp      | rpc           | response          |                  |                      | //vcu.my_car_vin/petapp//rpc.response     |

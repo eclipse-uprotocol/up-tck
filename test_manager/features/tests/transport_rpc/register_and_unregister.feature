@@ -24,7 +24,7 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Default
+Feature: Testing register and unregister
 
   Scenario Outline: To test the registerlistener and unregisterlistener apis
     Given "<uE1>" creates data for "registerlistener"
