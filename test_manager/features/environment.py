@@ -46,13 +46,6 @@ DISPATCHER_PATH = "/dispatcher/dispatcher.py"
 
 def create_command(filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []
-    if sys.platform == "win32":
-        pass
-    elif sys.platform == "linux" or sys.platform == "linux2":
-        command.append('gnome-terminal')
-        command.append('--')
-    else:
-        raise Exception("only handle Windows and Linux commands for now")
 
     if filepath_from_root_repo.endswith('.jar'):
         command.append("java")
@@ -130,11 +123,8 @@ def after_all(context: Context):
     context.tm.close()
 
     try:
-        context.dispatcher_process.kill()
-        context.dispatcher_process.communicate()
-        context.java_ta_process.kill()
-        context.java_ta_process.communicate()
-        context.python_ta_process.kill()
-        context.python_ta_process.communicate()
+        context.dispatcher_process.terminate()
+        context.java_ta_process.terminate()
+        context.python_ta_process.terminate()
     except Exception as e:
         context.logger.error(e)

@@ -1,0 +1,134 @@
+name: TCK Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  run_tests:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        cache: maven
+    - name: Build up_client_socket_java with Maven
+      working-directory: up_client_socket/java
+      run: |
+            mvn clean install --file pom.xml
+    - name: Build java_test_agent with Maven
+      working-directory: test_agent/java
+      run: |
+            mvn clean install --file pom.xml
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest
+        pip install -r requirements.txt
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Get Behave Scripts
+      uses: actions/github-script@v6
+      id: check-env
+      with:
+        result-encoding: string
+        script: |
+          const feature_file_list = [];
+          const fs = require('fs');
+          const path = require('path');
+          
+          function traverseDir(dir) {
+            fs.readdirSync(dir).forEach(file => {
+              let fullPath = path.join(dir, file);
+              if (fs.lstatSync(fullPath).isDirectory()) {
+                traverseDir(fullPath);
+              } else {
+                core.info("Adding file: " + fullPath);
+                feature_file_list.push({ filename: file, path: fullPath.replace("test_manager/", "") });
+              }
+            });
+          }
+          
+          traverseDir("./test_manager/features/tests");
+          fs.writeFileSync('./test_manager/feature_file_list.json', JSON.stringify(feature_file_list));
+    - name: TCK Behave Tests
+      run: |
+        pwd
+        ls -l
+        cd test_manager
+        # Read JSON file content
+        content=$(<./feature_file_list.json)
+
+        # Loop through each JSON object
+        echo "$content" | jq -c '.[]' | while IFS='' read -r obj; do
+            # Extract filename and full path from the current JSON object
+            filename=$(echo "$obj" | jq -r '.filename')
+            full_path=$(echo "$obj" | jq -r '.path')
+            
+            # Run behave command
+            echo "Running Test: $filename"
+            behave --format json --outfile "./reports/${filename}.json" --format plain --outfile "./reports/${filename}.txt" "$full_path"
+            echo "Finished Test: $filename"
+            sleep 70
+        done
+    - name: Get Behave Scripts
+      uses: actions/github-script@v6
+      with:
+        result-encoding: string
+        script: |
+          const feature_file_list = []
+          const fs = require('fs')
+          const path = require('path');
+
+          function traverseDir(dir) {
+            fs.readdirSync(dir).forEach(file => {
+              let fullPath = path.join(dir, file);
+              if (fs.lstatSync(fullPath).isDirectory()) {
+                traverseDir(fullPath);
+              } else {
+                feature_file_list.push({ filename: file, path: fullPath });
+              }
+            });
+          }
+
+          traverseDir("./test_manager/reports");
+          const json_list = []
+          try {
+            for (let i = 0; i < feature_file_list.length; i++){
+              file_extension = path.parse(feature_file_list[i]["filename"]).ext
+              file_name = path.parse(feature_file_list[i]["filename"]).name
+              if (file_extension == ".json" && file_name != "summary") {
+                json_list.push(JSON.parse(fs.readFileSync(feature_file_list[i]["path"])));
+              }
+            }
+            for (let i = 0; i < json_list.length; i++) {
+              if (json_list[i][0].status != "passed") {
+                core.setFailed("One or more features failed")
+                core.error("\u001b[38;2;255;0;0mFeature:" + json_list[i][0].name + " [failed]")
+              } else{
+                core.info("\u001b[38;2;0;255;0mFeature:" + json_list[i][0].name + " [passed]")
+              }
+            }
+          } catch(err) {
+            core.error("\u001b[38;2;255;0;0mError while reading or parsing the JSON")
+            core.setFailed(err)
+          }

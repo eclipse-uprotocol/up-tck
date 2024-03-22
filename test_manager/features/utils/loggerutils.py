@@ -41,38 +41,7 @@ LOG_SETTINGS = {
 
     'version': 1,
     'disable_existing_loggers': False,
-    'handlers': {
-        'formatted_console': {
-            'class': 'logging.StreamHandler',
-            'level': 'INFO',
-            'formatter': 'detailed',
-            'stream': 'ext://sys.stdout',
-        },
-        'formatted_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'level': 'INFO',
-            'formatter': 'detailed',
-            'filename': "logs" + os.path.sep + "uitests_" + strftime("%Y-%m-%d_%H_%M_%S") + ".log",
-            'mode': 'a',
-            'maxBytes': 10485760,
-            'backupCount': 5,
-        },
-        'unformatted_console': {
-            'class': 'logging.StreamHandler',
-            'level': 'INFO',
-            'formatter': 'blank',
-            'stream': 'ext://sys.stdout',
-        },
-        'unformatted_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'level': 'INFO',
-            'formatter': 'blank',
-            'filename': "logs" + os.path.sep + "uitests_" + strftime("%Y-%m-%d_%H_%M_%S") + ".log",
-            'mode': 'a',
-            'maxBytes': 10485760,
-            'backupCount': 5,
-        },
-    },
+    'handlers': {},
     'formatters': {
         'detailed': {
             'format': '[%(levelname)s] : %(asctime)s : %(filename)s : %(funcName)s:%(lineno)d : %(message)s',
@@ -81,16 +50,7 @@ LOG_SETTINGS = {
             'format': '',
         },
     },
-    'loggers': {
-        'formatted_log': {
-                'level': 'DEBUG',
-                'handlers': ['formatted_file', 'formatted_console']
-            },
-        'unformatted_log': {
-            'level': 'DEBUG',
-            'handlers': ['unformatted_file', 'unformatted_console']
-        },
-    }
+    'loggers': {}
 }
 
 
