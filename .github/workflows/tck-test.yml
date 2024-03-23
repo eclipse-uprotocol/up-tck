@@ -86,7 +86,7 @@ jobs:
             
             # Run behave command
             echo "Running Test: $filename"
-            behave --format json --outfile "./reports/${filename}.json" --format plain --outfile "./reports/${filename}.txt" "$full_path"
+            behave --format json --outfile "./reports/${filename}.json" --format html --outfile "./reports/${filename}.html" "$full_path"
             echo "Finished Test: $filename"
             sleep 70
         done
@@ -136,4 +136,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: behave-test-reports
-        path: ./test_manager/reports/*.txt
+        path: ./test_manager/reports/*.html
