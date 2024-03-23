@@ -118,6 +118,8 @@ def after_all(context: Context):
     context.on_receive_rpc_response = {}
     context.on_receive_serialized_uri = None
     context.on_receive_deserialized_uri = None
+    context.on_receive_serialized_uuid = None
+    context.on_receive_deserialized_uuid = None
     context.tm.close_socket(sdk="python")
     context.tm.close_socket(sdk="java")
     context.tm.close()

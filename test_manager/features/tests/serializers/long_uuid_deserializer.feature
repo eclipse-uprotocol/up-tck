@@ -23,15 +23,18 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
-TEST_MANAGER_ADDR = ("127.0.0.5", 12345)
-BYTES_MSG_LENGTH: int = 32767
-SEND_COMMAND = "send"
-REGISTER_LISTENER_COMMAND = "registerlistener"
-UNREGISTER_LISTENER_COMMAND = "unregisterlistener"
-INVOKE_METHOD_COMMAND = "invokemethod"
-RESPONSE_ON_RECEIVE = "onreceive"
-RESPONSE_RPC = "rpcresponse"
-SERIALIZE_URI = "uri_serialize"
-DESERIALIZE_URI = "uri_deserialize"
-SERIALIZE_UUID = "uuid_serialize"
-DESERIALIZE_UUID = "uuid_deserialize"
+Feature: UUID de-serialization
+
+  Scenario Outline: Testing the long uuid deserializer
+    Given "<uE1>" creates data for "uuid_deserialize"
+    When sends a "uuid_deserialize" request with the value "<serialized_uuid>"
+    And user waits "1" second
+    Then the deserialized uuid received should have the following properties:
+      | Field | Value |
+      | lsb   | <lsb> |
+      | msb   | <msb> |
+
+    Examples:
+      | uE1    | lsb                  | msb                | serialized_uuid                      |
+      | python | 11155833020022798372 | 112128268635242497 | 018e5c10-f548-8001-9ad1-7b068c083824 |
+      | java   | 11155833020022798372 | 112128268635242497 | 018e5c10-f548-8001-9ad1-7b068c083824 |

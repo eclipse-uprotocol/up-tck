@@ -36,10 +36,12 @@ from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uri_pb2 import UUri
+from uprotocol.proto.uuid_pb2 import UUID
 from uprotocol.rpc.calloptions import CallOptions
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 
 import constants as CONSTANTS
 
@@ -142,12 +144,24 @@ def handle_uri_deserialize_command(json_msg):
     send_to_test_manager(LongUriSerializer().deserialize(json_msg["data"]), CONSTANTS.DESERIALIZE_URI)
 
 
+def handle_uuid_deserialize_command(json_msg):
+    send_to_test_manager(LongUuidSerializer().deserialize(json_msg["data"]), CONSTANTS.DESERIALIZE_UUID)
+
+
+def handle_uuid_serialize_command(json_msg):
+    uri = dict_to_proto(json_msg["data"], UUID())
+    send_to_test_manager(LongUuidSerializer().serialize(uri), CONSTANTS.SERIALIZE_UUID)
+
+
 action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
                    CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
                    CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
                    CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
                    CONSTANTS.SERIALIZE_URI: handle_uri_serialize_command,
-                   CONSTANTS.DESERIALIZE_URI: handle_uri_deserialize_command}
+                   CONSTANTS.DESERIALIZE_URI: handle_uri_deserialize_command,
+                   CONSTANTS.SERIALIZE_UUID: handle_uuid_serialize_command,
+                   CONSTANTS.DESERIALIZE_UUID: handle_uuid_deserialize_command
+                   }
 
 
 def process_message(json_data):
