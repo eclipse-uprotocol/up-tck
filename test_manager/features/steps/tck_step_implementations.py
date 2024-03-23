@@ -34,7 +34,7 @@ from hamcrest import assert_that, equal_to
 
 @given(u'"{sdk_name}" creates data for "{command}"')
 @when(u'"{sdk_name}" creates data for "{command}"')
-def step_impl(context, sdk_name: str, command: str):
+def create_sdk_data(context, sdk_name: str, command: str):
     context.logger.info("Inside create register listener data")
     context.json_dict = {}
     context.status_json = None
@@ -55,7 +55,7 @@ def step_impl(context, sdk_name: str, command: str):
 
 
 @then(u'the serialized uri received is "{expected_uri}"')
-def step_impl(context, expected_uri):
+def serialized_received(context, expected_uri):
     try:
         rec_field_value = context.on_receive_serialized_uri
         assert_that(expected_uri, equal_to(rec_field_value))
@@ -67,7 +67,7 @@ def step_impl(context, expected_uri):
 
 
 @when(u'sends a "{command}" request with the value "{serialized_uri}"')
-def step_impl(context, command, serialized_uri):
+def send_serialized_command(context, command, serialized_uri):
     context.logger.info(f"Json request for {command} -> {serialized_uri}")
     context.tm.receive_from_bdd(context.ue, command, serialized_uri)
 
@@ -89,26 +89,26 @@ def verify_received_properties(context):
 
 @given(u'sets "{key}" to "{value}"')
 @when(u'sets "{key}" to "{value}"')
-def step_impl(context: Context, key: str, value: str):
+def set_key_to_val(context: Context, key: str, value: str):
     if key not in context.json_dict:
         context.json_dict[key] = value
 
 
 @given(u'sets "{key}" to ""')
-def step_impl(context, key):
+def set_blank_key(context, key):
     pass
 
 
 @given(u'sets "{key}" to b"{value}"')
 @when(u'sets "{key}" to b"{value}"')
-def step_impl(context, key, value):
+def set_key_to_bytes(context, key, value):
     if key not in context.json_dict:
         context.json_dict[key] = "BYTES:" + value
 
 
 @given(u'sends "{command}" request')
 @when(u'sends "{command}" request')
-def step_impl(context, command: str):
+def send_command_request(context, command: str):
     context.json_dict = unflatten_dict(context.json_dict)
     context.logger.info(f"Json request for {command} -> {str(context.json_dict)}")
     context.tm.receive_from_bdd(context.ue, context.action, context.json_dict)
@@ -116,12 +116,12 @@ def step_impl(context, command: str):
 
 @when(u'user waits "{sec}" second')
 @then(u'user waits "{sec}" second')
-def step_impl(context, sec):
+def user_wait(context, sec):
     time.sleep(int(sec))
 
 
 @then(u'the status received with "{field}" is "{field_value}"')
-def step_impl(context, field, field_value):
+def receive_status(context, field, field_value):
     try:
         rec_field_value = context.status_json[field]
         assert_that(field_value, equal_to(rec_field_value))
@@ -133,7 +133,7 @@ def step_impl(context, field, field_value):
 
 
 @then(u'"{sdk_name}" receives "{key}" as b"{value}"')
-def step_impl(context, sdk_name, key, value):
+def receive_value_as_bytes(context, sdk_name, key, value):
     try:
         value = value.strip()
         val = access_nested_dict(context.on_receive_msg[sdk_name], key)
@@ -149,7 +149,7 @@ def step_impl(context, sdk_name, key, value):
 
 
 @then(u'"{sdk_name}" receives rpc response having "{key}" as b"{value}"')
-def step_impl(context, sdk_name, key, value):
+def receive_rpc_response_as_bytes(context, sdk_name, key, value):
     try:
         val = access_nested_dict(context.on_receive_rpc_response[sdk_name], key)
         rec_field_value = base64.b64decode(val.encode('utf-8'))

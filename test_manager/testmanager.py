@@ -127,7 +127,7 @@ class TestManager:
     def listen_for_client_connections(self):
         while not self.exit_manager:
             # Wait until some registered file objects or sockets become ready, or the timeout expires.
-            events = self.selector.select()
+            events = self.selector.select(timeout=0)
             for key, mask in events:
                 callback = key.data
                 callback(key.fileobj)
