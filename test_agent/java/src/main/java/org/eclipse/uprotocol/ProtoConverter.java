@@ -66,7 +66,11 @@ public class ProtoConverter {
                 protoObj.setField(fieldDescriptor, Integer.parseInt(value.toString()));
                 break;
             case LONG:
-                protoObj.setField(fieldDescriptor, Long.parseLong(value.toString()));
+                try {
+                    protoObj.setField(fieldDescriptor, Long.parseLong(value.toString()));
+                } catch (NumberFormatException ex) {
+                    protoObj.setField(fieldDescriptor, Long.parseUnsignedLong(value.toString()));
+                }
                 break;
             case FLOAT:
                 protoObj.setField(fieldDescriptor, Float.parseFloat(value.toString()));
