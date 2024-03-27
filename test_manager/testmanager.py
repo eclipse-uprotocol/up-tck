@@ -80,6 +80,7 @@ class TestManager:
         json_data = json.loads(recv_data.decode('utf-8'))
         logger.info('Received from test agent: %s', json_data)
         self._process_message(json_data, ta_socket)
+        logger.info('receive done')
 
     def _process_message(self, json_data, ta_socket):
         if json_data['action'] == 'initialize':
@@ -87,7 +88,7 @@ class TestManager:
             with self.lock:
                 if sdk not in self.connected_sockets:
                     self.connected_sockets[sdk] = ta_socket
-        elif json_data['action'] in ['send', 'registerlistener', 'unregisterlistener']:
+        elif json_data['action'] in ['send', 'registerlistener', 'unregisterlistener', 'performancepublisher', 'performancesubscriber', 'unregistersubscribers']:
             self.bdd_context.status_json = json_data['data']
         elif json_data['action'] == 'onreceive':
             self.bdd_context.on_receive_msg[json_data['ue']] = json_data['data']
@@ -97,6 +98,18 @@ class TestManager:
             self.bdd_context.on_receive_serialized_uri = json_data['data']
         elif json_data['action'] == 'uri_deserialize':
             self.bdd_context.on_receive_deserialized_uri = json_data['data']
+        elif json_data['action'] == 'subonreceive':
+            try:
+                self.bdd_context.sub_msgs.append(json_data['data'])
+            except Exception as e:
+                logger.error(e)
+        elif json_data['action'] == 'pubonreceive':
+            try:
+                self.bdd_context.pub_msgs.append(json_data['data'])
+            except Exception as e:
+                logger.error(e)
+        elif json_data['action'] == 'pubcomplete':
+            self.bdd_context.pub_timeout = True
 
     def close_socket(self, sdk=None, ta_socket=None):
         if ta_socket is not None:

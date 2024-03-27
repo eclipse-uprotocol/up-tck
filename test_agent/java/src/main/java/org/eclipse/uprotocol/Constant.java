@@ -36,5 +36,11 @@ public class Constant {
     public static final String RESPONSE_RPC = "rpcresponse";
     public static final String SERIALIZE_URI = "uri_serialize";
     public static final String DESERIALIZE_URI = "uri_deserialize";
+    public static final String PERFORMANCE_PUBLISHER = "performancepublisher";
+    public static final String PERFORMANCE_SUBSCRIBER = "performancesubscriber";
+    public static final String UNREGISTER_SUBSCRIBERS = "unregistersubscribers";
+    public static final String SUB_ON_RECEIVE = "subonreceive";
+    public static final String PUB_ON_RECEIVE = "pubonreceive";
+    public static final String PUB_COMPLETE = "pubcomplete";
 
 }

@@ -82,6 +82,10 @@ def before_all(context):
     """
     context.on_receive_msg = {}
     context.on_receive_rpc_response = {}
+    context.on_receive_unsubscribe_subscribers = {}
+    context.on_receive_performance_publisher = {}
+    context.on_receive_performance_subscriber = {}
+    context.pub_timeout = False
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
@@ -116,6 +120,11 @@ def after_all(context: Context):
     context.status_json = None
     context.on_receive_msg = {}
     context.on_receive_rpc_response = {}
+    context.on_receive_unsubscribe_subscribers = {}
+    context.on_receive_performance_publisher = {}
+    context.on_receive_performance_subscriber = {}
+    context.sub_msgs = []
+    context.pub_msgs = []
     context.on_receive_serialized_uri = None
     context.on_receive_deserialized_uri = None
     context.tm.close_socket(sdk="python")
