@@ -46,6 +46,9 @@ def create_sdk_data(context, sdk_name: str, command: str):
         context.on_receive_serialized_uri = None
     elif command == "uri_serialize":
         context.on_receive_deserialized_uri = None
+    elif command == "performancesubscriber":
+        context.sub_msgs = []
+        context.pub_msgs = []
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue

@@ -27,16 +27,19 @@ import json
 import logging
 import socket
 import sys
+import time
 from threading import Thread
 
 from google.protobuf import any_pb2
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.wrappers_pb2 import StringValue
-from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
+from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType, UAttributes
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.proto.uri_pb2 import UUri
+from uprotocol.proto.uri_pb2 import UUri, UAuthority, UEntity, UResource
+from uprotocol.proto.ustatus_pb2 import UStatus, UCode
 from uprotocol.rpc.calloptions import CallOptions
+from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
@@ -68,6 +71,11 @@ class SocketUListener(UListener):
         else:
             send_to_test_manager(umsg, CONSTANTS.RESPONSE_ON_RECEIVE)
 
+class PerformanceUListener(UListener):
+
+    def on_receive(self, umsg: UMessage) -> None:
+        logger.info("Published Message received")
+        send_to_test_manager({"id": str(umsg.attributes.id.msb), "received_timestamp": str(int(time.time() * 1000))}, CONSTANTS.SUB_ON_RECEIVE)
 
 def send_to_test_manager(response, action):
     if not isinstance(response, (dict, str)):
@@ -141,13 +149,62 @@ def handle_uri_serialize_command(json_msg):
 def handle_uri_deserialize_command(json_msg):
     send_to_test_manager(LongUriSerializer().deserialize(json_msg["data"]), CONSTANTS.DESERIALIZE_URI)
 
+def handle_performance_publish_command(json_msg):
+    for i in range(int(json_msg["data"]["topics"])):
+        uuri = UUri(authority=UAuthority(name="vcu.someVin.veh.ultifi.gm.com"),
+            entity=UEntity(name="performance.test", version_major=1, id=1234),
+            resource=UResource(name = "dummy_" + str(i)))
+        for j in range(int(json_msg["data"]["events"])):
+            id = Factories.UUIDV6.create()
+            attributes = UAttributes(source=uuri, id=id, type=UMessageType.UMESSAGE_TYPE_PUBLISH, priority=UPriority.UPRIORITY_CS4)
+            umsg = UMessage(attributes=attributes,)
+            transport.send(umsg)
+            dict_obj = {"id": str(id.msb), "published_timestamp": str(int(time.time() * 1000))}
+            send_to_test_manager(dict_obj, CONSTANTS.PUB_ON_RECEIVE)
+            time.sleep(int(json_msg["data"]["interval"]) / 1000)
+    
+    time.sleep(int(json_msg["data"]["timeout"]))
+    send_to_test_manager({}, CONSTANTS.PUB_COMPLETE)
+    return UStatus(code=UCode.OK, message="OK")
+
+def handle_performance_subscribe_command(json_msg):
+    status_msgs = []
+    for i in range(int(json_msg["data"]["topics"])):
+        uuri = UUri(authority=UAuthority(name="vcu.someVin.veh.ultifi.gm.com"),
+                entity=UEntity(name="performance.test", version_major=1, id=1234),
+                resource=UResource(name = "dummy_" + str(i)))
+        status_msgs.append(transport.register_listener(uuri, performance_listener))
+    all_okay = True
+    for msg in status_msgs:
+        if msg != UStatus(code=UCode.OK, message="OK"):
+            all_okay = False
+            fail_msg = msg
+    return UStatus(code=UCode.OK, message="OK") if all_okay else fail_msg
+
+def handle_unregister_subscribers_command(json_msg):
+    status_msgs = []
+    for i in range(int(json_msg["data"]["topics"])):
+        uuri = UUri(authority=UAuthority(name="vcu.someVin.veh.ultifi.gm.com"),
+                entity=UEntity(name="performance.test", version_major=1, id=1234),
+                resource=UResource(name = "dummy_" + str(i)))
+        status_msgs.append(transport.unregister_listener(uuri, performance_listener))
+    all_okay = True
+    for msg in status_msgs:
+        if msg != UStatus(code=UCode.OK, message="OK"):
+            all_okay = False
+            fail_msg = msg
+    return UStatus(code=UCode.OK, message="OK") if all_okay else fail_msg    
+
 
 action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
                    CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
                    CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
                    CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
                    CONSTANTS.SERIALIZE_URI: handle_uri_serialize_command,
-                   CONSTANTS.DESERIALIZE_URI: handle_uri_deserialize_command}
+                   CONSTANTS.DESERIALIZE_URI: handle_uri_deserialize_command,
+                   CONSTANTS.PERFORMANCE_PUBLISHER: handle_performance_publish_command,
+                   CONSTANTS.PERFORMANCE_SUBSCRIBER: handle_performance_subscribe_command,
+                   CONSTANTS.UNREGISTER_SUBSCRIBERS: handle_unregister_subscribers_command}
 
 
 def process_message(json_data):
@@ -173,6 +230,7 @@ def receive_from_tm():
 
 if __name__ == '__main__':
     listener = SocketUListener()
+    performance_listener = PerformanceUListener()
     transport = SocketUTransport()
     ta_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ta_socket.connect(CONSTANTS.TEST_MANAGER_ADDR)
