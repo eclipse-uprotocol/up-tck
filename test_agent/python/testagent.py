@@ -40,6 +40,8 @@ from uprotocol.rpc.calloptions import CallOptions
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from uprotocol.uri.validator.urivalidator import UriValidator
+from uprotocol.validation.validationresult import ValidationResult
 
 import constants as CONSTANTS
 
@@ -141,13 +143,34 @@ def handle_uri_serialize_command(json_msg):
 def handle_uri_deserialize_command(json_msg):
     send_to_test_manager(LongUriSerializer().deserialize(json_msg["data"]), CONSTANTS.DESERIALIZE_URI)
 
+def handle_uri_validate_command(json_msg):
+    val_type = json_msg["data"]["type"]
+    if json_msg["data"].get("uri") is not None:
+        uri = LongUriSerializer().deserialize(json_msg["data"]["uri"])
+    else:
+        uri = LongUriSerializer().deserialize(None)
+    
+    validator_func = {
+        "uri": UriValidator.validate,
+        "rpc_response": UriValidator.validate_rpc_response,
+        "rpc_method": UriValidator.validate_rpc_method
+    }.get(val_type)
+
+    if validator_func:
+        status = validator_func(uri)
+        result = str(status.is_success())
+        message = status.get_message()
+        send_to_test_manager({"result": result, "message": message}, CONSTANTS.VALIDATE_URI)
+
+
 
 action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
                    CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
                    CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
                    CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
                    CONSTANTS.SERIALIZE_URI: handle_uri_serialize_command,
-                   CONSTANTS.DESERIALIZE_URI: handle_uri_deserialize_command}
+                   CONSTANTS.DESERIALIZE_URI: handle_uri_deserialize_command,
+                   CONSTANTS.VALIDATE_URI: handle_uri_validate_command}
 
 
 def process_message(json_data):

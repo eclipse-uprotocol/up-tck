@@ -97,6 +97,9 @@ class TestManager:
             self.bdd_context.on_receive_serialized_uri = json_data['data']
         elif json_data['action'] == 'uri_deserialize':
             self.bdd_context.on_receive_deserialized_uri = json_data['data']
+        elif json_data['action'] == 'uri_validate':
+            self.bdd_context.on_receive_validation_result[json_data['ue']] = json_data['data']['result']
+            self.bdd_context.on_receive_validation_msg[json_data['ue']] = json_data['data']['message']
 
     def close_socket(self, sdk=None, ta_socket=None):
         if ta_socket is not None:

@@ -32,6 +32,8 @@ import org.eclipse.uprotocol.rpc.CallOptions;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
 import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
+import org.eclipse.uprotocol.uri.validator.UriValidator;
+import org.eclipse.uprotocol.validation.ValidationResult;
 import org.eclipse.uprotocol.v1.*;
 import org.json.JSONObject;
 
@@ -43,6 +45,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -61,6 +64,7 @@ public class TestAgent {
         actionHandlers.put(Constant.INVOKE_METHOD_COMMAND, TestAgent::handleInvokeMethodCommand);
         actionHandlers.put(Constant.SERIALIZE_URI, TestAgent::handleSerializeUriCommand);
         actionHandlers.put(Constant.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
+        actionHandlers.put(Constant.VALIDATE_URI, TestAgent::handleValidateUriCommand);
 
     }
 
@@ -157,6 +161,43 @@ public class TestAgent {
                 Constant.DESERIALIZE_URI);
         return null;
     }
+
+    private static Object handleValidateUriCommand(Map<String, Object> jsonData) {
+        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
+        String valType = (String) data.get("type");
+        String uriValue = (String) data.get("uri");
+
+        UUri uri;
+        if (uriValue != null) {
+            uri = LongUriSerializer.instance().deserialize(uriValue);
+        } else {
+            uri = LongUriSerializer.instance().deserialize(null);
+        }
+
+        Function<UUri, ValidationResult> validatorFunc = null;
+
+        switch (valType) {
+            case "uri":
+                validatorFunc = UriValidator::validate;
+                break;
+            case "rpc_response":
+                validatorFunc = UriValidator::validateRpcResponse;
+                break;
+            case "rpc_method":
+                validatorFunc = UriValidator::validateRpcMethod;
+                break;
+        }
+
+        if (validatorFunc != null) {
+            ValidationResult status = validatorFunc.apply(uri);
+            String result = status.isSuccess() ? "True" : "False";
+            String message = status.getMessage();
+            sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_URI);
+        }
+
+        return null;
+    }
+
 
     private static void handleOnReceive(UMessage uMessage) {
         logger.info("Java on_receive called");

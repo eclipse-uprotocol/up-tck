@@ -46,6 +46,9 @@ def create_sdk_data(context, sdk_name: str, command: str):
         context.on_receive_serialized_uri = None
     elif command == "uri_serialize":
         context.on_receive_deserialized_uri = None
+    elif command == "uri_validate":
+        context.on_receive_validation_result.pop(sdk_name, None)
+        context.on_receive_validation_msg.pop(sdk_name, None)
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
@@ -165,6 +168,33 @@ def receive_rpc_response_as_bytes(context, sdk_name, key, value):
     except Exception as ae:
         raise ValueError(f"Expection occured. {ae}")
 
+@then(u'"{sdk_name}" receives validation result as "{result}"')
+def receive_validation_result(context, sdk_name, result):
+    try:
+        result = result.strip()
+        context.logger.info(context.on_receive_validation_result)
+        res = context.on_receive_validation_result[sdk_name]
+        assert result == res
+    except AssertionError as ae:
+        raise AssertionError(f"Assertion error. Expected is {result} but "
+                             f"received {repr(res)}")
+    except Exception as ae:
+        raise ValueError(f"Expection occured. {ae}")
+    
+
+@then(u'"{sdk_name}" receives validation message as "{message}"')
+def receive_validation_result(context, sdk_name, message):
+    if message == "none":
+        return
+    try:
+        message = message.strip()
+        msg = context.on_receive_validation_msg[sdk_name]
+        assert message == msg
+    except AssertionError as ae:
+        raise AssertionError(f"Assertion error. Expected is {message} but "
+                             f"received {repr(msg)}")
+    except Exception as ae:
+        raise ValueError(f"Expection occured. {ae}")
 
 def access_nested_dict(dictionary, keys):
     keys = keys.split('.')
