@@ -34,6 +34,7 @@ import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
 import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
 import org.eclipse.uprotocol.uri.validator.UriValidator;
 import org.eclipse.uprotocol.validation.ValidationResult;
+import org.eclipse.uprotocol.uuid.serializer.LongUuidSerializer;
 import org.eclipse.uprotocol.v1.*;
 import org.json.JSONObject;
 
@@ -65,6 +66,8 @@ public class TestAgent {
         actionHandlers.put(Constant.SERIALIZE_URI, TestAgent::handleSerializeUriCommand);
         actionHandlers.put(Constant.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
         actionHandlers.put(Constant.VALIDATE_URI, TestAgent::handleValidateUriCommand);
+        actionHandlers.put(Constant.SERIALIZE_UUID, TestAgent::handleSerializeUuidCommand);
+        actionHandlers.put(Constant.DESERIALIZE_UUID, TestAgent::handleDeserializeUuidCommand);
 
     }
 
@@ -198,6 +201,18 @@ public class TestAgent {
         return null;
     }
 
+    private static Object handleSerializeUuidCommand(Map<String, Object> jsonData) {
+        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
+        UUID uuid = (UUID) ProtoConverter.dictToProto(data, UUID.newBuilder());
+        sendToTestManager(LongUuidSerializer.instance().serialize(uuid), Constant.SERIALIZE_UUID);
+        return null;
+    }
+
+    private static Object handleDeserializeUuidCommand(Map<String, Object> jsonData) {
+        sendToTestManager(LongUuidSerializer.instance().deserialize(jsonData.get("data").toString()),
+                Constant.DESERIALIZE_UUID);
+        return null;
+    }
 
     private static void handleOnReceive(UMessage uMessage) {
         logger.info("Java on_receive called");
@@ -220,13 +235,11 @@ public class TestAgent {
     }
 
     public static void main(String[] args) throws IOException {
-        // Listening thread to receive messages from Test Manager
         Thread receiveThread = new Thread(TestAgent::receiveFromTM);
         receiveThread.start();
         JSONObject obj = new JSONObject();
         obj.put("SDK_name", "java");
         sendToTestManager(obj, "initialize");
-
     }
 
     public static void receiveFromTM() {

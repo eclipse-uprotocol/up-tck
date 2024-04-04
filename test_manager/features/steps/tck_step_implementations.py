@@ -44,11 +44,15 @@ def create_sdk_data(context, sdk_name: str, command: str):
         context.on_receive_rpc_response.pop(sdk_name, None)
     elif command == "uri_serialize":
         context.on_receive_serialized_uri = None
-    elif command == "uri_serialize":
+    elif command == "uri_deserialize":
         context.on_receive_deserialized_uri = None
     elif command == "uri_validate":
         context.on_receive_validation_result.pop(sdk_name, None)
         context.on_receive_validation_msg.pop(sdk_name, None)
+    elif command == "uuid_serialize":
+        context.on_receive_serialized_uuid = None
+    elif command == "uuid_deserialize":
+        context.on_receive_deserialized_uuid = None
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
@@ -58,13 +62,25 @@ def create_sdk_data(context, sdk_name: str, command: str):
 
 
 @then(u'the serialized uri received is "{expected_uri}"')
-def serialized_received(context, expected_uri):
+def serialized_uri_received(context, expected_uri):
     try:
         rec_field_value = context.on_receive_serialized_uri
         assert_that(expected_uri, equal_to(rec_field_value))
     except AssertionError as ae:
         raise AssertionError(f"Assertion error. Expected is {expected_uri} but "
                              f"received {context.on_receive_serialized_uri}")
+    except Exception as ae:
+        raise ValueError(f"Expection occured. {ae}")
+
+
+@then(u'the serialized uuid received is "{expected_uuid}"')
+def serialized_uuid_received(context, expected_uuid):
+    try:
+        rec_field_value = context.on_receive_serialized_uuid
+        assert_that(expected_uuid, equal_to(rec_field_value))
+    except AssertionError as ae:
+        raise AssertionError(f"Assertion error. Expected is {expected_uuid} but "
+                             f"received {context.on_receive_serialized_uuid}")
     except Exception as ae:
         raise ValueError(f"Expection occured. {ae}")
 
@@ -76,7 +92,7 @@ def send_serialized_command(context, command, serialized_uri):
 
 
 @then(u'the deserialized uri received should have the following properties')
-def verify_received_properties(context):
+def verify_uri_received_properties(context):
     assert context.on_receive_deserialized_uri is not None
     deserialized_uri_dict = flatten_dict(context.on_receive_deserialized_uri)
     # Iterate over the rows of the table and verify the received properties
@@ -84,8 +100,23 @@ def verify_received_properties(context):
         for row in context.table:
             field = row['Field']
             expected_value = row['Value']
-            if len(expected_value)>0:
+            if len(expected_value) > 0:
                 assert_that(deserialized_uri_dict[field], expected_value)
+    except AssertionError as ae:
+        raise AssertionError(f"Assertion error. {ae}")
+
+
+@then(u'the deserialized uuid received should have the following properties')
+def verify_uuid_received_properties(context):
+    assert context.on_receive_deserialized_uuid is not None
+    deserialized_uuid_dict = flatten_dict(context.on_receive_deserialized_uuid)
+    # Iterate over the rows of the table and verify the received properties
+    try:
+        for row in context.table:
+            field = row['Field']
+            expected_value = row['Value']
+            if len(expected_value) > 0:
+                assert_that(deserialized_uuid_dict[field], expected_value)
     except AssertionError as ae:
         raise AssertionError(f"Assertion error. {ae}")
 

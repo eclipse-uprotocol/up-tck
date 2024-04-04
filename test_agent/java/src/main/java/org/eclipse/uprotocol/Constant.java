@@ -37,5 +37,7 @@ public class Constant {
     public static final String SERIALIZE_URI = "uri_serialize";
     public static final String DESERIALIZE_URI = "uri_deserialize";
     public static final String VALIDATE_URI = "uri_validate";
+    public static final String SERIALIZE_UUID = "uuid_serialize";
+    public static final String DESERIALIZE_UUID = "uuid_deserialize";
 
 }
