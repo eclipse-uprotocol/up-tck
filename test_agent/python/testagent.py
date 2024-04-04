@@ -181,7 +181,7 @@ action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
                    CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
                    CONSTANTS.SERIALIZE_URI: handle_uri_serialize_command,
                    CONSTANTS.DESERIALIZE_URI: handle_uri_deserialize_command,
-                   CONSTANTS.VALIDATE_URI: handle_uri_validate_command}
+                   CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
                    CONSTANTS.SERIALIZE_UUID: handle_uuid_serialize_command,
                    CONSTANTS.DESERIALIZE_UUID: handle_uuid_deserialize_command
                    }
