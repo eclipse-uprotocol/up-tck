@@ -27,8 +27,8 @@ Feature: UUID de-serialization
 
   Scenario Outline: Testing the long uuid deserializer
     Given "<uE1>" creates data for "uuid_deserialize"
-    When sends a "uuid_deserialize" request with the value "<serialized_uuid>"
-    And user waits "1" second
+    When sends a "uuid_deserialize" request with serialized input "<serialized_uuid>"
+    # And user waits "1" second
     Then the deserialized uuid received should have the following properties:
       | Field | Value |
       | lsb   | <lsb> |
@@ -37,4 +37,4 @@ Feature: UUID de-serialization
     Examples:
       | uE1    | lsb                  | msb                | serialized_uuid                      |
       | python | 11155833020022798372 | 112128268635242497 | 018e5c10-f548-8001-9ad1-7b068c083824 |
-      | java   | 11155833020022798372 | 112128268635242497 | 018e5c10-f548-8001-9ad1-7b068c083824 |
+      | java   | -7290911053686753244 | 112128268635242497 | 018e5c10-f548-8001-9ad1-7b068c083824 |

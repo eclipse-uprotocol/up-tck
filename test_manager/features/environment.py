@@ -43,6 +43,10 @@ PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
 
+repo = git.Repo('.', search_parent_directories=True)
+sys.path.append(repo.working_tree_dir)
+
+from dispatcher.dispatcher import Dispatcher
 
 def create_command(filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []
@@ -85,14 +89,19 @@ def before_all(context):
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
-    command = create_command(DISPATCHER_PATH)
-    process: subprocess.Popen = create_subprocess(command)
-    context.dispatcher_process = process
+    # command = create_command(DISPATCHER_PATH)
+    # process: subprocess.Popen = create_subprocess(command)
+    # context.dispatcher_process = process
+    dispatcher = Dispatcher()
+    thread = Thread(target=dispatcher.listen_for_client_connections)
+    thread.start()
+    context.dispatcher = dispatcher
+
     context.logger.info("Created Dispatcher...")
     time.sleep(5)
 
     test_manager = TestManager(context, "127.0.0.5", 12345)
-    thread = Thread(target=test_manager.listen_for_client_connections)
+    thread = Thread(target=test_manager.listen_for_incoming_events)
     thread.start()
     context.tm = test_manager
 
@@ -120,12 +129,15 @@ def after_all(context: Context):
     context.on_receive_deserialized_uri = None
     context.on_receive_serialized_uuid = None
     context.on_receive_deserialized_uuid = None
-    context.tm.close_socket(sdk="python")
-    context.tm.close_socket(sdk="java")
+    # context.tm.close_socket(sdk="python")
+    # context.tm.close_socket(sdk="java")
+    context.tm.close_test_agent("python")
+    context.tm.close_test_agent("java")
     context.tm.close()
-
+    context.dispatcher.close()
+    
     try:
-        context.dispatcher_process.terminate()
+        # context.dispatcher_process.terminate()
         context.java_ta_process.terminate()
         context.python_ta_process.terminate()
     except Exception as e:

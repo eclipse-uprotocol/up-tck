@@ -33,7 +33,7 @@ Feature: Testing register and unregister
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
     When sends "registerlistener" request
-    And user waits "2" second
+    # And user waits "2" second
     Then the status received with "code" is "OK"
 
     When "<uE1>" creates data for "unregisterlistener"
@@ -42,7 +42,7 @@ Feature: Testing register and unregister
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
     When sends "unregisterlistener" request
-    And user waits "2" second
+    # And user waits "2" second
     Then the status received with "code" is "OK"
 
     Examples:
