@@ -28,6 +28,7 @@ import logging
 import selectors
 import socket
 from threading import Thread, Lock
+from typing import Set
 
 logging.basicConfig(format='%(levelname)s| %(filename)s:%(lineno)s %(message)s')
 logger = logging.getLogger('File:Line# Debugger')
@@ -38,16 +39,13 @@ BYTES_MSG_LENGTH: int = 32767
 
 class Dispatcher:
     """
-       Dispatcher class handles incoming connections and forwards messages
-       to all connected up-clients.
-       """
+    Dispatcher class handles incoming connections and forwards messages
+    to all connected up-clients.
+    """
 
     def __init__(self):
-        """
-        Initialize the Dispatcher class.
-        """
         self.selector = selectors.DefaultSelector()
-        self.connected_sockets = set()
+        self.connected_sockets: Set[socket.socket] = set()
         self.lock = Lock()
 
         # Create server socket
@@ -60,8 +58,11 @@ class Dispatcher:
 
         # Register server socket for accepting connections
         self.selector.register(self.server, selectors.EVENT_READ, self._accept_client_conn)
+        
+        # Cleanup essentials
+        self.dispatcher_exit = False
 
-    def _accept_client_conn(self, server):
+    def _accept_client_conn(self, server: socket.socket):
         """
         Callback function for accepting up-client connections.
 
@@ -76,7 +77,7 @@ class Dispatcher:
         # Register socket for receiving data
         self.selector.register(up_client_socket, selectors.EVENT_READ, self._receive_from_up_client)
 
-    def _receive_from_up_client(self, up_client_socket):
+    def _receive_from_up_client(self, up_client_socket: socket.socket):
         """
         Callback function for receiving data from up-client sockets.
 
@@ -84,61 +85,65 @@ class Dispatcher:
         """
         try:
 
-            recv_data = up_client_socket.recv(BYTES_MSG_LENGTH)
+            recv_data: bytes = up_client_socket.recv(BYTES_MSG_LENGTH)
 
-            if not recv_data or recv_data == b"":
-                self._close_socket(up_client_socket)
+            if recv_data == b"":
+                self._close_connected_socket(up_client_socket)
                 return
 
             logger.info(f"received data: {recv_data}")
-            self._flood_to_sockets(up_client_socket, recv_data)
+            self._flood_to_sockets(recv_data)
         except:
             logger.error("Received error while reading data from up-client")
-            self._close_socket(up_client_socket)
+            self._close_connected_socket(up_client_socket)
 
-    def _flood_to_sockets(self, sender_socket, data):
+    def _flood_to_sockets(self, data: bytes):
         """
         Flood data from a sender socket to all other connected sockets.
 
         :param sender_socket: The socket from which the data is being sent.
         :param data: The data to be sent.
         """
-        with self.lock:
-            for up_client_socket in self.connected_sockets.copy():  # copy() to avoid RuntimeError
-                # if up_client_socket != sender_socket:
-                try:
-                    up_client_socket.sendall(data)
-                except ConnectionAbortedError as e:
-                    logger.error(f"Error sending data to {up_client_socket.getpeername()}: {e}")
-                    self._close_socket(up_client_socket)
+        # for up_client_socket in self.connected_sockets.copy():  # copy() to avoid RuntimeError
+        for up_client_socket in self.connected_sockets: 
+            try:
+                up_client_socket.sendall(data)
+            except ConnectionAbortedError as e:
+                logger.error(f"Error sending data to {up_client_socket.getpeername()}: {e}")
+                self._close_connected_socket(up_client_socket)
 
     def listen_for_client_connections(self):
         """
         Start listening for client connections and handle events.
         """
-        while True:
-            events = self.selector.select()
+        while not self.dispatcher_exit:
+            events = self.selector.select(timeout=0)
             for key, _ in events:
                 callback = key.data
                 callback(key.fileobj)
 
-    def _close_socket(self, up_client_socket):
+    def _close_connected_socket(self, up_client_socket: socket.socket):
         """
         Close a client socket and unregister it from the selector.
 
         :param up_client_socket: The client socket to be closed.
         """
         logger.info(f"closing socket {up_client_socket.getpeername()}")
-        try:
-            with self.lock:
-                self.connected_sockets.remove(up_client_socket)
-            self.selector.unregister(up_client_socket)
-            up_client_socket.close()
-        except:
-            pass
+        with self.lock:
+            self.connected_sockets.remove(up_client_socket)
+            
+        self.selector.unregister(up_client_socket)
+        up_client_socket.close()
+    
+    def close(self):
+        self.dispatcher_exit = True
+        for utransport_socket in self.connected_sockets.copy():
+            self._close_connected_socket(utransport_socket)
+        self.selector.close()
+        self.server.close()
 
 
-if __name__ == '__main__':
-    dispatcher = Dispatcher()
-    thread = Thread(target=dispatcher.listen_for_client_connections)
-    thread.start()
+# if __name__ == '__main__':
+#     dispatcher = Dispatcher()
+#     thread = Thread(target=dispatcher.listen_for_client_connections)
+#     thread.start()

@@ -23,6 +23,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
+from enum import Enum
+from google.protobuf.descriptor import FieldDescriptor
+
 TEST_MANAGER_ADDR = ("127.0.0.5", 12345)
 BYTES_MSG_LENGTH: int = 32767
 SEND_COMMAND = "send"
@@ -35,3 +38,5 @@ SERIALIZE_URI = "uri_serialize"
 DESERIALIZE_URI = "uri_deserialize"
 SERIALIZE_UUID = "uuid_serialize"
 DESERIALIZE_UUID = "uuid_deserialize"
+MICROSERIALIZE_URI = "uri_microserialize"
+MICRODESERIALIZE_URI = "uri_microdeserialize"

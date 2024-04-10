@@ -29,10 +29,21 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
+import com.google.protobuf.Descriptors.EnumValueDescriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.util.JsonFormat;
-
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.lang.reflect.Field;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 
 public class ProtoConverter {
 
@@ -99,7 +110,8 @@ public class ProtoConverter {
                 break;
         }
     }
-
+    
+    /*
     public static Map<String, Object> convertMessageToMap(Message message) {
         Map<String, Object> map;
         JsonFormat.Printer printer = JsonFormat.printer().includingDefaultValueFields().preservingProtoFieldNames();
@@ -107,11 +119,182 @@ public class ProtoConverter {
 
         try {
             String jsonString = printer.print(message);
-            map = gson.fromJson(jsonString, Map.class);
+            map = gson.fromJson(jsonString, Map.
+);
         } catch (InvalidProtocolBufferException ex) {
             map = new HashMap<>();
         }
         return map;
+    }
+    */
+    public static JSONObject convertMessageToJSON(Message message) {
+    	JSONObject result = new JSONObject();
+    	
+    	List<FieldDescriptor> allFields = message.getDescriptorForType().getFields();
+    	for (FieldDescriptor field : allFields) {
+    		String fieldName = field.getName();
+    		Object defaultOrSetValue = message.getField(field);
+    		Object value = getattr(message, field, defaultOrSetValue);
+
+    		if (value instanceof byte[]) {
+    			value = new String((byte[]) value, StandardCharsets.UTF_8);
+    		}
+
+    		if (value instanceof Message) {
+    			result.put(fieldName, convertMessageToJSON((Message) value));
+    		}
+    		else if (field.isRepeated()) {
+    			JSONArray repeated = new JSONArray();
+    			for(Object subMsg: (List<Object>) value) {
+    				if (subMsg instanceof Message) {
+    					repeated.put( convertMessageToJSON((Message) subMsg) );
+    				}
+    				// if a primitive type
+    				else{
+    					repeated.put(subMsg);
+    				}
+    			}
+    			result.put(fieldName, repeated);
+
+    		}
+    		else if (field.isRequired() || field.isOptional()) {
+    			result.put(fieldName, value);
+    		}
+    	}
+    	
+    	return result;
+    }
+    /*
+     * public static JSONObject convertMessageToJSON(Message message) {
+    	JSONObject result = new JSONObject();
+    	
+    	List<FieldDescriptor> allFields = message.getDescriptorForType().getFields();
+    	for (FieldDescriptor field : allFields) {
+    		String fieldName = field.getName();
+    		Object defaultOrSetValue = message.getField(field);
+    		Object value = getattr(message, field, defaultOrSetValue);
+    		if (value instanceof EnumValueDescriptor) {
+    			value = ((EnumValueDescriptor) value).getNumber();
+    		}
+    		System.out.print("fieldName: ");
+    		System.out.println(fieldName);
+    		System.out.println(value.getClass().getSimpleName());
+
+    		if (value instanceof byte[]) {
+    			value = new String((byte[]) value, StandardCharsets.UTF_8);
+    		}
+
+    		if (value instanceof Message) {
+    			result.put(fieldName, convertMessageToJSON((Message) value));
+    		}
+    		else if (field.isRepeated()) {
+    			JSONArray repeated = new JSONArray();
+    			for(Object subMsg: (List<Object>) value) {
+    				if (subMsg instanceof Message) {
+    					repeated.put( convertMessageToJSON((Message) subMsg) );
+    				}
+    				// if a primitive type
+    				else{
+    					repeated.put(subMsg);
+    				}
+    			}
+    			result.put(fieldName, repeated);
+
+    		}
+    		else if (field.isRequired() || field.isOptional()) {
+    			result.put(fieldName, value);
+    		}
+    	}
+    	System.out.print("result: ");
+    	System.out.println(result);
+
+    	return result;
+    }
+    
+    public static Map<String, Object> convertMessageToMap(Message message) {
+    	JSONObject jsonMessage = convertMessageToJSON(message);
+    	System.out.print("jsonMessage: ");
+    	System.out.println(jsonMessage.get("code"));
+    	System.out.println(jsonMessage.get("code").getClass().getSimpleName());
+
+//    	Gson gson = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
+//    		    .create();
+    	Gson gson = new Gson();
+    	Map<String, Object> mapMessage = gson.fromJson(jsonMessage.toString(), Map.class);
+    	return mapMessage;
+    }
+     */
+    
+    public static Map<String, Object> convertMessageToMap(Message message) {
+    	Map<String, Object> result = new HashMap<>();
+    	
+    	List<FieldDescriptor> allFields = message.getDescriptorForType().getFields();
+    	for (FieldDescriptor field : allFields) {
+    		String fieldName = field.getName();
+    		Object defaultOrSetValue = message.getField(field);
+    		Object value = getattr(message, field, defaultOrSetValue);
+    		if (value instanceof EnumValueDescriptor) {
+    			value = ((EnumValueDescriptor) value).getNumber();
+    		}
+    		
+    		if (value instanceof ByteString) {
+    			value = ((ByteString) value).toStringUtf8();
+    		}
+			
+//    		if (field.getJavaType() == JavaType.LONG) {
+//    			System.out.print("fieldName: ");
+//    			System.out.println(fieldName);
+//    			System.out.print("value: ");
+//    			System.out.println(value);
+//    			System.out.println(field.getJavaType());
+//    			System.out.println( Long.toUnsignedString((long) value));
+//    			value =  Long.parseLong(Long.toUnsignedString((long) value));
+//    			System.out.println(value.getClass().getName());
+//    			System.out.println(value);
+//
+//    		}
+
+    		if (value instanceof Message) {
+    			result.put(fieldName, convertMessageToMap((Message) value));
+    		}
+    		else if (field.isRepeated()) {
+    			List<Object> repeated = new ArrayList<>();
+    			for(Object subMsg: (List<Object>) value) {
+    				if (subMsg instanceof Message) {
+    					repeated.add( convertMessageToMap((Message) subMsg) );
+    				}
+    				// if a primitive type
+    				else{
+    					repeated.add(subMsg);
+    				}
+    			}
+    			result.put(fieldName, repeated);
+
+    		}
+    		else if (field.isRequired() || field.isOptional()) {
+    			result.put(fieldName, value);
+    		}
+    	}
+    	
+    	return result;
+    }
+    
+    public static Object getattr(Message message, FieldDescriptor field, Object defaultValue) {
+    	try {
+    		Map<FieldDescriptor, Object> fields2Values = message.getAllFields();
+            Object value = fields2Values.get(field);
+            
+            if (value == null) {
+            	return defaultValue;
+            }
+            else {
+            	return value;
+            }
+            
+    	}catch (Exception e) {
+    		System.out.println(e);
+            return defaultValue; // Return default value if field not found or cannot be accessed
+        }
     }
 
 
