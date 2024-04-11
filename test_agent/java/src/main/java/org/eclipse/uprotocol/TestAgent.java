@@ -169,12 +169,7 @@ public class TestAgent {
         String valType = (String) data.get("type");
         String uriValue = (String) data.get("uri");
 
-        UUri uri;
-        if (uriValue != null) {
-            uri = LongUriSerializer.instance().deserialize(uriValue);
-        } else {
-            uri = LongUriSerializer.instance().deserialize(null);
-        }
+        UUri uri = LongUriSerializer.instance().deserialize(uriValue);
 
         Function<UUri, ValidationResult> validatorFunc = null;
         Function<UUri, Boolean> validatorFuncBool = null;

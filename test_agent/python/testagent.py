@@ -147,10 +147,7 @@ def handle_uri_deserialize_command(json_msg):
 
 def handle_uri_validate_command(json_msg):
     val_type = json_msg["data"]["type"]
-    if json_msg["data"].get("uri") is not None:
-        uri = LongUriSerializer().deserialize(json_msg["data"]["uri"])
-    else:
-        uri = LongUriSerializer().deserialize(None)
+    uri = LongUriSerializer().deserialize(json_msg["data"].get("uri"))
     
     validator_func = {
         "uri": UriValidator.validate,
