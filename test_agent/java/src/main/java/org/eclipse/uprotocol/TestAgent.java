@@ -28,7 +28,6 @@ import com.google.gson.Gson;
 import com.google.protobuf.Any;
 import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
-import org.eclipse.uprotocol.rpc.CallOptions;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
 import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
@@ -146,7 +145,7 @@ public class TestAgent {
         UPayload payload = (UPayload) ProtoConverter.dictToProto((Map<String, Object>) data.get("payload"),
                 UPayload.newBuilder());
         CompletionStage<UMessage> responseFuture = transport.invokeMethod(uri, payload,
-                CallOptions.newBuilder().build());
+                CallOptions.newBuilder().setTtl(10000).build());
         responseFuture.whenComplete(
                 (responseMessage, exception) -> sendToTestManager(responseMessage, Constant.RESPONSE_RPC));
         return null;
@@ -178,6 +177,7 @@ public class TestAgent {
         }
 
         Function<UUri, ValidationResult> validatorFunc = null;
+        Function<UUri, Boolean> validatorFuncBool = null;
 
         switch (valType) {
             case "uri":
@@ -189,6 +189,21 @@ public class TestAgent {
             case "rpc_method":
                 validatorFunc = UriValidator::validateRpcMethod;
                 break;
+            case "is_empty":
+                validatorFuncBool = UriValidator::isEmpty;
+                break;
+            case "is_resolved":
+                validatorFuncBool = UriValidator::isResolved;
+                break;
+            case "is_micro_form":
+                validatorFuncBool = UriValidator::isMicroForm;
+                break;
+            case "is_long_form_uuri":
+                validatorFuncBool = UriValidator::isLongForm;
+                break;
+            case "is_long_form_uauthority":
+                validatorFuncBool = UriValidator::isLongForm;
+                break;
         }
 
         if (validatorFunc != null) {
@@ -196,6 +211,10 @@ public class TestAgent {
             String result = status.isSuccess() ? "True" : "False";
             String message = status.getMessage();
             sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_URI);
+        } else if (validatorFuncBool != null) {
+            Boolean status = validatorFuncBool.apply(uri);
+            String result = status ? "True" : "False";
+            sendToTestManager(Map.of("result", result, "message", ""), Constant.VALIDATE_URI);
         }
 
         return null;
