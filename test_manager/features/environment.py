@@ -53,7 +53,7 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
     elif filepath_from_root_repo.endswith('.py'):
         if sys.platform == "win32":
             command.append("python")
-        elif sys.platform == "linux" or sys.platform == "linux2":
+        elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
             command.append("python3")
     else:
         raise Exception("only accept .jar and .py files")
@@ -64,9 +64,10 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
 def create_subprocess(command: List[str]) -> subprocess.Popen:
     if sys.platform == "win32":
         process = subprocess.Popen(command, shell=True)
-    elif sys.platform == "linux" or sys.platform == "linux2":
+    elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
         process = subprocess.Popen(command)
     else:
+        print(sys.platform)
         raise Exception("only handle Windows and Linux commands for now")
     return process
 
@@ -82,6 +83,8 @@ def before_all(context):
     """
     context.on_receive_msg = {}
     context.on_receive_rpc_response = {}
+    context.on_receive_validation_result = {}
+    context.on_receive_validation_msg = {}
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
@@ -116,6 +119,8 @@ def after_all(context: Context):
     context.status_json = None
     context.on_receive_msg = {}
     context.on_receive_rpc_response = {}
+    context.on_receive_validation_result = {}
+    context.on_receive_validation_msg = {}
     context.on_receive_serialized_uri = None
     context.on_receive_deserialized_uri = None
     context.on_receive_serialized_uuid = None

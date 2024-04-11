@@ -32,15 +32,17 @@ from threading import Thread
 from google.protobuf import any_pb2
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.wrappers_pb2 import StringValue
-from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
+from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType, CallOptions
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.uuid_pb2 import UUID
-from uprotocol.rpc.calloptions import CallOptions
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from uprotocol.uri.serializer.microuriserializer import MicroUriSerializer
+from uprotocol.uri.validator.urivalidator import UriValidator
+from uprotocol.validation.validationresult import ValidationResult
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 
 import constants as CONSTANTS
@@ -126,7 +128,7 @@ def handle_unregister_listener_command(json_msg):
 def handle_invoke_method_command(json_msg):
     uri = dict_to_proto(json_msg["data"], UUri())
     payload = dict_to_proto(json_msg["data"]["payload"], UPayload())
-    res_future = transport.invoke_method(uri, payload, CallOptions())
+    res_future = transport.invoke_method(uri, payload, CallOptions(ttl=10000))
 
     def handle_response(message):
         message = message.result()
@@ -142,6 +144,33 @@ def handle_uri_serialize_command(json_msg):
 
 def handle_uri_deserialize_command(json_msg):
     send_to_test_manager(LongUriSerializer().deserialize(json_msg["data"]), CONSTANTS.DESERIALIZE_URI)
+
+def handle_uri_validate_command(json_msg):
+    val_type = json_msg["data"]["type"]
+    uri = LongUriSerializer().deserialize(json_msg["data"].get("uri"))
+    
+    validator_func = {
+        "uri": UriValidator.validate,
+        "rpc_response": UriValidator.validate_rpc_response,
+        "rpc_method": UriValidator.validate_rpc_method,
+        "is_empty": UriValidator.is_empty,
+        "is_resolved": UriValidator.is_resolved,
+        "is_micro_form": UriValidator.is_micro_form,
+        "is_long_form_uuri": UriValidator.is_long_form,
+        "is_long_form_uauthority": UriValidator.is_long_form,
+        "is_local": UriValidator.is_local
+    }.get(val_type)
+
+    if validator_func:
+        status = validator_func(uri)
+        if isinstance(status, bool):
+            result = str(status)
+            message = ""
+        else:
+            result = str(status.is_success())
+            message = status.get_message()
+        send_to_test_manager({"result": result, "message": message}, CONSTANTS.VALIDATE_URI)
+
 
 
 def handle_uuid_deserialize_command(json_msg):
@@ -159,6 +188,7 @@ action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
                    CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
                    CONSTANTS.SERIALIZE_URI: handle_uri_serialize_command,
                    CONSTANTS.DESERIALIZE_URI: handle_uri_deserialize_command,
+                   CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
                    CONSTANTS.SERIALIZE_UUID: handle_uuid_serialize_command,
                    CONSTANTS.DESERIALIZE_UUID: handle_uuid_deserialize_command
                    }
