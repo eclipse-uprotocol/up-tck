@@ -41,6 +41,7 @@ from utils import loggerutils
 
 PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
+RUST_TA_PATH = "/target/debug/rust_tck"
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
 
 
@@ -53,10 +54,12 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
     elif filepath_from_root_repo.endswith('.py'):
         if sys.platform == "win32":
             command.append("python")
-        elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
+        elif sys.platform == "linux" or sys.platform == "linux2":
             command.append("python3")
+    elif filepath_from_root_repo.endswith('.exe'):
+        pass
     else:
-        raise Exception("only accept .jar and .py files")
+        pass
     command.append(os.path.abspath(os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo))
     return command
 
@@ -64,10 +67,9 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
 def create_subprocess(command: List[str]) -> subprocess.Popen:
     if sys.platform == "win32":
         process = subprocess.Popen(command, shell=True)
-    elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
+    elif sys.platform == "linux" or sys.platform == "linux2":
         process = subprocess.Popen(command)
     else:
-        print(sys.platform)
         raise Exception("only handle Windows and Linux commands for now")
     return process
 
@@ -83,8 +85,6 @@ def before_all(context):
     """
     context.on_receive_msg = {}
     context.on_receive_rpc_response = {}
-    context.on_receive_validation_result = {}
-    context.on_receive_validation_msg = {}
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
@@ -109,6 +109,10 @@ def before_all(context):
     process: subprocess.Popen = create_subprocess(command)
     context.java_ta_process = process
 
+    command = create_command(RUST_TA_PATH)
+    process: subprocess.Popen = create_subprocess(command)
+    context.rust_ta_process = process
+
     context.logger.info("Created All Test Agents...")
 
 
@@ -119,19 +123,20 @@ def after_all(context: Context):
     context.status_json = None
     context.on_receive_msg = {}
     context.on_receive_rpc_response = {}
-    context.on_receive_validation_result = {}
-    context.on_receive_validation_msg = {}
     context.on_receive_serialized_uri = None
     context.on_receive_deserialized_uri = None
     context.on_receive_serialized_uuid = None
     context.on_receive_deserialized_uuid = None
+    context.rust_sender = False
     context.tm.close_socket(sdk="python")
     context.tm.close_socket(sdk="java")
+    context.tm.close_socket(sdk="rust")
     context.tm.close()
 
     try:
         context.dispatcher_process.terminate()
         context.java_ta_process.terminate()
         context.python_ta_process.terminate()
+        context.rust_ta_process.terminate()
     except Exception as e:
         context.logger.error(e)

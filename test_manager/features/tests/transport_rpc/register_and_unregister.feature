@@ -47,5 +47,6 @@ Feature: Testing register and unregister
 
     Examples:
       | uE1    |
-      | java   |
       | python |
+      | rust   |
+      | java   |

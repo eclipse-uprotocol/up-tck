@@ -32,16 +32,18 @@ from collections import defaultdict
 from concurrent.futures import Future
 from threading import Lock
 
-from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType, CallOptions
+from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.proto.uri_pb2 import UEntity, UUri
 from uprotocol.proto.ustatus_pb2 import UStatus, UCode
+from uprotocol.rpc.calloptions import CallOptions
 from uprotocol.rpc.rpcclient import RpcClient
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
 from uprotocol.uri.factory.uresource_builder import UResourceBuilder
+from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from uprotocol.uri.validator.urivalidator import UriValidator
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 
@@ -195,14 +197,14 @@ class SocketUTransport(UTransport, RpcClient):
         Invokes a method with the provided URI, request payload, and options.
         """
         attributes = UAttributesBuilder.request(RESPONSE_URI, method_uri, UPriority.UPRIORITY_CS4,
-                                                options.ttl).build()
+                                                options.get_timeout()).build()
         # Get uAttributes's request id
         request_id = attributes.id
 
         response = Future()
         self.reqid_to_future[request_id.SerializeToString()] = response
         # Start a thread to count the timeout
-        timeout_thread = threading.Thread(target=timeout_counter, args=(response, request_id, options.ttl))
+        timeout_thread = threading.Thread(target=timeout_counter, args=(response, request_id, options.get_timeout()))
         timeout_thread.start()
 
         umsg = UMessage(payload=request_payload, attributes=attributes)

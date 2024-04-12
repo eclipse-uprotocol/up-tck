@@ -26,6 +26,7 @@
 import base64
 import codecs
 import time
+import re
 
 from behave import when, then, given
 from behave.runner import Context
@@ -46,9 +47,6 @@ def create_sdk_data(context, sdk_name: str, command: str):
         context.on_receive_serialized_uri = None
     elif command == "uri_deserialize":
         context.on_receive_deserialized_uri = None
-    elif command == "uri_validate":
-        context.on_receive_validation_result.pop(sdk_name, None)
-        context.on_receive_validation_msg.pop(sdk_name, None)
     elif command == "uuid_serialize":
         context.on_receive_serialized_uuid = None
     elif command == "uuid_deserialize":
@@ -56,6 +54,14 @@ def create_sdk_data(context, sdk_name: str, command: str):
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
+
+    try:
+        context.rust_sender
+    except AttributeError:
+        context.rust_sender = False
+
+    if sdk_name == "rust" and command == "send":
+        context.rust_sender = True
 
     context.ue = sdk_name
     context.action = command
@@ -170,8 +176,20 @@ def receive_status(context, field, field_value):
 def receive_value_as_bytes(context, sdk_name, key, value):
     try:
         value = value.strip()
-        val = access_nested_dict(context.on_receive_msg[sdk_name], key)
-        rec_field_value = base64.b64decode(val.encode('utf-8'))
+        if sdk_name == "rust":
+            val = context.on_receive_msg[sdk_name]["data"]
+            # Define a regular expression pattern to match the desired substring
+            rec_field_value = bytes(val.split("value")[1].replace("\"", "").replace(":", "").replace("\\", "").replace("x", "\\x").replace("}", "").strip()[1:], "utf-8")
+        else:
+            val = access_nested_dict(context, context.on_receive_msg[sdk_name], key)
+            if context.rust_sender:
+                context.rust_sender = False
+                rec_field_value = base64.b64decode(val.encode('utf-8'))
+                decoded_string = rec_field_value.decode('utf-8')
+                decoded_string = decoded_string.replace("\"", "").replace("\\", "").replace("x", "\\x")[1:]
+                rec_field_value = bytes(decoded_string, "utf-8")
+            else:
+                rec_field_value = base64.b64decode(val.encode('utf-8'))
         assert rec_field_value.split(b'googleapis.com/')[1] == value.encode('utf-8').split(b'googleapis.com/')[1]
     except KeyError as ke:
         raise KeyError(f"Key error. {sdk_name} has not received topic update.")
@@ -185,7 +203,11 @@ def receive_value_as_bytes(context, sdk_name, key, value):
 @then(u'"{sdk_name}" receives rpc response having "{key}" as b"{value}"')
 def receive_rpc_response_as_bytes(context, sdk_name, key, value):
     try:
-        val = access_nested_dict(context.on_receive_rpc_response[sdk_name], key)
+        context.logger.info(sdk_name)
+        if sdk_name == "rust":
+            val = context.on_receive_rpc_response[sdk_name][key.split('.')[0]]
+        else:
+            val = access_nested_dict(context.on_receive_rpc_response[sdk_name], key)
         rec_field_value = base64.b64decode(val.encode('utf-8'))
         print(rec_field_value)
         # Convert bytes to byte string with escape sequences
@@ -199,35 +221,8 @@ def receive_rpc_response_as_bytes(context, sdk_name, key, value):
     except Exception as ae:
         raise ValueError(f"Expection occured. {ae}")
 
-@then(u'"{sdk_name}" receives validation result as "{result}"')
-def receive_validation_result(context, sdk_name, result):
-    try:
-        result = result.strip()
-        context.logger.info(context.on_receive_validation_result)
-        res = context.on_receive_validation_result[sdk_name]
-        assert result == res
-    except AssertionError as ae:
-        raise AssertionError(f"Assertion error. Expected is {result} but "
-                             f"received {repr(res)}")
-    except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
-    
 
-@then(u'"{sdk_name}" receives validation message as "{message}"')
-def receive_validation_result(context, sdk_name, message):
-    if message == "none":
-        return
-    try:
-        message = message.strip()
-        msg = context.on_receive_validation_msg[sdk_name]
-        assert message == msg
-    except AssertionError as ae:
-        raise AssertionError(f"Assertion error. Expected is {message} but "
-                             f"received {repr(msg)}")
-    except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
-
-def access_nested_dict(dictionary, keys):
+def access_nested_dict(context, dictionary, keys):
     keys = keys.split('.')
     value = dictionary
     for key in keys:

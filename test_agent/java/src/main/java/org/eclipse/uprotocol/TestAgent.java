@@ -28,11 +28,11 @@ import com.google.gson.Gson;
 import com.google.protobuf.Any;
 import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
+import org.eclipse.uprotocol.rpc.CallOptions;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
 import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
-import org.eclipse.uprotocol.uri.validator.UriValidator;
-import org.eclipse.uprotocol.validation.ValidationResult;
+import org.eclipse.uprotocol.uuid.factory.UuidFactory;
 import org.eclipse.uprotocol.uuid.serializer.LongUuidSerializer;
 import org.eclipse.uprotocol.v1.*;
 import org.json.JSONObject;
@@ -45,7 +45,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -64,7 +63,6 @@ public class TestAgent {
         actionHandlers.put(Constant.INVOKE_METHOD_COMMAND, TestAgent::handleInvokeMethodCommand);
         actionHandlers.put(Constant.SERIALIZE_URI, TestAgent::handleSerializeUriCommand);
         actionHandlers.put(Constant.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
-        actionHandlers.put(Constant.VALIDATE_URI, TestAgent::handleValidateUriCommand);
         actionHandlers.put(Constant.SERIALIZE_UUID, TestAgent::handleSerializeUuidCommand);
         actionHandlers.put(Constant.DESERIALIZE_UUID, TestAgent::handleDeserializeUuidCommand);
 
@@ -125,7 +123,9 @@ public class TestAgent {
     private static UStatus handleSendCommand(Map<String, Object> jsonData) {
         UMessage uMessage = (UMessage) ProtoConverter.dictToProto((Map<String, Object>) jsonData.get("data"),
                 UMessage.newBuilder());
-        return transport.send(uMessage);
+        UAttributes uAttributesWithId = uMessage.getAttributes().toBuilder().setId(UuidFactory.Factories.UPROTOCOL.factory().create()).build();
+        UMessage uMessageWithId = uMessage.toBuilder().setAttributes(uAttributesWithId).build();
+        return transport.send(uMessageWithId);
     }
 
     private static UStatus handleRegisterListenerCommand(Map<String, Object> jsonData) {
@@ -145,7 +145,7 @@ public class TestAgent {
         UPayload payload = (UPayload) ProtoConverter.dictToProto((Map<String, Object>) data.get("payload"),
                 UPayload.newBuilder());
         CompletionStage<UMessage> responseFuture = transport.invokeMethod(uri, payload,
-                CallOptions.newBuilder().setTtl(10000).build());
+                CallOptions.newBuilder().build());
         responseFuture.whenComplete(
                 (responseMessage, exception) -> sendToTestManager(responseMessage, Constant.RESPONSE_RPC));
         return null;
@@ -161,57 +161,6 @@ public class TestAgent {
     private static Object handleDeserializeUriCommand(Map<String, Object> jsonData) {
         sendToTestManager(LongUriSerializer.instance().deserialize(jsonData.get("data").toString()),
                 Constant.DESERIALIZE_URI);
-        return null;
-    }
-
-    private static Object handleValidateUriCommand(Map<String, Object> jsonData) {
-        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
-        String valType = (String) data.get("type");
-        String uriValue = (String) data.get("uri");
-
-        UUri uri = LongUriSerializer.instance().deserialize(uriValue);
-
-        Function<UUri, ValidationResult> validatorFunc = null;
-        Function<UUri, Boolean> validatorFuncBool = null;
-
-        switch (valType) {
-            case "uri":
-                validatorFunc = UriValidator::validate;
-                break;
-            case "rpc_response":
-                validatorFunc = UriValidator::validateRpcResponse;
-                break;
-            case "rpc_method":
-                validatorFunc = UriValidator::validateRpcMethod;
-                break;
-            case "is_empty":
-                validatorFuncBool = UriValidator::isEmpty;
-                break;
-            case "is_resolved":
-                validatorFuncBool = UriValidator::isResolved;
-                break;
-            case "is_micro_form":
-                validatorFuncBool = UriValidator::isMicroForm;
-                break;
-            case "is_long_form_uuri":
-                validatorFuncBool = UriValidator::isLongForm;
-                break;
-            case "is_long_form_uauthority":
-                validatorFuncBool = UriValidator::isLongForm;
-                break;
-        }
-
-        if (validatorFunc != null) {
-            ValidationResult status = validatorFunc.apply(uri);
-            String result = status.isSuccess() ? "True" : "False";
-            String message = status.getMessage();
-            sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_URI);
-        } else if (validatorFuncBool != null) {
-            Boolean status = validatorFuncBool.apply(uri);
-            String result = status ? "True" : "False";
-            sendToTestManager(Map.of("result", result, "message", ""), Constant.VALIDATE_URI);
-        }
-
         return null;
     }
 
