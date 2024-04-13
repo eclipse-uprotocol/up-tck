@@ -23,24 +23,22 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
-import base64
 from concurrent.futures import Future
 import json
 import logging
 import socket
 import sys
 from threading import Thread
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, List, Union
 
 from google.protobuf import any_pb2
 from google.protobuf.message import Message
-from google.protobuf.json_format import MessageToDict
 from google.protobuf.descriptor import FieldDescriptor
 from google.protobuf.wrappers_pb2 import StringValue
 from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.proto.ustatus_pb2 import UStatus, UCode
+from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.uuid_pb2 import UUID
 from uprotocol.rpc.calloptions import CallOptions
