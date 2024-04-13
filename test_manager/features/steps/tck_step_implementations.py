@@ -202,8 +202,7 @@ def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expec
 
         rec_field_value = val.encode('utf-8')
         assert rec_field_value.split(b'googleapis.com/')[1] == expected_value.encode('utf-8').split(b'googleapis.com/')[1]
-    except KeyError as ke:
-        raise KeyError(f"Key error. {receiver_sdk_name} has not received topic update.")
+
     except AssertionError as ae:
         raise AssertionError(f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
                              f"received {rec_field_value}")
