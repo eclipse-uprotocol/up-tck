@@ -123,12 +123,11 @@ class DictWithQueue:
     def popleft(self, key: str) -> Any:
         with self.lock:
             onreceive: Any = self.key_to_queue[key].popleft()
-            logger.info(f'self.key_to_queue popleft {self.key_to_queue}')
+            logger.info(f'self.key_to_queue popleft {onreceive["action"]} {self.key_to_queue}')
         return onreceive
            
     
 class TestManager:
-    #Problem: bdd_context acts as global variable and lots of assumptions -> need to remove!
     def __init__(self, bdd_context, ip_addr: str, port: int):
         self.exit_manager = False
         self.socket_event_receiver = selectors.DefaultSelector()
@@ -185,36 +184,8 @@ class TestManager:
         
         action_type: str = response_json["action"]
         self.action_type_to_response_queue.append(action_type, response_json)
-            
-    '''
-    def _process_message(self, json_data: Dict[str, Any], ta_socket: socket.socket):
-        if json_data['action'] == 'initialize':
-            test_agent_sdk: str = json_data['data']["SDK_name"].lower().strip()
-            self.test_agent_database.add(ta_socket, test_agent_sdk)
-            with self.lock:
-                if sdk not in self.connected_test_agent_sockets:
-                    self.connected_test_agent_sockets[sdk] = ta_socket
-                        
-        # Question: Why are we giving the data to the BDD_context instead of handling it here??
-        # problem: if multiple receive data, then can override the assigned data
-        elif json_data['action'] in ['send', 'registerlistener', 'unregisterlistener']:
-            self.bdd_context.status_json = json_data['data']
-        elif json_data['action'] == 'onreceive':
-            self.bdd_context.on_receive_msg[json_data['ue']] = json_data['data']
-        elif json_data['action'] == 'rpcresponse':
-            self.bdd_context.on_receive_rpc_response[json_data['ue']] = json_data['data']
-        elif json_data['action'] == 'uri_serialize':
-            self.bdd_context.on_receive_serialized_uri = json_data['data']
-        elif json_data['action'] == 'uri_deserialize':
-            self.bdd_context.on_receive_deserialized_uri = json_data['data']
-        elif json_data['action'] == 'uuid_serialize':
-            self.bdd_context.on_receive_serialized_uuid = json_data['data']
-        elif json_data['action'] == 'uuid_deserialize':
-            self.bdd_context.on_receive_deserialized_uuid = json_data['data']
-    '''
     
     def has_sdk_connection(self, test_agent_name: str) -> bool:
-        # return sdk_name in self.connected_test_agent_sockets
         return self.test_agent_database.contains(test_agent_name)
 
     def listen_for_incoming_events(self):
@@ -231,12 +202,9 @@ class TestManager:
         
     def request(self, test_agent_name: str, action: str, data: Dict[str, AnyType], payload: Dict[str, AnyType]=None):
         """Sends a blocking request message to sdk Test Agent (ex: Java, Rust, C++ Test Agent)
-
-        !!!! NEED SOME ENUM with CONSTANTS for diff action types and KEYS (action, data, test_id)!!!!
         """
         # Get Test Agent's socket
         test_agent_name = test_agent_name.lower().strip()
-        # test_agent_socket: socket.socket = self.connected_test_agent_sockets[test_agent_name]
         test_agent_socket: socket.socket = self.test_agent_database.get(test_agent_name)
 
         # Create a request json to send to specific Test Agent

@@ -119,10 +119,9 @@ def message_to_dict(message: Message) -> Dict[str, Any]:
 def send_to_test_manager(response: Union[Message, str, dict], action: str, received_test_id: str = ""):
     if not isinstance(response, (dict, str)):
         # converts protobuf to dict
-        # response = MessageToDict(response, including_default_value_fields=True, preserving_proto_field_name=True)
         response = message_to_dict(response)
 
-    # Create a new dictionary
+    # Create response as json/dict
     response_dict = {'data': response, 'action': action, 'ue': 'python', 'test_id': received_test_id}
     response_dict = json.dumps(response_dict).encode('utf-8')
     ta_socket.sendall(response_dict)
@@ -131,16 +130,16 @@ def send_to_test_manager(response: Union[Message, str, dict], action: str, recei
 
 def dict_to_proto(parent_json_obj, parent_proto_obj):
     def populate_fields(json_obj, proto_obj):
-        for key, value in json_obj.items():
+        for field_name, value in json_obj.items():
             if 'BYTES:' in value:
                 value = value.replace('BYTES:', '')
                 value = value.encode('utf-8')
-            if hasattr(proto_obj, key):
+            if hasattr(proto_obj, field_name):
                 if isinstance(value, dict):
                     # Recursively update the nested message object
-                    populate_fields(value, getattr(proto_obj, key))
+                    populate_fields(value, getattr(proto_obj, field_name))
                 else:
-                    field_type = type(getattr(proto_obj, key))
+                    field_type = type(getattr(proto_obj, field_name))
                     try:
                         if field_type == int:
                             value = int(value)
@@ -148,7 +147,7 @@ def dict_to_proto(parent_json_obj, parent_proto_obj):
                             value = float(value)
                     except:
                         pass
-                    setattr(proto_obj, key, value)
+                    setattr(proto_obj, field_name, value)
         return proto_obj
 
     populate_fields(parent_json_obj, parent_proto_obj)
@@ -179,7 +178,6 @@ def handle_invoke_method_command(json_msg):
 
     def handle_response(message):
         message: Message = message.result()
-        # send_to_test_manager(message, CONSTANTS.RESPONSE_RPC, received_test_id=json_msg["test_id"])
         send_to_test_manager(message, CONSTANTS.INVOKE_METHOD_COMMAND, received_test_id=json_msg["test_id"])
 
     res_future.add_done_callback(handle_response)
@@ -206,16 +204,17 @@ def send_longserialize_uuid(json_msg: Dict[str, Any]):
     serialized_uuid: str = LongUuidSerializer().serialize(uuid)
     send_to_test_manager(serialized_uuid, CONSTANTS.SERIALIZE_UUID, received_test_id=json_msg["test_id"])
 
-# def send_microserialize_uri(json_msg: Dict[str, Any]):
-    
-#     # uri: UUri = dict_to_proto(json_msg["data"], UUri())
-#     pass
+def send_microserialize_uri(json_msg: Dict[str, Any]):
+    uri: UUri = dict_to_proto(json_msg["data"], UUri())
+    serialized_uuri: bytes = MicroUriSerializer().serialize(uri)
+    serialized_uuri_json_packed: str = serialized_uuri.decode("ansi")  # use "ansi" so no UnicodeDecodeError if use "utf-8"
+    send_to_test_manager(serialized_uuri_json_packed, CONSTANTS.MICRO_SERIALIZE_URI, received_test_id=json_msg["test_id"])
 
-# def send_microdeserialize_uri(json_msg: Dict[str, Any]):
-#     sent_uuri_serialized: str = json_msg["data"]
-#     uuri_serialized: bytes = sent_uuri_serialized.encode()
-#     uuri: UUri = MicroUriSerializer().deserialize(uuri_serialized)
-#     send_to_test_manager(uuri, CONSTANTS., received_test_id=json_msg["test_id"])
+def send_microdeserialize_uri(json_msg: Dict[str, Any]):
+    sent_micro_serialized_uuri: str = json_msg["data"]
+    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("ansi")
+    uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
+    send_to_test_manager(uuri, CONSTANTS.MICRO_DESERIALIZE_URI, received_test_id=json_msg["test_id"])
 
 
 action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
@@ -225,7 +224,9 @@ action_handlers = {CONSTANTS.SEND_COMMAND: handle_send_command,
                    CONSTANTS.SERIALIZE_URI: send_longserialize_uuri,
                    CONSTANTS.DESERIALIZE_URI: send_longdeserialize_uri,
                    CONSTANTS.SERIALIZE_UUID: send_longserialize_uuid,
-                   CONSTANTS.DESERIALIZE_UUID: send_longdeserialize_uuid
+                   CONSTANTS.DESERIALIZE_UUID: send_longdeserialize_uuid,
+                   CONSTANTS.MICRO_SERIALIZE_URI: send_microserialize_uri,
+                   CONSTANTS.MICRO_DESERIALIZE_URI: send_microdeserialize_uri
                    }
 
 

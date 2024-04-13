@@ -2,9 +2,9 @@ name: TCK Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "microserialization"]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "microserialization"]
 
 permissions:
   contents: read
@@ -88,7 +88,6 @@ jobs:
             echo "Running Test: $filename"
             behave --format json --outfile "./reports/${filename}.json" --format html --outfile "./reports/${filename}.html" "$full_path"
             echo "Finished Test: $filename"
-            sleep 70
         done
     - name: Get Behave Scripts
       uses: actions/github-script@v6

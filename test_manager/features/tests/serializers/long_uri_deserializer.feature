@@ -61,7 +61,6 @@ Feature: Local and Remote URI de-serialization
   Scenario Outline: Testing the remote uri deserializer
     Given "<uE1>" creates data for "uri_deserialize"
     When sends a "uri_deserialize" request with serialized input "<serialized_uri>"
-    # And user waits "1" second
     Then the deserialized uri received should have the following properties:
       | Field                | Value                  |
       | authority.name       | <authority_name>       |

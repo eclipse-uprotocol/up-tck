@@ -65,7 +65,7 @@ Feature: Local and Remote URI serialization
     And sets "resource.instance" to "<resource_instance>"
     And sets "resource.message" to "<resource_message>"
     When sends "uri_serialize" request
-    # And user waits "1" second
+
     Then receives uri serialization "<expected_uri>"
     Examples:
       | uE1    | authority_name | entity_name | resource_name | resource_instance | resource_message | entity_version_major | expected_uri                              |

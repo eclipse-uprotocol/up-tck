@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -46,7 +47,8 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 
 public class ProtoConverter {
-
+	private static final Logger logger = Logger.getLogger("JavaProtoConverter");
+	
     public static Message dictToProto(Map<String, Object> parentJsonObj, Message.Builder parentProtoObj) {
         populateFields(parentJsonObj, parentProtoObj);
         return parentProtoObj.build();
@@ -60,7 +62,7 @@ public class ProtoConverter {
 
             if (fieldDescriptor != null) {
                 if (value instanceof String && ((String) value).startsWith("BYTES:")) {
-                    String byteString = ((String) value).substring(7); // Remove 'BYTES:' prefix
+                    String byteString = ((String) value).substring(6); // Remove 'BYTES:' prefix
                     ByteString byteValue = ByteString.copyFromUtf8(byteString);
                     protoObj.setField(fieldDescriptor, byteValue);
                 } else {
@@ -241,18 +243,6 @@ public class ProtoConverter {
     			value = ((ByteString) value).toStringUtf8();
     		}
 			
-//    		if (field.getJavaType() == JavaType.LONG) {
-//    			System.out.print("fieldName: ");
-//    			System.out.println(fieldName);
-//    			System.out.print("value: ");
-//    			System.out.println(value);
-//    			System.out.println(field.getJavaType());
-//    			System.out.println( Long.toUnsignedString((long) value));
-//    			value =  Long.parseLong(Long.toUnsignedString((long) value));
-//    			System.out.println(value.getClass().getName());
-//    			System.out.println(value);
-//
-//    		}
 
     		if (value instanceof Message) {
     			result.put(fieldName, convertMessageToMap((Message) value));

@@ -64,7 +64,7 @@ def create_sdk_data(context, sdk_name: str, command: str):
 @then(u'receives uri serialization "{expected_uri}"')
 def serialized_uri_received(context, expected_uri):
     try:
-        rec_field_value = context.response_json
+        rec_field_value = context.response_data
         assert_that(expected_uri, equal_to(rec_field_value))
     except AssertionError as ae:
         raise AssertionError(f"Assertion error. Expected is {expected_uri} but "
@@ -76,7 +76,7 @@ def serialized_uri_received(context, expected_uri):
 @then(u'receives uuid serialization "{expected_uuid}"')
 def serialized_uuid_received(context, expected_uuid: str):
     try:
-        rec_field_value = context.response_json
+        rec_field_value = context.response_data
         # context.logger.info(f"uuid serialization -> {rec_field_value}")
 
         assert_that(expected_uuid, equal_to(rec_field_value))
@@ -92,24 +92,29 @@ def send_serialized_command(context, command, serialized):
     context.logger.info(f"Json request for {command} -> {serialized}")
     response_json: Dict[str, Any] = context.tm.request(context.ue, context.action, serialized)
     context.logger.info(f"Response Json {command} -> {response_json}")
-    context.response_json = response_json['data']
+    context.response_data = response_json['data']
 
 @then(u'the deserialized uri received should have the following properties')
 def verify_uri_received_properties(context):
-    deserialized_uri: Dict[str, Any] = flatten_dict(context.response_json)
+    deserialized_uri: Dict[str, Any] = flatten_dict(context.response_data)
     context.logger.info(f"deserialized_uri_dict -> {deserialized_uri}")
     
     # Iterate over the rows of the table and verify the received properties    
     int_type_fields = set(["entity.id", "entity.version_major", "entity.version_minor", 'resource.id'])
+    bytes_type_fields = set(["authority.id", "authority.ip"])
+
     try:
         for row in context.table:
-            field = row['Field']
-            expected_value = row['Value']
+            field: str = row['Field']
+            expected_value: str = row['Value']
             context.logger.info(f"field {field}; {deserialized_uri[field]} vs. {expected_value}")
             if len(expected_value) > 0:
 
                 if field in int_type_fields:
                     expected_value = int(expected_value)
+                elif field in bytes_type_fields:
+                    expected_value: bytes = expected_value.encode()
+                    deserialized_uri[field] = str(deserialized_uri[field]).encode()
                 assert_that(deserialized_uri[field], equal_to(expected_value))
             else:
                 assert_that(len(deserialized_uri[field]) > 0, equal_to(len(expected_value) > 0))
@@ -122,14 +127,11 @@ def verify_uri_received_properties(context):
 def verify_uuid_received_properties(context):
     # assert context.on_receive_deserialized_uuid is not None
     # deserialized_uuid_dict = flatten_dict(context.on_receive_deserialized_uuid)
-    context.logger.info(f"deserialized context.response_json -> {context.response_json}")
+    context.logger.info(f"deserialized context.response_data -> {context.response_data}")
 
-    deserialized_uuid: Dict[str, int]= flatten_dict(context.response_json)
+    deserialized_uuid: Dict[str, int]= flatten_dict(context.response_data)
     context.logger.info(f"deserialized_uuid_dict -> {deserialized_uuid}")
     
-    ### !!!! PROBLEM: data types returned and given are STRINGS and some returns are ints/strings !!!!
-    ### SO set expected data types to BE those data types!!!!
-
     # Iterate over the rows of the table and verify the received properties
     int_type_fields = set(["msb", "lsb"])
     try:
@@ -148,7 +150,7 @@ def verify_uuid_received_properties(context):
 
 @given(u'sets "{key}" to "{value}"')
 @when(u'sets "{key}" to "{value}"')
-def set_key_to_val(context: Context, key: str, value: str):
+def set_key_to_val(context: Context, key: str, value: str):    
     if key not in context.json_dict:
         context.json_dict[key] = value
     # context.logger.info(f"Dict -> {context.json_dict}")
@@ -170,48 +172,40 @@ def set_key_to_bytes(context, key, value):
 def send_command_request(context, command: str):
     context.json_dict = unflatten_dict(context.json_dict)
     context.logger.info(f"Json request for {command} -> {str(context.json_dict)}")
-    # context.tm.receive_from_bdd(context.ue, context.action, context.json_dict)
-    response_json: Dict[str, Any] = context.tm.request(context.ue, context.action, context.json_dict)
+
+    response_json: Dict[str, Any] = context.tm.request(context.ue, command, context.json_dict)
     context.logger.info(f"Response Json {command} -> {response_json}")
-    context.response_json = response_json['data']
-
-
-@when(u'user waits "{sec}" second')
-@then(u'user waits "{sec}" second')
-def user_wait(context, sec):
-    time.sleep(int(sec))
-
+    context.response_data = response_json['data']
 
 @then(u'the status received with "{field}" is "{field_value}"')
 def receive_status(context, field, field_value: str):
     try:
-        rec_field_value: str = context.response_json[field]
+        rec_field_value: str = context.response_data[field]
         field_value: int = getattr(UCode, field_value)
         assert_that(field_value, equal_to(rec_field_value))
     except AssertionError as ae:
         raise AssertionError(f"Assertion error. Expected is {field_value} but "
-                             f"received {context.response_json[field]}")
+                             f"received {context.response_data[field]}")
     except Exception as ae:
         raise ValueError(f"Expection occured. {ae}")
 
 
-@then(u'"{sdk_name}" receives onreceive message "{key}" as b"{value}"')
-def receive_value_as_bytes(context, sdk_name, key, value):
+@then(u'"{sender_sdk_name}" sends onreceive message with field "{field_name}" as b"{expected_value}"')
+def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expected_value: str):
     try:
-        value = value.strip()
-        
-        on_receive_msg: Dict[str, Any] = context.tm.get_onreceive(sdk_name)
-        context.logger.info(f"context.on_receive_msg:  {on_receive_msg}")
-        val = access_nested_dict(on_receive_msg["data"], key)
-        context.logger.info(f"val {key}:  {val}")
+        expected_value = expected_value.strip()
+        context.logger.info(f"getting context.on_receive_msg from {sender_sdk_name}")
+        on_receive_msg: Dict[str, Any] = context.tm.get_onreceive(sender_sdk_name)
+        context.logger.info(f"got context.on_receive_msg:  {on_receive_msg}")
+        val = access_nested_dict(on_receive_msg["data"], field_name)
+        context.logger.info(f"val {field_name}:  {val}")
 
-        # rec_field_value = base64.b64decode(val.encode('utf-8'))
         rec_field_value = val.encode('utf-8')
-        assert rec_field_value.split(b'googleapis.com/')[1] == value.encode('utf-8').split(b'googleapis.com/')[1]
+        assert rec_field_value.split(b'googleapis.com/')[1] == expected_value.encode('utf-8').split(b'googleapis.com/')[1]
     except KeyError as ke:
-        raise KeyError(f"Key error. {sdk_name} has not received topic update.")
+        raise KeyError(f"Key error. {receiver_sdk_name} has not received topic update.")
     except AssertionError as ae:
-        raise AssertionError(f"Assertion error. Expected is {value.encode('utf-8')} but "
+        raise AssertionError(f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
                              f"received {rec_field_value}")
     except Exception as ae:
         raise ValueError(f"Expection occured. {ae}")
@@ -220,8 +214,7 @@ def receive_value_as_bytes(context, sdk_name, key, value):
 @then(u'"{sdk_name}" receives "{action_type}" having "{key}" as b"{expected_value}"')
 def receive_rpc_response_as_bytes(context, sdk_name, action_type: str, key, expected_value):
     try:
-        actual_value: str = access_nested_dict(context.response_json, key)
-        # actual_value: bytes = base64.b64decode(actual_value.encode('utf-8'))
+        actual_value: str = access_nested_dict(context.response_data, key)
         actual_value: bytes = actual_value.encode('utf-8')
         
         # Convert bytes to byte string with escape sequences
@@ -235,6 +228,47 @@ def receive_rpc_response_as_bytes(context, sdk_name, action_type: str, key, expe
     except Exception as ae:
         raise ValueError(f"Expection occured. {ae}")
 
+
+def bytes_to_base64_str(b: bytes) -> str:
+    return base64.b64encode(b).decode("ascii")
+
+def base64_str_to_bytes(base64_str: str) -> bytes:
+    base64_bytes: bytes = base64_str.encode("ascii") 
+    return base64.b64decode(base64_bytes)
+
+@then(u'receives micro serialized uri "{expected_bytes_as_base64_str}"')
+def receive_micro_serialized_uuri(context, expected_bytes_as_base64_str: str):
+    if expected_bytes_as_base64_str == "<empty>":
+        expected_bytes_as_base64_str = ""
+    
+    expected_bytes: bytes = base64_str_to_bytes(expected_bytes_as_base64_str)
+    context.logger.info(f"expected_bytes: {expected_bytes}")
+
+    try:
+        actual_bytes_as_str: str = context.response_data
+        actual_bytes: bytes = actual_bytes_as_str.encode("ansi")
+        
+        context.logger.info(f"actual: {actual_bytes} | expect: {expected_bytes}")
+        assert_that(expected_bytes, equal_to(actual_bytes))
+    except AssertionError as ae:
+        raise AssertionError(f"Assertion error. Expected is {expected_bytes} but "
+                             f"received {context.on_receive_serialized_uri}")
+    except Exception as ae:
+        raise ValueError(f"Expection occured. {ae}")
+
+@when(u'sends a "{command}" request with micro serialized input "{micro_serialized_uri_as_base64_str}"')
+def send_micro_serialized_command(context, command: str, micro_serialized_uri_as_base64_str: str):
+    if micro_serialized_uri_as_base64_str == "<empty>":
+        micro_serialized_uri_as_base64_str = ""
+        
+    micro_serialized_uri: bytes = base64_str_to_bytes(micro_serialized_uri_as_base64_str)
+    context.logger.info(f"Json request for {command} -> {micro_serialized_uri}")
+    
+    micro_serialized_uri_as_str = micro_serialized_uri.decode("ansi")
+    response_json: Dict[str, Any] = context.tm.request(context.ue, command, micro_serialized_uri_as_str)
+    
+    context.logger.info(f"Response Json {command} -> {response_json}")
+    context.response_data = response_json['data']
 
 def access_nested_dict(dictionary, keys):
     keys = keys.split('.')

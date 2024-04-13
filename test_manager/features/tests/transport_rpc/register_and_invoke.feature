@@ -46,7 +46,6 @@ Feature: Testing RPC Functionality
     And sets "payload.value" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
 
     When sends "invokemethod" request
-    # And user waits "8" second
 
     Then "<uE2>" receives "invokemethod" having "payload.value" as b"\n/type.googleapis.com/google.protobuf.StringValue\x12\x14\n\x12SuccessRPCResponse"
 
@@ -56,12 +55,12 @@ Feature: Testing RPC Functionality
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
     When sends "unregisterlistener" request
-    # And user waits "2" second
+    
     Then the status received with "code" is "OK"
 
     Examples:
       | uE1    | uE2    |
       | java   | java   |
       | python | python |
-      # | java   | python |
-      # | python | java   |
+      | java   | python |
+      | python | java   |
