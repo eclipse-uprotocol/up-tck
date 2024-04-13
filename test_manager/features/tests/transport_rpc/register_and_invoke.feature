@@ -47,7 +47,7 @@ Feature: Testing RPC Functionality
 
     When sends "invokemethod" request
 
-    Then "<uE2>" receives "invokemethod" having "payload.value" as b"\n/type.googleapis.com/google.protobuf.StringValue\x12\x14\n\x12SuccessRPCResponse"
+    Then "<uE2>" receives data field "payload.value" as b"\n/type.googleapis.com/google.protobuf.StringValue\x12\x14\n\x12SuccessRPCResponse"
 
     Given "<uE1>" creates data for "unregisterlistener"
     And sets "entity.name" to "body.access"
@@ -55,7 +55,7 @@ Feature: Testing RPC Functionality
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
     When sends "unregisterlistener" request
-    
+
     Then the status received with "code" is "OK"
 
     Examples:
