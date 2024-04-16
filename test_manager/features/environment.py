@@ -32,7 +32,6 @@ from threading import Thread
 from typing import List
 
 import git
-from behave import formatter
 from behave.runner import Context
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -40,35 +39,50 @@ from testmanager import TestManager
 from utils import loggerutils
 
 PYTHON_TA_PATH = "/test_agent/python/testagent.py"
-JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
+JAVA_TA_PATH = (
+    "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
+)
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
 
-repo = git.Repo('.', search_parent_directories=True)
+repo = git.Repo(".", search_parent_directories=True)
 sys.path.append(repo.working_tree_dir)
 
 from dispatcher.dispatcher import Dispatcher
 
+
 def create_command(filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []
 
-    if filepath_from_root_repo.endswith('.jar'):
+    if filepath_from_root_repo.endswith(".jar"):
         command.append("java")
         command.append("-jar")
-    elif filepath_from_root_repo.endswith('.py'):
+    elif filepath_from_root_repo.endswith(".py"):
         if sys.platform == "win32":
             command.append("python")
-        elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
+        elif (
+            sys.platform == "linux"
+            or sys.platform == "linux2"
+            or sys.platform == "darwin"
+        ):
             command.append("python3")
     else:
         raise Exception("only accept .jar and .py files")
-    command.append(os.path.abspath(os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo))
+    command.append(
+        os.path.abspath(
+            os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo
+        )
+    )
     return command
 
 
 def create_subprocess(command: List[str]) -> subprocess.Popen:
     if sys.platform == "win32":
         process = subprocess.Popen(command, shell=True)
-    elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
+    elif (
+        sys.platform == "linux"
+        or sys.platform == "linux2"
+        or sys.platform == "darwin"
+    ):
         process = subprocess.Popen(command)
     else:
         print(sys.platform)
