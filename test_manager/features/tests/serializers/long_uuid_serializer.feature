@@ -31,8 +31,8 @@ Feature: UUID serialization
     And sets "msb" to "<msb>"
 
     When sends "uuid_serialize" request
-    And user waits "1" second
-    Then the serialized uuid received is "<expected_uuid>"
+    Then receives uuid serialization "<expected_uuid>"
+
     Examples:
       | uE1    | lsb                  | msb                | expected_uuid                        |
       | python | 11155833020022798372 | 112128268635242497 | 018e5c10-f548-8001-9ad1-7b068c083824 |
