@@ -34,20 +34,17 @@ from typing import List
 import git
 from behave.runner import Context
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from testmanager import TestManager
-from utils import loggerutils
+repo = git.Repo(".", search_parent_directories=True)
+sys.path.append(repo.working_tree_dir)
+from test_manager.testmanager import TestManager
+from dispatcher.dispatcher import Dispatcher
+from test_manager.features.utils import loggerutils
 
 PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = (
     "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
 )
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
-
-repo = git.Repo(".", search_parent_directories=True)
-sys.path.append(repo.working_tree_dir)
-
-from dispatcher.dispatcher import Dispatcher
 
 
 def create_command(filepath_from_root_repo: str) -> List[str]:
@@ -99,8 +96,7 @@ def before_all(context):
     :param context: Holds contextual information during the running of tests
     :return: None
     """
-    context.on_receive_msg = {}
-    context.on_receive_rpc_response = {}
+
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
@@ -136,18 +132,14 @@ def after_all(context: Context):
     context.ue = None
     context.action = None
     context.json_dict = None
-    context.status_json = None
-    context.on_receive_msg = {}
-    context.on_receive_rpc_response = {}
-    context.on_receive_serialized_uri = None
-    context.on_receive_deserialized_uri = None
-    context.on_receive_serialized_uuid = None
-    context.on_receive_deserialized_uuid = None
+
     context.tm.close_test_agent("python")
     context.tm.close_test_agent("java")
     context.tm.close()
     context.dispatcher.close()
+
     context.logger.info("Closed All Test Agents and Test Manager...")
+
     try:
         context.java_ta_process.terminate()
         context.python_ta_process.terminate()

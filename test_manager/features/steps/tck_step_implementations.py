@@ -46,21 +46,21 @@ def create_sdk_data(context, sdk_name: str, command: str):
     context.action = command
 
 
-@then('receives uri serialization "{expected_uri}"')
+@then('the serialized uri received is "{expected_uri}"')
 def serialized_uri_received(context, expected_uri: str):
     try:
-        actual_uuid: str = context.response_data
-        assert_that(expected_uri, equal_to(actual_uuid))
+        actual_uri: str = context.response_data
+        assert_that(expected_uri, equal_to(actual_uri))
     except AssertionError:
         raise AssertionError(
             f"Assertion error. Expected is {expected_uri} but "
-            f"received {actual_uuid}"
+            f"received {actual_uri}"
         )
     except Exception as ae:
         raise ValueError(f"Expection occured. {ae}")
 
 
-@then('receives uuid serialization "{expected_uuid}"')
+@then('the serialized uuid received is "{expected_uuid}"')
 def serialized_uuid_received(context, expected_uuid: str):
     try:
         actual_uuid: str = context.response_data
