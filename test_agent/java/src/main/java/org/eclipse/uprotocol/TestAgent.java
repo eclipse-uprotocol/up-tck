@@ -63,11 +63,11 @@ public class TestAgent {
         actionHandlers.put(Constant.REGISTER_LISTENER_COMMAND, TestAgent::handleRegisterListenerCommand);
         actionHandlers.put(Constant.UNREGISTER_LISTENER_COMMAND, TestAgent::handleUnregisterListenerCommand);
         actionHandlers.put(Constant.INVOKE_METHOD_COMMAND, TestAgent::handleInvokeMethodCommand);
-        actionHandlers.put(Constant.SERIALIZE_URI, TestAgent::handleSerializeUriCommand);
-        actionHandlers.put(Constant.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
+        actionHandlers.put(Constant.SERIALIZE_URI, TestAgent::handleLongSerializeUriCommand);
+        actionHandlers.put(Constant.DESERIALIZE_URI, TestAgent::handleLongDeserializeUriCommand);
         actionHandlers.put(Constant.VALIDATE_URI, TestAgent::handleValidateUriCommand);
-        actionHandlers.put(Constant.SERIALIZE_UUID, TestAgent::handleSerializeUuidCommand);
-        actionHandlers.put(Constant.DESERIALIZE_UUID, TestAgent::handleDeserializeUuidCommand);
+        actionHandlers.put(Constant.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
+        actionHandlers.put(Constant.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
 
     }
 
@@ -92,28 +92,35 @@ public class TestAgent {
         }
     }
 
+    private static void sendToTestManager(Object json, String action) {
+        sendToTestManager(json, action, null);
+    }
+    
     private static void sendToTestManager(Message proto, String action) {
-        // Create a new dictionary
+        sendToTestManager(proto, action, null);
+    }
+    
+    private static void sendToTestManager(Object json, String action, String received_test_id) {
         JSONObject responseDict = new JSONObject();
-
-        responseDict.put("data", ProtoConverter.convertMessageToMap(proto));
+        responseDict.put("data", json);
+        if (received_test_id != null) {
+            responseDict.put("test_id", received_test_id);
+        }
         writeDataToTMSocket(responseDict, action);
     }
     
     private static void sendToTestManager(Message proto, String action, String received_test_id) {
-        // Create a new dictionary
         JSONObject responseDict = new JSONObject();
         responseDict.put("data", ProtoConverter.convertMessageToMap(proto));
-        responseDict.put("test_id", received_test_id);
-
+        if (received_test_id != null) {
+            responseDict.put("test_id", received_test_id);
+        }
         writeDataToTMSocket(responseDict, action);
     }
 
     private static void writeDataToTMSocket(JSONObject responseDict, String action) {
         responseDict.put("action", action);
         responseDict.put("ue", "java");
-
-
         try {
             OutputStream outputStream = clientSocket.getOutputStream();
             outputStream.write(responseDict.toString().getBytes(StandardCharsets.UTF_8));
@@ -124,25 +131,6 @@ public class TestAgent {
             logger.log(Level.SEVERE, "Error sending data to TM:  " + ioException.getMessage(), ioException);
 
         }
-    }
-    
-    private static void sendToTestManager(Object json, String action) {
-    	// Object json should be str or dict 
-        // Create a new dictionary
-        JSONObject responseDict = new JSONObject();
-        responseDict.put("data", json);
-        writeDataToTMSocket(responseDict, action);
-
-    }
-
-    private static void sendToTestManager(Object json, String action, String received_test_id) {
-        // Create a new dictionary
-        JSONObject responseDict = new JSONObject();
-        responseDict.put("data", json);
-        responseDict.put("test_id", received_test_id);
-
-        writeDataToTMSocket(responseDict, action);
-
     }
 
     private static UStatus handleSendCommand(Map<String, Object> jsonData) {
@@ -177,7 +165,7 @@ public class TestAgent {
         return null;
     }
 
-    private static Object handleSerializeUriCommand(Map<String, Object> jsonData) {
+    private static Object handleLongSerializeUriCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
         String serializedUuri = LongUriSerializer.instance().serialize(uri);
@@ -186,7 +174,7 @@ public class TestAgent {
         return null;
     }
 
-    private static Object handleDeserializeUriCommand(Map<String, Object> jsonData) {
+    private static Object handleLongDeserializeUriCommand(Map<String, Object> jsonData) {
     	UUri uri = LongUriSerializer.instance().deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uri, Constant.DESERIALIZE_URI, testID);
@@ -246,7 +234,7 @@ public class TestAgent {
         return null;
     }
 
-    private static Object handleSerializeUuidCommand(Map<String, Object> jsonData) {
+    private static Object handleLongSerializeUuidCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         UUID uuid = (UUID) ProtoConverter.dictToProto(data, UUID.newBuilder());
         String serializedUUid = LongUuidSerializer.instance().serialize(uuid);
@@ -255,8 +243,7 @@ public class TestAgent {
         return null;
     }
 
-    private static Object handleDeserializeUuidCommand(Map<String, Object> jsonData) {
-
+    private static Object handleLongDeserializeUuidCommand(Map<String, Object> jsonData) {
     	UUID uuid = LongUuidSerializer.instance().deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uuid, Constant.DESERIALIZE_UUID, testID);

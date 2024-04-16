@@ -210,7 +210,7 @@ def handle_invoke_method_command(json_msg):
     res_future.add_done_callback(handle_response)
 
 
-def send_longserialize_uuri(json_msg: Dict[str, Any]):
+def handle_long_serialize_uuri(json_msg: Dict[str, Any]):
     uri: UUri = dict_to_proto(json_msg["data"], UUri())
     serialized_uuri: str = LongUriSerializer().serialize(uri)
     send_to_test_manager(
@@ -220,21 +220,21 @@ def send_longserialize_uuri(json_msg: Dict[str, Any]):
     )
 
 
-def send_longdeserialize_uri(json_msg: Dict[str, Any]):
+def handle_long_deserialize_uri(json_msg: Dict[str, Any]):
     uuri: UUri = LongUriSerializer().deserialize(json_msg["data"])
     send_to_test_manager(
         uuri, CONSTANTS.DESERIALIZE_URI, received_test_id=json_msg["test_id"]
     )
 
 
-def send_longdeserialize_uuid(json_msg: Dict[str, Any]):
+def handle_long_deserialize_uuid(json_msg: Dict[str, Any]):
     uuid: UUID = LongUuidSerializer().deserialize(json_msg["data"])
     send_to_test_manager(
         uuid, CONSTANTS.DESERIALIZE_UUID, received_test_id=json_msg["test_id"]
     )
 
 
-def send_longserialize_uuid(json_msg: Dict[str, Any]):
+def handle_long_serialize_uuid(json_msg: Dict[str, Any]):
     uuid: UUID = dict_to_proto(json_msg["data"], UUID())
     serialized_uuid: str = LongUuidSerializer().serialize(uuid)
     send_to_test_manager(
@@ -280,10 +280,10 @@ action_handlers = {
     CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
     CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
     CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
-    CONSTANTS.SERIALIZE_URI: send_longserialize_uuri,
-    CONSTANTS.DESERIALIZE_URI: send_longdeserialize_uri,
-    CONSTANTS.SERIALIZE_UUID: send_longserialize_uuid,
-    CONSTANTS.DESERIALIZE_UUID: send_longdeserialize_uuid,
+    CONSTANTS.SERIALIZE_URI: handle_long_serialize_uuri,
+    CONSTANTS.DESERIALIZE_URI: handle_long_deserialize_uri,
+    CONSTANTS.SERIALIZE_UUID: handle_long_serialize_uuid,
+    CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
     CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
 }
 
