@@ -57,7 +57,7 @@ def serialized_uri_received(context, expected_uri: str):
             f"received {actual_uri}"
         )
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 @then('the serialized uuid received is "{expected_uuid}"')
@@ -72,7 +72,7 @@ def serialized_uuid_received(context, expected_uuid: str):
             f"received {actual_uuid}"
         )
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 @then('receives validation result as "{expected_result}"')
@@ -87,7 +87,7 @@ def receive_validation_result(context, expected_result):
             f"received {repr(actual_val_res)}"
         )
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 @then('receives validation message as "{expected_message}"')
@@ -104,7 +104,7 @@ def receive_validation_result(context, expected_message):
             f"received {repr(actual_val_msg)}"
         )
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 @when('sends a "{command}" request with serialized input "{serialized}"')
@@ -240,7 +240,7 @@ def receive_status(context, field_name: str, expected_value: str):
             f"received {context.response_data[field_name]}"
         )
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 @then(
@@ -271,7 +271,7 @@ def receive_value_as_bytes(
             f"received {rec_field_value}"
         )
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 @then('"{sdk_name}" receives data field "{field_name}" as b"{expected_value}"')
@@ -300,7 +300,7 @@ def receive_rpc_response_as_bytes(
             f"received {repr(actual_value)}"
         )
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 def bytes_to_base64_str(b: bytes) -> str:
@@ -334,7 +334,7 @@ def receive_micro_serialized_uuri(context, expected_bytes_as_base64_str: str):
             f"received {actual_bytes}"
         )
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 @when(

@@ -190,7 +190,7 @@ class TestManager:
         """
         Callback function for receiving data from test agent sockets.
 
-        :param ta_socket: The client socket.
+        :param test_agent: The client socket.
         """
         recv_data = test_agent.recv(BYTES_MSG_LENGTH)
 

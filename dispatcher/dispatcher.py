@@ -117,7 +117,6 @@ class Dispatcher:
         """
         Flood data from a sender socket to all other connected sockets.
 
-        :param sender_socket: The socket from which the data is being sent.
         :param data: The data to be sent.
         """
         # for up_client_socket in self.connected_sockets.copy():  # copy() to avoid RuntimeError
