@@ -152,7 +152,7 @@ class SocketUTransport(UTransport, RpcClient):
         umsg_serialized: bytes = message.SerializeToString()
         try:
             self.socket.sendall(umsg_serialized)
-            logger.info(f"uMessage Sent to dispatcher from python socket transport")
+            logger.info("uMessage Sent to dispatcher from python socket transport")
         except OSError as e:
             logger.exception(f"INTERNAL ERROR: {e}")
             return UStatus(code=UCode.INTERNAL, message=f"INTERNAL ERROR: {e}")

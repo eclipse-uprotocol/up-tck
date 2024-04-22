@@ -33,7 +33,7 @@ Feature: Testing register and unregister
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
     When sends "registerlistener" request
-    And user waits "2" second
+
     Then the status received with "code" is "OK"
 
     When "<uE1>" creates data for "unregisterlistener"
@@ -41,11 +41,28 @@ Feature: Testing register and unregister
     And sets "resource.name" to "door"
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
-    When sends "unregisterlistener" request
-    And user waits "2" second
+    And sends "unregisterlistener" request
+
     Then the status received with "code" is "OK"
 
     Examples:
       | uE1    |
       | java   |
       | python |
+
+
+    Scenario Outline: Test unregisterlistener when no entity is registered to any topic
+      Given "<uE1>" creates data for "unregisterlistener"
+        And sets "entity.name" to "body.access"
+        And sets "resource.name" to "door"
+        And sets "resource.instance" to "front_left"
+        And sets "resource.message" to "Door"
+
+      When sends "unregisterlistener" request
+
+      Then the status received with "code" is "NOT_FOUND"
+
+      Examples:
+        | uE1    |
+        | java   |
+        | python |

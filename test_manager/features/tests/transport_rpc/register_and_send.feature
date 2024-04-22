@@ -32,10 +32,10 @@ Feature: Testing Publish and Subscribe Functionality
     And sets "resource.name" to "door"
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
+
     When sends "registerlistener" request
-    And user waits "3" second
     Then the status received with "code" is "OK"
-#
+
     When "<uE2>" creates data for "send"
     And sets "attributes.source.entity.name" to "body.access"
     And sets "attributes.source.resource.name" to "door"
@@ -45,13 +45,20 @@ Feature: Testing Publish and Subscribe Functionality
     And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
     And sets "payload.format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
     And sets "payload.value" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
-
     And sends "send" request
-    And user waits "3" second
 
     Then the status received with "code" is "OK"
-    And user waits "5" second
-    And "<uE2>" receives "payload.value" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+      And "<uE1>" sends onreceive message with field "payload.value" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+
+    # Unregister in the end for cleanup
+    When "<uE1>" creates data for "unregisterlistener"
+      And sets "entity.name" to "body.access"
+      And sets "resource.name" to "door"
+      And sets "resource.instance" to "front_left"
+      And sets "resource.message" to "Door"
+      And sends "unregisterlistener" request
+
+    Then the status received with "code" is "OK"
 
     Examples:
       | uE1    | uE2    |
