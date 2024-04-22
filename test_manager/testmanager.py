@@ -28,14 +28,17 @@ import json
 import logging
 import selectors
 import socket
-from typing import Any, Deque, Dict, List, Union, Tuple
+from typing import Any, Deque, Dict, Tuple
 from typing import Any as AnyType
 from threading import Lock
 import uuid
 from multimethod import multimethod
+import sys
 
-logging.basicConfig(format='%(levelname)s| %(filename)s:%(lineno)s %(message)s')
-logger = logging.getLogger('File:Line# Debugger')
+logging.basicConfig(
+    format="%(levelname)s| %(filename)s:%(lineno)s %(message)s"
+)
+logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 BYTES_MSG_LENGTH: int = 32767
 
@@ -43,29 +46,38 @@ BYTES_MSG_LENGTH: int = 32767
 def convert_json_to_jsonstring(j: Dict[str, AnyType]) -> str:
     return json.dumps(j)
 
+
 def convert_str_to_bytes(string: str) -> bytes:
     return str.encode(string)
 
+
 def send_socket_data(s: socket.socket, msg: bytes):
     s.sendall(msg)
-    
+
+
 def is_close_socket_signal(received_data: bytes) -> bool:
-    return received_data == b''
+    return received_data == b""
 
 
 class TestAgentConnectionDatabase:
     def __init__(self) -> None:
-        self.test_agent_address_to_name: Dict[tuple[str, int], str] = defaultdict(str)
-        self.test_agent_name_to_address: Dict[str, socket.socket] = {} 
+        self.test_agent_address_to_name: Dict[tuple[str, int], str] = (
+            defaultdict(str)
+        )
+        self.test_agent_name_to_address: Dict[str, socket.socket] = {}
         self.lock = Lock()
-    
+
     def add(self, test_agent_socket: socket.socket, test_agent_name: str):
         test_agent_address: tuple[str, int] = test_agent_socket.getpeername()
-        
+
         with self.lock:
-            self.test_agent_address_to_name[test_agent_address] = test_agent_name
-            self.test_agent_name_to_address[test_agent_name] = test_agent_socket
-    
+            self.test_agent_address_to_name[test_agent_address] = (
+                test_agent_name
+            )
+            self.test_agent_name_to_address[test_agent_name] = (
+                test_agent_socket
+            )
+
     @multimethod
     def get(self, address: Tuple[str, int]) -> socket.socket:
         test_agent_name: str = self.test_agent_address_to_name[address]
@@ -74,59 +86,67 @@ class TestAgentConnectionDatabase:
     @multimethod
     def get(self, name: str) -> socket.socket:
         return self.test_agent_name_to_address[name]
-    
+
     def contains(self, test_agent_name: str):
         return test_agent_name in self.test_agent_name_to_address
-    
+
     @multimethod
     def close(self, test_agent_name: str):
         if test_agent_name is None or test_agent_name == "":
             return
         test_agent_socket: socket.socket = self.get(test_agent_name)
         self.close(test_agent_socket)
-    
+
     @multimethod
     def close(self, test_agent_socket: socket.socket):
         test_agent_address: tuple[str, int] = test_agent_socket.getpeername()
-        test_agent_name: str = self.test_agent_address_to_name.get(test_agent_address, None)
-        
+        test_agent_name: str = self.test_agent_address_to_name.get(
+            test_agent_address, None
+        )
+
         if test_agent_name is None:
             return
 
         with self.lock:
             del self.test_agent_address_to_name[test_agent_address]
             del self.test_agent_name_to_address[test_agent_name]
-            
+
         test_agent_socket.close()
 
 
 class DictWithQueue:
     def __init__(self) -> None:
-        self.key_to_queue: Dict[str, Deque[Dict[str, Any]]] = defaultdict(deque)
+        self.key_to_queue: Dict[str, Deque[Dict[str, Any]]] = defaultdict(
+            deque
+        )
         self.lock = Lock()
-        
+
     def append(self, key: str, msg: Dict[str, Any]) -> None:
         with self.lock:
             self.key_to_queue[key].append(msg)
-            logger.info(f'self.key_to_queue append {self.key_to_queue}')
-    
-    def contains(self, key: str, inner_key: str, inner_expected_value: str) -> bool:
+            logger.info(f"self.key_to_queue append {self.key_to_queue}")
+
+    def contains(
+        self, key: str, inner_key: str, inner_expected_value: str
+    ) -> bool:
         queue: Deque[Dict[str, Any]] = self.key_to_queue[key]
         if len(queue) == 0:
             return False
-        
+
         response_json: Dict[str, Any] = queue[0]
         incoming_req_id: str = response_json[inner_key]
-        
-        return incoming_req_id == inner_expected_value    
-    
+
+        return incoming_req_id == inner_expected_value
+
     def popleft(self, key: str) -> Any:
         with self.lock:
             onreceive: Any = self.key_to_queue[key].popleft()
-            logger.info(f'self.key_to_queue popleft {onreceive["action"]} {self.key_to_queue}')
+            logger.info(
+                f'self.key_to_queue popleft {onreceive["action"]} {self.key_to_queue}'
+            )
         return onreceive
-           
-    
+
+
 class TestManager:
     def __init__(self, bdd_context, ip_addr: str, port: int):
         self.exit_manager = False
@@ -136,9 +156,11 @@ class TestManager:
         self.action_type_to_response_queue = DictWithQueue()
         self.lock = Lock()
         self.bdd_context = bdd_context
-        
+
         # Create server socket
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if sys.platform != "win32":
+            self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind((ip_addr, port))
         self.server.listen(100)
         self.server.setblocking(False)
@@ -146,7 +168,9 @@ class TestManager:
         logger.info("TM server is running/listening")
 
         # Register server socket for accepting connections
-        self.socket_event_receiver.register(self.server, selectors.EVENT_READ, self._accept_client_conn)
+        self.socket_event_receiver.register(
+            self.server, selectors.EVENT_READ, self._accept_client_conn
+        )
 
     def _accept_client_conn(self, server: socket.socket):
         """
@@ -155,36 +179,42 @@ class TestManager:
         :param server: The server socket.
         """
         ta_socket, _ = server.accept()
-        logger.info(f'accepted conn. {ta_socket.getpeername()}')
+        logger.info(f"accepted conn. {ta_socket.getpeername()}")
 
         # Register socket for receiving data
-        self.socket_event_receiver.register(ta_socket, selectors.EVENT_READ, self._receive_from_test_agent)
+        self.socket_event_receiver.register(
+            ta_socket, selectors.EVENT_READ, self._receive_from_test_agent
+        )
 
     def _receive_from_test_agent(self, test_agent: socket.socket):
         """
         Callback function for receiving data from test agent sockets.
 
-        :param ta_socket: The client socket.
+        :param test_agent: The client socket.
         """
         recv_data = test_agent.recv(BYTES_MSG_LENGTH)
 
         if is_close_socket_signal(recv_data):
             self.close_test_agent(test_agent)
             return
-        json_data = json.loads(recv_data.decode('utf-8'))
-        logger.info('Received from test agent: %s', json_data)
+        json_data = json.loads(recv_data.decode("utf-8"))
+        logger.info("Received from test agent: %s", json_data)
         # self._process_message(json_data, test_agent)
-        self._process_receive_message(json_data,test_agent )
+        self._process_receive_message(json_data, test_agent)
 
-    def _process_receive_message(self, response_json: Dict[str, Any], ta_socket: socket.socket):
-        if response_json['action'] == 'initialize':
-            test_agent_sdk: str = response_json['data']["SDK_name"].lower().strip()
+    def _process_receive_message(
+        self, response_json: Dict[str, Any], ta_socket: socket.socket
+    ):
+        if response_json["action"] == "initialize":
+            test_agent_sdk: str = (
+                response_json["data"]["SDK_name"].lower().strip()
+            )
             self.test_agent_database.add(ta_socket, test_agent_sdk)
             return
-        
+
         action_type: str = response_json["action"]
         self.action_type_to_response_queue.append(action_type, response_json)
-    
+
     def has_sdk_connection(self, test_agent_name: str) -> bool:
         return self.test_agent_database.contains(test_agent_name)
 
@@ -192,65 +222,80 @@ class TestManager:
         """
         Listens for Test Agent connections and messages, then creates a thread to start the init process
         """
-        
+
         while not self.exit_manager:
             # Wait until some registered file objects or sockets become ready, or the timeout expires.
             events = self.socket_event_receiver.select(timeout=0)
             for key, mask in events:
                 callback = key.data
                 callback(key.fileobj)
-        
-    def request(self, test_agent_name: str, action: str, data: Dict[str, AnyType], payload: Dict[str, AnyType]=None):
-        """Sends a blocking request message to sdk Test Agent (ex: Java, Rust, C++ Test Agent)
-        """
+
+    def request(
+        self,
+        test_agent_name: str,
+        action: str,
+        data: Dict[str, AnyType],
+        payload: Dict[str, AnyType] = None,
+    ):
+        """Sends a blocking request message to sdk Test Agent (ex: Java, Rust, C++ Test Agent)"""
         # Get Test Agent's socket
         test_agent_name = test_agent_name.lower().strip()
-        test_agent_socket: socket.socket = self.test_agent_database.get(test_agent_name)
+        test_agent_socket: socket.socket = self.test_agent_database.get(
+            test_agent_name
+        )
 
         # Create a request json to send to specific Test Agent
         test_id: str = str(uuid.uuid4())
-        request_json = {'data': data, 'action': action, "test_id": test_id}
+        request_json = {"data": data, "action": action, "test_id": test_id}
         if payload is not None:
-            request_json['payload'] = payload
-        
+            request_json["payload"] = payload
+
         # Pack json as binary
         request_str: str = convert_json_to_jsonstring(request_json)
         request_bytes: bytes = convert_str_to_bytes(request_str)
-        
+
         send_socket_data(test_agent_socket, request_bytes)
         logger.info(f"Sent to TestAgent{request_json}")
-        
+
         # Wait until get response
         logger.info(f"Waiting test_id {test_id}")
-        while not self.action_type_to_response_queue.contains(action, "test_id", test_id):
+        while not self.action_type_to_response_queue.contains(
+            action, "test_id", test_id
+        ):
             pass
         logger.info(f"Received test_id {test_id}")
 
         # Get response
-        response_json: Dict[str, Any] = self.action_type_to_response_queue.popleft(action)
+        response_json: Dict[str, Any] = (
+            self.action_type_to_response_queue.popleft(action)
+        )
         return response_json
-    
+
     def _wait_for_onreceive(self, test_agent_name: str):
-        while not self.action_type_to_response_queue.contains('onreceive', 'ue', test_agent_name):
+        while not self.action_type_to_response_queue.contains(
+            "onreceive", "ue", test_agent_name
+        ):
             pass
-        
+
     def get_onreceive(self, test_agent_name: str) -> Dict[str, Any]:
         self._wait_for_onreceive(test_agent_name)
-        
-        return self.action_type_to_response_queue.popleft('onreceive')
-    
+
+        return self.action_type_to_response_queue.popleft("onreceive")
+
     @multimethod
     def close_test_agent(self, test_agent_socket: socket.socket):
         # Stop monitoring socket/fileobj. A file object shall be unregistered prior to being closed.
         self.socket_event_receiver.unregister(test_agent_socket)
         self.test_agent_database.close(test_agent_socket)
-    
+
     @multimethod
     def close_test_agent(self, test_agent_name: str):
         if self.test_agent_database.contains(test_agent_name):
-            test_agent: socket.socket = self.test_agent_database.get(test_agent_name)
+            test_agent: socket.socket = self.test_agent_database.get(
+                test_agent_name
+            )
             self.close_test_agent(test_agent)
-            
+
     def close(self):
         """Close the selector / test manager's server,
         BUT need to free its individual SDK TA connections using self.close_ta(sdk) first

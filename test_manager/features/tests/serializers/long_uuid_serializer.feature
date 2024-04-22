@@ -26,13 +26,13 @@
 Feature: UUID serialization
 
   Scenario Outline: Testing uuid serializer
-    Given "<uE1>" creates data for "uuid_serialize"
+    Given "uE1" creates data for "uuid_serialize"
     And sets "lsb" to "<lsb>"
     And sets "msb" to "<msb>"
 
     When sends "uuid_serialize" request
-    Then receives uuid serialization "<expected_uuid>"
+    Then the serialized uuid received is "<expected_uuid>"
+
     Examples:
-      | uE1    | lsb                  | msb                | expected_uuid                        |
-      | python | 11155833020022798372 | 112128268635242497 | 018e5c10-f548-8001-9ad1-7b068c083824 |
-      | java   | 11155833020022798372 | 112128268635242497 | 018e5c10-f548-8001-9ad1-7b068c083824 |
+      | lsb                  | msb                | expected_uuid                        |
+      | 11155833020022798372 | 112128268635242497 | 018e5c10-f548-8001-9ad1-7b068c083824 |

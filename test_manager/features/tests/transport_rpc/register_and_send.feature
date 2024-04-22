@@ -32,6 +32,7 @@ Feature: Testing Publish and Subscribe Functionality
     And sets "resource.name" to "door"
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
+
     When sends "registerlistener" request
     Then the status received with "code" is "OK"
 
@@ -44,7 +45,6 @@ Feature: Testing Publish and Subscribe Functionality
     And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
     And sets "payload.format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
     And sets "payload.value" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
-
     And sends "send" request
 
     Then the status received with "code" is "OK"
@@ -56,7 +56,6 @@ Feature: Testing Publish and Subscribe Functionality
       And sets "resource.name" to "door"
       And sets "resource.instance" to "front_left"
       And sets "resource.message" to "Door"
-
       And sends "unregisterlistener" request
 
     Then the status received with "code" is "OK"

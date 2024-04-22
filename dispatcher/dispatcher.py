@@ -27,11 +27,14 @@
 import logging
 import selectors
 import socket
-from threading import Thread, Lock
+import sys
+from threading import Lock
 from typing import Set
 
-logging.basicConfig(format='%(levelname)s| %(filename)s:%(lineno)s %(message)s')
-logger = logging.getLogger('File:Line# Debugger')
+logging.basicConfig(
+    format="%(levelname)s| %(filename)s:%(lineno)s %(message)s"
+)
+logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 DISPATCHER_ADDR = ("127.0.0.1", 44444)
 BYTES_MSG_LENGTH: int = 32767
@@ -47,9 +50,12 @@ class Dispatcher:
         self.selector = selectors.DefaultSelector()
         self.connected_sockets: Set[socket.socket] = set()
         self.lock = Lock()
+        self.server = None
 
         # Create server socket
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if sys.platform != "win32":
+            self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind(DISPATCHER_ADDR)
         self.server.listen(100)
         self.server.setblocking(False)
@@ -57,8 +63,10 @@ class Dispatcher:
         logger.info("Dispatcher server is running/listening")
 
         # Register server socket for accepting connections
-        self.selector.register(self.server, selectors.EVENT_READ, self._accept_client_conn)
-        
+        self.selector.register(
+            self.server, selectors.EVENT_READ, self._accept_client_conn
+        )
+
         # Cleanup essentials
         self.dispatcher_exit = False
 
@@ -68,14 +76,19 @@ class Dispatcher:
 
         :param server: The server socket.
         """
+
         up_client_socket, _ = server.accept()
-        logger.info(f'accepted conn. {up_client_socket.getpeername()}')
+        logger.info(f"accepted conn. {up_client_socket.getpeername()}")
 
         with self.lock:
             self.connected_sockets.add(up_client_socket)
 
         # Register socket for receiving data
-        self.selector.register(up_client_socket, selectors.EVENT_READ, self._receive_from_up_client)
+        self.selector.register(
+            up_client_socket,
+            selectors.EVENT_READ,
+            self._receive_from_up_client,
+        )
 
     def _receive_from_up_client(self, up_client_socket: socket.socket):
         """
@@ -93,7 +106,7 @@ class Dispatcher:
 
             logger.info(f"received data: {recv_data}")
             self._flood_to_sockets(recv_data)
-        except:
+        except Exception:
             logger.error("Received error while reading data from up-client")
             self._close_connected_socket(up_client_socket)
 
@@ -101,15 +114,16 @@ class Dispatcher:
         """
         Flood data from a sender socket to all other connected sockets.
 
-        :param sender_socket: The socket from which the data is being sent.
         :param data: The data to be sent.
         """
         # for up_client_socket in self.connected_sockets.copy():  # copy() to avoid RuntimeError
-        for up_client_socket in self.connected_sockets: 
+        for up_client_socket in self.connected_sockets:
             try:
                 up_client_socket.sendall(data)
             except ConnectionAbortedError as e:
-                logger.error(f"Error sending data to {up_client_socket.getpeername()}: {e}")
+                logger.error(
+                    f"Error sending data to {up_client_socket.getpeername()}: {e}"
+                )
                 self._close_connected_socket(up_client_socket)
 
     def listen_for_client_connections(self):
@@ -131,19 +145,22 @@ class Dispatcher:
         logger.info(f"closing socket {up_client_socket.getpeername()}")
         with self.lock:
             self.connected_sockets.remove(up_client_socket)
-            
+
         self.selector.unregister(up_client_socket)
         up_client_socket.close()
-    
+
     def close(self):
         self.dispatcher_exit = True
         for utransport_socket in self.connected_sockets.copy():
             self._close_connected_socket(utransport_socket)
+        # Close server socket
+        try:
+            self.selector.unregister(self.server)
+            self.server.close()
+            logger.info("Server socket closed!")
+        except Exception as e:
+            logger.error(f"Error closing server socket: {e}")
+
+        # Close selector
         self.selector.close()
-        self.server.close()
-
-
-# if __name__ == '__main__':
-#     dispatcher = Dispatcher()
-#     thread = Thread(target=dispatcher.listen_for_client_connections)
-#     thread.start()
+        logger.info("Dispatcher closed!")

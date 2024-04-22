@@ -45,7 +45,7 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 --ignore E203,E402,W503,W504,F811 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Get Behave Scripts
       uses: actions/github-script@v6
       id: check-env
@@ -86,7 +86,8 @@ jobs:
             
             # Run behave command
             echo "Running Test: $filename"
-            behave --format json --outfile "./reports/${filename}.json" --format html --outfile "./reports/${filename}.html" "$full_path"
+            behave --define uE1=python --format json --outfile "./reports/${filename}_python.json" --format html --outfile "./reports/${filename}_python.html" "$full_path"
+            behave --define uE1=java --format json --outfile "./reports/${filename}_java.json" --format html --outfile "./reports/${filename}_java.html" "$full_path"
             echo "Finished Test: $filename"
         done
     - name: Get Behave Scripts
