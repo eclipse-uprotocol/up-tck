@@ -37,9 +37,9 @@ $ pip install -r requirements.txt
 
 If you would like to run any tests with the Java Test Agent, follow these instructions:
 
-1. Inside a terminal/command prompt, go to up_client_socket folder (cd java).
+1. Inside a terminal/command prompt, go to up_client_socket folder (cd up_client_socket/java).
 2. Run "mvn clean install".This will install the up-client-socket-java.
-3. Go to test_agent folder and run "mvn clean install".This will generate the tck-test-agent-java JAR file under the target folder.
+3. Go to test_agent folder (cd test_agent/java) and run "mvn clean install".This will generate the tck-test-agent-java JAR file under the target folder.
 
 === Running BDD Tests
 

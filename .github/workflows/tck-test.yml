@@ -86,7 +86,8 @@ jobs:
             
             # Run behave command
             echo "Running Test: $filename"
-            behave --format json --outfile "./reports/${filename}.json" --format html --outfile "./reports/${filename}.html" "$full_path"
+            behave --define uE1=python --format json --outfile "./reports/${filename}_python.json" --format html --outfile "./reports/${filename}_python.html" "$full_path"
+            behave --define uE1=java --format json --outfile "./reports/${filename}_java.json" --format html --outfile "./reports/${filename}_java.html" "$full_path"
             echo "Finished Test: $filename"
         done
     - name: Get Behave Scripts
