@@ -30,6 +30,7 @@ import socket
 import sys
 from threading import Thread
 from typing import Any, Dict, List, Union
+from datetime import datetime, timezone
 
 from google.protobuf import any_pb2
 from google.protobuf.message import Message
@@ -51,6 +52,9 @@ from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.uri.validator.urivalidator import UriValidator
+from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
+from uprotocol.uuid.factory.uuidutils import UUIDUtils
+from uprotocol.proto.ustatus_pb2 import UCode
 
 import constants as CONSTANTS
 
@@ -275,6 +279,43 @@ def handle_uri_validate_command(json_msg):
         )
 
 
+def handle_uuid_validate_command(json_msg):
+    uuid_type = json_msg["data"].get("uuid_type")
+    validator_type = json_msg["data"]["validator_type"]
+
+    uuid = {
+        "uprotocol": Factories.UPROTOCOL.create(),
+        "invalid": UUID(msb=0, lsb=0),
+        "uprotocol_time": Factories.UPROTOCOL.create(
+            datetime.utcfromtimestamp(0).replace(tzinfo=timezone.utc)
+        ),
+        "uuidv6": Factories.UUIDV6.create(),
+        "uuidv4": LongUuidSerializer().deserialize(
+            "195f9bd1-526d-4c28-91b1-ff34c8e3632d"
+        ),
+    }.get(uuid_type)
+
+    status = {
+        "get_validator": UuidValidator.get_validator(uuid).validate(uuid),
+        "uprotocol": Validators.UPROTOCOL.validator().validate(uuid),
+        "uuidv6": Validators.UUIDV6.validator().validate(uuid),
+        "get_validator_is_uuidv6": UUIDUtils.is_uuidv6(uuid),
+    }.get(validator_type)
+
+    if isinstance(status, bool):
+        result = str(status)
+        message = ""
+    else:
+        result = "True" if status.code == UCode.OK else "False"
+        message = status.message
+
+    send_to_test_manager(
+        {"result": result, "message": message},
+        CONSTANTS.VALIDATE_UUID,
+        received_test_id=json_msg["test_id"],
+    )
+
+
 action_handlers = {
     CONSTANTS.SEND_COMMAND: handle_send_command,
     CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
@@ -285,6 +326,7 @@ action_handlers = {
     CONSTANTS.SERIALIZE_UUID: handle_long_serialize_uuid,
     CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
     CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
+    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command,
 }
 
 
