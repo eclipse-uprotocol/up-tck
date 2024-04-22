@@ -38,6 +38,8 @@ from hamcrest import assert_that, equal_to
 def create_sdk_data(context, sdk_name: str, command: str):
     context.json_dict = {}
     context.status_json = None
+    if sdk_name == "uE1":
+        sdk_name = context.config.userdata['uE1']
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue

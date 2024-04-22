@@ -26,7 +26,7 @@
 Feature: Local and Remote URI serialization
 
   Scenario Outline: Testing the local uri serializer
-    Given "<uE1>" creates data for "uri_serialize"
+    Given "uE1" creates data for "uri_serialize"
     And sets "entity.name" to "<entity_name>"
     And sets "entity.version_major" to "<entity_version_major>"
     And sets "resource.name" to "<resource_name>"
@@ -37,28 +37,19 @@ Feature: Local and Remote URI serialization
     Then the serialized uri received is "<expected_uri>"
 
     Examples:
-      | uE1    | entity_name | resource_name | resource_instance | resource_message | entity_version_major | expected_uri              |
-      | python | neelam      | rpc           | test              |                  | 0                    | /neelam//rpc.test         |
-      | python | neelam      |               |                   |                  | 0                    | /neelam                   |
-      | python | neelam      |               |                   |                  | 1                    | /neelam/1                 |
-      | python | neelam      | test          |                   |                  | 0                    | /neelam//test             |
-      | python | neelam      | test          |                   |                  | 1                    | /neelam/1/test            |
-      | python | neelam      | test          | front             |                  | 0                    | /neelam//test.front       |
-      | python | neelam      | test          | front             |                  | 1                    | /neelam/1/test.front      |
-      | python | neelam      | test          | front             | Test             | 0                    | /neelam//test.front#Test  |
-      | python | neelam      | test          | front             | Test             | 1                    | /neelam/1/test.front#Test |
-      | java   | neelam      | rpc           | test              |                  | 0                    | /neelam//rpc.test         |
-      | java   | neelam      |               |                   |                  | 0                    | /neelam                   |
-      | java   | neelam      |               |                   |                  | 1                    | /neelam/1                 |
-      | java   | neelam      | test          |                   |                  | 0                    | /neelam//test             |
-      | java   | neelam      | test          |                   |                  | 1                    | /neelam/1/test            |
-      | java   | neelam      | test          | front             |                  | 0                    | /neelam//test.front       |
-      | java   | neelam      | test          | front             |                  | 1                    | /neelam/1/test.front      |
-      | java   | neelam      | test          | front             | Test             | 0                    | /neelam//test.front#Test  |
-      | java   | neelam      | test          | front             | Test             | 1                    | /neelam/1/test.front#Test |
+      | entity_name | resource_name | resource_instance | resource_message | entity_version_major | expected_uri              |
+      | neelam      | rpc           | test              |                  | 0                    | /neelam//rpc.test         |
+      | neelam      |               |                   |                  | 0                    | /neelam                   |
+      | neelam      |               |                   |                  | 1                    | /neelam/1                 |
+      | neelam      | test          |                   |                  | 0                    | /neelam//test             |
+      | neelam      | test          |                   |                  | 1                    | /neelam/1/test            |
+      | neelam      | test          | front             |                  | 0                    | /neelam//test.front       |
+      | neelam      | test          | front             |                  | 1                    | /neelam/1/test.front      |
+      | neelam      | test          | front             | Test             | 0                    | /neelam//test.front#Test  |
+      | neelam      | test          | front             | Test             | 1                    | /neelam/1/test.front#Test |
 
   Scenario Outline: Testing the remote uri serializer
-    Given "<uE1>" creates data for "uri_serialize"
+    Given "uE1" creates data for "uri_serialize"
     And sets "authority.name" to "<authority_name>"
     And sets "entity.name" to "<entity_name>"
     And sets "entity.version_major" to "<entity_version_major>"
@@ -70,22 +61,13 @@ Feature: Local and Remote URI serialization
     Then the serialized uri received is "<expected_uri>"
     
     Examples:
-      | uE1    | authority_name | entity_name | resource_name | resource_instance | resource_message | entity_version_major | expected_uri                              |
-      | python | vcu.my_car_vin | neelam      |               |                   |                  | 0                    | //vcu.my_car_vin/neelam                   |
-      | python | vcu.my_car_vin | neelam      |               |                   |                  | 1                    | //vcu.my_car_vin/neelam/1                 |
-      | python | vcu.my_car_vin | neelam      | test          |                   |                  | 1                    | //vcu.my_car_vin/neelam/1/test            |
-      | python | vcu.my_car_vin | neelam      | test          |                   |                  | 0                    | //vcu.my_car_vin/neelam//test             |
-      | python | vcu.my_car_vin | neelam      | test          | front             |                  | 1                    | //vcu.my_car_vin/neelam/1/test.front      |
-      | python | vcu.my_car_vin | neelam      | test          | front             |                  | 0                    | //vcu.my_car_vin/neelam//test.front       |
-      | python | vcu.my_car_vin | neelam      | test          | front             | Test             | 1                    | //vcu.my_car_vin/neelam/1/test.front#Test |
-      | python | vcu.my_car_vin | neelam      | test          | front             | Test             | 0                    | //vcu.my_car_vin/neelam//test.front#Test  |
-      | python | vcu.my_car_vin | petapp      | rpc           | response          |                  | 0                    | //vcu.my_car_vin/petapp//rpc.response     |
-      | java   | vcu.my_car_vin | neelam      |               |                   |                  | 0                    | //vcu.my_car_vin/neelam                   |
-      | java   | vcu.my_car_vin | neelam      |               |                   |                  | 1                    | //vcu.my_car_vin/neelam/1                 |
-      | java   | vcu.my_car_vin | neelam      | test          |                   |                  | 1                    | //vcu.my_car_vin/neelam/1/test            |
-      | java   | vcu.my_car_vin | neelam      | test          |                   |                  | 0                    | //vcu.my_car_vin/neelam//test             |
-      | java   | vcu.my_car_vin | neelam      | test          | front             |                  | 1                    | //vcu.my_car_vin/neelam/1/test.front      |
-      | java   | vcu.my_car_vin | neelam      | test          | front             |                  | 0                    | //vcu.my_car_vin/neelam//test.front       |
-      | java   | vcu.my_car_vin | neelam      | test          | front             | Test             | 1                    | //vcu.my_car_vin/neelam/1/test.front#Test |
-      | java   | vcu.my_car_vin | neelam      | test          | front             | Test             | 0                    | //vcu.my_car_vin/neelam//test.front#Test  |
-      | java   | vcu.my_car_vin | petapp      | rpc           | response          |                  | 0                    | //vcu.my_car_vin/petapp//rpc.response     |
+      | authority_name | entity_name | resource_name | resource_instance | resource_message | entity_version_major | expected_uri                              |
+      | vcu.my_car_vin | neelam      |               |                   |                  | 0                    | //vcu.my_car_vin/neelam                   |
+      | vcu.my_car_vin | neelam      |               |                   |                  | 1                    | //vcu.my_car_vin/neelam/1                 |
+      | vcu.my_car_vin | neelam      | test          |                   |                  | 1                    | //vcu.my_car_vin/neelam/1/test            |
+      | vcu.my_car_vin | neelam      | test          |                   |                  | 0                    | //vcu.my_car_vin/neelam//test             |
+      | vcu.my_car_vin | neelam      | test          | front             |                  | 1                    | //vcu.my_car_vin/neelam/1/test.front      |
+      | vcu.my_car_vin | neelam      | test          | front             |                  | 0                    | //vcu.my_car_vin/neelam//test.front       |
+      | vcu.my_car_vin | neelam      | test          | front             | Test             | 1                    | //vcu.my_car_vin/neelam/1/test.front#Test |
+      | vcu.my_car_vin | neelam      | test          | front             | Test             | 0                    | //vcu.my_car_vin/neelam//test.front#Test  |
+      | vcu.my_car_vin | petapp      | rpc           | response          |                  | 0                    | //vcu.my_car_vin/petapp//rpc.response     |
