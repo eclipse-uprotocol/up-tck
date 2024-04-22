@@ -95,7 +95,7 @@ def verify_uri_received_properties(context):
         for row in context.table:
             field: str = row['Field']
             expected_value: str = row['Value']
-            context.logger.info(f"field {field}; {deserialized_uri[field]} vs. {expected_value}")
+            context.logger.info(f"field {field}; (actual) {deserialized_uri[field]} vs. (expected) {expected_value}")
             if len(expected_value) > 0:
 
                 if field in int_type_fields:

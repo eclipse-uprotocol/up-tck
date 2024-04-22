@@ -25,7 +25,7 @@
 # -------------------------------------------------------------------------
 Feature: Local and Remote URI de-serialization
 
-  Scenario Outline: Testing the local uri deserializer
+  Scenario Outline: Testing the local uri micro deserializer
     Given "<uE1>" creates data for "micro_deserialize_uri"
     When sends a "micro_deserialize_uri" request with micro serialized input "<micro_serialized_uri_as_base64_str>"
 
