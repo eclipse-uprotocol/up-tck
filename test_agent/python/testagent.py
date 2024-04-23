@@ -285,8 +285,8 @@ def handle_uri_validate_command(json_msg):
 def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
     uri: UUri = dict_to_proto(json_msg["data"], UUri())
     serialized_uuri: bytes = MicroUriSerializer().serialize(uri)
-    # Use "ansi" to decode bytes -> str, so no UnicodeDecodeError if "utf-8" decode
-    serialized_uuri_json_packed: str = serialized_uuri.decode("ansi")
+    # Use "iso-8859-1" to decode bytes -> str, so no UnicodeDecodeError if "utf-8" decode
+    serialized_uuri_json_packed: str = serialized_uuri.decode("iso-8859-1")
     send_to_test_manager(
         serialized_uuri_json_packed, 
         CONSTANTS.MICRO_SERIALIZE_URI, 
@@ -295,8 +295,8 @@ def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
 
 def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
     sent_micro_serialized_uuri: str = json_msg["data"]
-    # Incoming micro serialized uuri is sent as an ansi str
-    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("ansi")
+    # Incoming micro serialized uuri is sent as an "iso-8859-1" str
+    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("iso-8859-1")
     uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
     send_to_test_manager(
         uuri, 
