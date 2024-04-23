@@ -201,7 +201,6 @@ def verify_uuid_received_properties(context):
 def set_key_to_val(context: Context, key: str, value: str):
     if key not in context.json_dict:
         context.json_dict[key] = value
-    # context.logger.info(f"Dict -> {context.json_dict}")
 
 
 @given('sets "{key}" to ""')

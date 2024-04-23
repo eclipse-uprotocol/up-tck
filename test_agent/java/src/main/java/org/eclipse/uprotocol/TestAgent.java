@@ -28,7 +28,6 @@ import com.google.gson.Gson;
 import com.google.protobuf.Any;
 import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
-// import org.eclipse.uprotocol.rpc.CallOptions;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
 import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;

@@ -2,9 +2,9 @@ name: TCK Tests
 
 on:
   push:
-    branches: [ "main", "microserialization"]
+    branches: [ "main"]
   pull_request:
-    branches: [ "main", "microserialization"]
+    branches: [ "main"]
 
 permissions:
   contents: read

@@ -56,7 +56,6 @@ from uprotocol.uri.validator.urivalidator import UriValidator
 
 import constants as CONSTANTS
 
-# sys.path.append("../")
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 from up_client_socket.python.socket_transport import SocketUTransport
