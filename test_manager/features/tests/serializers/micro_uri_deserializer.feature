@@ -48,7 +48,7 @@ Feature: Local and Remote URI de-serialization
       | python |                    |                | 1         |             | 1                    | 1           | rpc           |                   |                  | AQAAAQABAQA= |
       | python |                    |                | 1         |             | 0                    | 1           | rpc           |                   |                  | AQAAAQABAAA= |
       | python |                    |                | 2         |             | 1                    | 3           | rpc           |                   |                  | AQAAAwACAQA= |
-      | python |                    |                | 0         |             | 0                    | 0           | rpc           |                   |                  | AQAAAAAAAAA= |
+      | python |                    |                | 0         |             | 0                    | 0           | rpc           | response          |                  | AQAAAAAAAAA= |
       | python |                    |                | 100       |             | 1                    | 300         | rpc           |                   |                  | AQABLABkAQA= |
       | python |                    |                | 255       |             | 0                    | 255         | rpc           |                   |                  | AQAA/wD/AAA= |
       | python |                    |                | 256       |             | 1                    | 256         | rpc           |                   |                  | AQABAAEAAQA= |
@@ -61,7 +61,7 @@ Feature: Local and Remote URI de-serialization
       | java   |                    |                | 1         |             | 1                    | 1           | rpc           |                   |                  | AQAAAQABAQA= |
       | java   |                    |                | 1         |             | 0                    | 1           | rpc           |                   |                  | AQAAAQABAAA= |
       | java   |                    |                | 2         |             | 1                    | 3           | rpc           |                   |                  | AQAAAwACAQA= |
-      | java   |                    |                | 0         |             | 0                    | 0           | rpc           |                   |                  | AQAAAAAAAAA= |
+      | java   |                    |                | 0         |             | 0                    | 0           | rpc           | response          |                  | AQAAAAAAAAA= |
       | java   |                    |                | 100       |             | 1                    | 300         | rpc           |                   |                  | AQABLABkAQA= |
       | java   |                    |                | 255       |             | 0                    | 255         | rpc           |                   |                  | AQAA/wD/AAA= |
       | java   |                    |                | 256       |             | 1                    | 256         | rpc           |                   |                  | AQABAAEAAQA= |

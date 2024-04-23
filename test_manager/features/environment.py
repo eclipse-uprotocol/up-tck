@@ -35,7 +35,8 @@ import git
 from behave.runner import Context
 
 repo = git.Repo(".", search_parent_directories=True)
-sys.path.append(repo.working_tree_dir)
+sys.path.insert(0, repo.working_tree_dir)
+
 from test_manager.testmanager import TestManager
 from dispatcher.dispatcher import Dispatcher
 from test_manager.features.utils import loggerutils
@@ -46,10 +47,6 @@ JAVA_TA_PATH = (
 )
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
 
-repo = git.Repo('.', search_parent_directories=True)
-sys.path.append(repo.working_tree_dir)
-
-from dispatcher.dispatcher import Dispatcher
 
 def create_command(filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []

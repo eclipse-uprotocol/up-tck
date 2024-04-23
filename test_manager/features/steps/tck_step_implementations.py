@@ -364,48 +364,6 @@ def send_micro_serialized_command(
     context.logger.info(f"Response Json {command} -> {response_json}")
     context.response_data = response_json["data"]
 
-
-def bytes_to_base64_str(b: bytes) -> str:
-    return base64.b64encode(b).decode("ascii")
-
-def base64_str_to_bytes(base64_str: str) -> bytes:
-    base64_bytes: bytes = base64_str.encode("ascii") 
-    return base64.b64decode(base64_bytes)
-
-@then(u'receives micro serialized uri "{expected_bytes_as_base64_str}"')
-def receive_micro_serialized_uuri(context, expected_bytes_as_base64_str: str):
-    if expected_bytes_as_base64_str == "<empty>":
-        expected_bytes_as_base64_str = ""
-    
-    expected_bytes: bytes = base64_str_to_bytes(expected_bytes_as_base64_str)
-    context.logger.info(f"expected_bytes: {expected_bytes}")
-
-    try:
-        actual_bytes_as_str: str = context.response_data
-        actual_bytes: bytes = actual_bytes_as_str.encode("ansi")
-        
-        context.logger.info(f"actual: {actual_bytes} | expect: {expected_bytes}")
-        assert_that(expected_bytes, equal_to(actual_bytes))
-    except AssertionError as ae:
-        raise AssertionError(f"Assertion error. Expected is {expected_bytes} but "
-                             f"received {actual_bytes}")
-    except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
-
-@when(u'sends a "{command}" request with micro serialized input "{micro_serialized_uri_as_base64_str}"')
-def send_micro_serialized_command(context, command: str, micro_serialized_uri_as_base64_str: str):
-    if micro_serialized_uri_as_base64_str == "<empty>":
-        micro_serialized_uri_as_base64_str = ""
-        
-    micro_serialized_uri: bytes = base64_str_to_bytes(micro_serialized_uri_as_base64_str)
-    context.logger.info(f"Json request for {command} -> {micro_serialized_uri}")
-    
-    micro_serialized_uri_as_str = micro_serialized_uri.decode("ansi")
-    response_json: Dict[str, Any] = context.tm.request(context.ue, command, micro_serialized_uri_as_str)
-    
-    context.logger.info(f"Response Json {command} -> {response_json}")
-    context.response_data = response_json['data']
-
 def access_nested_dict(dictionary, keys):
     keys = keys.split(".")
     value = dictionary
