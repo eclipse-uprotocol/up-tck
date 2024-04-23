@@ -79,6 +79,8 @@ def serialized_uuid_received(context, expected_uuid: str):
 
 @then('receives validation result as "{expected_result}"')
 def receive_validation_result(context, expected_result):
+    if expected_result == "none":
+        return
     try:
         expected_result = expected_result.strip()
         actual_val_res = context.response_data["result"]

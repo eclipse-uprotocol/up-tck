@@ -30,6 +30,7 @@ import socket
 import sys
 from threading import Thread
 from typing import Any, Dict, List, Union
+import time
 
 from google.protobuf import any_pb2
 from google.protobuf.message import Message
@@ -39,6 +40,11 @@ from uprotocol.proto.uattributes_pb2 import (
     UPriority,
     UMessageType,
     CallOptions,
+    UAttributes
+)
+from uprotocol.transport.validate import uattributesvalidator
+from uprotocol.transport.validate.uattributesvalidator import (
+    UAttributesValidator,
 )
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
@@ -51,6 +57,7 @@ from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.uri.validator.urivalidator import UriValidator
+from uprotocol.validation.validationresult import ValidationResult
 
 import constants as CONSTANTS
 
@@ -275,6 +282,89 @@ def handle_uri_validate_command(json_msg):
         )
 
 
+def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
+    data = json_msg["data"]
+    val_method = data.get("validation_method")
+    val_type = data.get("validation_type")
+    if data.get("attributes"):
+        attributes = dict_to_proto(data["attributes"], UAttributes())
+        if attributes.sink.authority.name == "default":
+            attributes.sink.CopyFrom(UUri())
+    else:
+        attributes = UAttributes()
+
+    if data.get("id") == "uprotocol":
+        attributes.id.CopyFrom(Factories.UPROTOCOL.create())
+    elif data.get("id") == "uuid":
+        attributes.id.CopyFrom(Factories.UUIDV6.create())
+
+    if data.get("reqid") == "uprotocol":
+        attributes.reqid.CopyFrom(Factories.UPROTOCOL.create())
+    elif data.get("reqid") == "uuid":
+        attributes.reqid.CopyFrom(Factories.UUIDV6.create())
+
+    validator_type = {
+        "get_validator": UAttributesValidator.get_validator,
+    }.get(val_type)
+
+    pub_val = uattributesvalidator.Validators.PUBLISH.validator()
+    req_val = uattributesvalidator.Validators.REQUEST.validator()
+    res_val = uattributesvalidator.Validators.RESPONSE.validator()
+    not_val = uattributesvalidator.Validators.NOTIFICATION.validator()
+
+    validator_method = {
+        "publish_validator": {
+            "is_expired": pub_val.is_expired,
+            "validate_ttl": pub_val.validate_ttl,
+            "validate_sink": pub_val.validate_sink,
+            "validate_req_id": pub_val.validate_req_id,
+            "validate_permission_level": pub_val.validate_permission_level
+        }.get(val_type, pub_val.validate),
+        "request_validator": {
+            "is_expired": req_val.is_expired,
+            "validate_ttl": req_val.validate_ttl,
+            "validate_sink": req_val.validate_sink,
+            "validate_req_id": req_val.validate_req_id,
+        }.get(val_type, req_val.validate),
+        "response_validator": {
+            "is_expired": res_val.is_expired,
+            "validate_ttl": res_val.validate_ttl,
+            "validate_sink": res_val.validate_sink,
+            "validate_req_id": res_val.validate_req_id,
+        }.get(val_type, res_val.validate),
+        "notification_validator": {
+            "is_expired": not_val.is_expired,
+            "validate_ttl": not_val.validate_ttl,
+            "validate_sink": not_val.validate_sink,
+            "validate_req_id": not_val.validate_req_id,
+            "validate_type": not_val.validate_type
+        }.get(val_type, not_val.validate),
+    }.get(val_method)
+
+    if attributes.ttl == 1:
+        time.sleep(0.8)
+
+    if val_type == "get_validator":
+        status = validator_type(attributes)
+    if validator_method is not None:
+        status = validator_method(attributes)
+
+    if isinstance(status, ValidationResult):
+        result = str(status.is_success())
+        message = status.get_message()
+    elif isinstance(status, bool):
+        result = str(status)
+        message = ""
+    else:
+        result = ""
+        message = str(status)
+
+    send_to_test_manager(
+        {"result": result, "message": message},
+        CONSTANTS.VALIDATE_UATTRIBUTES,
+        received_test_id=json_msg["test_id"],
+    )
+
 action_handlers = {
     CONSTANTS.SEND_COMMAND: handle_send_command,
     CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
@@ -285,6 +375,7 @@ action_handlers = {
     CONSTANTS.SERIALIZE_UUID: handle_long_serialize_uuid,
     CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
     CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
+    CONSTANTS.VALIDATE_UATTRIBUTES: handle_uattributes_validate_command,
 }
 
 

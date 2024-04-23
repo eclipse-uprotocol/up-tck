@@ -30,6 +30,7 @@ import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
+import org.eclipse.uprotocol.transport.validate.UAttributesValidator;
 import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
 import org.eclipse.uprotocol.uri.validator.UriValidator;
 import org.eclipse.uprotocol.validation.ValidationResult;
@@ -68,6 +69,7 @@ public class TestAgent {
         actionHandlers.put(Constant.VALIDATE_URI, TestAgent::handleValidateUriCommand);
         actionHandlers.put(Constant.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
         actionHandlers.put(Constant.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
+        actionHandlers.put(Constant.VALIDATE_UATTRIBUTES, TestAgent::handleUAttributesValidateCommand);
 
     }
 
@@ -233,6 +235,157 @@ public class TestAgent {
 
         return null;
     }
+
+    public static Object handleUAttributesValidateCommand(Map<String, Object> jsonData) {
+        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
+        String valMethod = (String) data.getOrDefault("validation_method", "default");
+        String valType = (String) data.getOrDefault("validation_type", "default");
+
+        UAttributes attributes = null;
+        if (data.get("attributes") != null) {
+            attributes = (UAttributes) ProtoConverter.dictToProto((Map<String, Object>)data.get("attributes"), UAttributes.newBuilder());
+            if ("default".equals(attributes.getSink().getAuthority().getName())) {
+                attributes = attributes.toBuilder().setSink(UUri.getDefaultInstance()).build();
+            }
+        } else {
+            attributes = UAttributes.newBuilder().build();
+        }
+
+        if ("uprotocol".equals(data.get("id"))) {
+            attributes = attributes.toBuilder().setId(UuidFactory.Factories.UPROTOCOL.factory().create()).build();
+        } else if ("uuid".equals(data.get("id"))) {
+            attributes = attributes.toBuilder().setId(UuidFactory.Factories.UUIDV6.factory().create()).build();
+        }
+
+        if ("uprotocol".equals(data.get("reqid"))) {
+            attributes = attributes.toBuilder().setReqid(UuidFactory.Factories.UPROTOCOL.factory().create()).build();
+        } else if ("uuid".equals(data.get("reqid"))) {
+            attributes = attributes.toBuilder().setReqid(UuidFactory.Factories.UUIDV6.factory().create()).build();
+        }
+
+        String str_result = null;
+        Boolean bool_result = null;
+        ValidationResult val_result = null;
+
+        UAttributesValidator pub_val = UAttributesValidator.Validators.PUBLISH.validator();
+        UAttributesValidator req_val = UAttributesValidator.Validators.REQUEST.validator();
+        UAttributesValidator res_val = UAttributesValidator.Validators.RESPONSE.validator();
+        UAttributesValidator not_val = UAttributesValidator.Validators.NOTIFICATION.validator();
+
+        if (attributes != null && attributes.getTtl() == 1) {
+            try {
+                Thread.sleep(800);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (valType.equals("get_validator")){
+            str_result = UAttributesValidator.getValidator(attributes).toString();
+        }
+
+        switch (valMethod) {
+            case "publish_validator":
+                switch (valType) {
+                    case "is_expired":
+                        bool_result = pub_val.isExpired(attributes);
+                        break;
+                    case "validate_ttl":
+                        val_result = pub_val.validateTtl(attributes);
+                        break;
+                    case "validate_sink":
+                        val_result = pub_val.validateSink(attributes);
+                        break;
+                    case "validate_req_id":
+                        val_result = pub_val.validateReqId(attributes);
+                        break;
+                    case "validate_permission_level":
+                        val_result = pub_val.validatePermissionLevel(attributes);
+                        break;
+                    default:
+                        val_result = pub_val.validate(attributes);
+                }
+                break;
+            case "request_validator":
+                switch (valType) {
+                    case "is_expired":
+                        bool_result = req_val.isExpired(attributes);
+                        break;
+                    case "validate_ttl":
+                        val_result = req_val.validateTtl(attributes);
+                        break;
+                    case "validate_sink":
+                        val_result = req_val.validateSink(attributes);
+                        break;
+                    case "validate_req_id":
+                        val_result = req_val.validateReqId(attributes);
+                        break;
+                    default:
+                        val_result = req_val.validate(attributes);
+                }
+                break;
+            case "response_validator":
+                switch (valType) {
+                    case "is_expired":
+                        bool_result = res_val.isExpired(attributes);
+                        break;
+                    case "validate_ttl":
+                        val_result = res_val.validateTtl(attributes);
+                        break;
+                    case "validate_sink":
+                        val_result = res_val.validateSink(attributes);
+                        break;
+                    case "validate_req_id":
+                        val_result = res_val.validateReqId(attributes);
+                        break;
+                    default:
+                        val_result = res_val.validate(attributes);
+                }
+                break;
+            case "notification_validator":
+                switch (valType) {
+                    case "is_expired":
+                        bool_result = not_val.isExpired(attributes);
+                        break;
+                    case "validate_ttl":
+                        val_result = not_val.validateTtl(attributes);
+                        break;
+                    case "validate_sink":
+                        val_result = not_val.validateSink(attributes);
+                        break;
+                    case "validate_req_id":
+                        val_result = not_val.validateReqId(attributes);
+                        break;
+                    case "validate_type":
+                        val_result = not_val.validateType(attributes);
+                        break;
+                    default:
+                        val_result = not_val.validate(attributes);
+                }
+                break;
+            default:
+                break;
+        }
+
+        String result = "";
+        String message = "";
+
+        if (bool_result != null){
+            result = bool_result ? "True" : "False";
+            message = "";
+        } else if (val_result != null) {
+            result = val_result.isSuccess() ? "True" : "False";
+            message = val_result.getMessage();
+        } else if (str_result != null) {
+            result = "";
+            message = str_result;
+        }
+
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_UATTRIBUTES, testID);
+        return null;
+    }
+
 
     private static Object handleLongSerializeUuidCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
