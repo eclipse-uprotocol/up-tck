@@ -22,75 +22,82 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+use async_std::io;
 use async_trait::async_trait;
 
-use up_rust::UListener;
-use up_rust::{UAttributesValidators, UriValidator};
-use up_rust::{UCode, UMessage, UMessageType, UStatus, UTransport, UUri};
+use up_rust::ulistener::UListener;
+use up_rust::{Data, UAttributes, UCode, UMessage, UMessageType, UStatus, UTransport, UUri};
+use up_rust::{
+    PublishValidator, RequestValidator, ResponseValidator, UAttributesValidator,
+    UAttributesValidators, UriValidator,
+};
 
-use crate::constants::BYTES_MSG_LENGTH;
-use crate::constants::DISPATCHER_ADDR;
-use protobuf::Message;
-use std::collections::hash_map::Entry;
-use std::collections::HashSet;
-use std::io::{Read, Write};
+use protobuf::{Message, MessageDyn};
 use std::net::TcpStream as TcpStreamSync;
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{atomic::AtomicU64, Arc, Mutex},
 };
-use tokio::task;
-use up_rust::ComparableListener;
+use std::{
+    //clone,
+    io::{Read, Write},
+    thread,
+};
+use tokio::io::AsyncReadExt;
+use tokio::net::TcpStream;
 
-pub struct UTransportSocket {
-    socket_sync: TcpStreamSync,
-    listener_map: Arc<Mutex<HashMap<UUri, HashSet<ComparableListener>>>>,
+use crate::constants::BYTES_MSG_LENGTH;
+use crate::constants::DISPATCHER_ADDR;
+
+pub trait UtransportExt {
+    async fn socket_init(&mut self);
+    fn _handle_publish_message(&mut self, umsg: UMessage );
+    fn _handle_request_message(&mut self, umsg: UMessage );
+    async fn read_socket(&mut self, buffer: &mut [u8]) -> io::Result<usize>;
 }
-impl Clone for UTransportSocket {
+
+pub struct UtrasnsportSocket {
+    socket: Arc<Mutex<TcpStream>>, //TcpStream,
+    socket_sync: TcpStreamSync,
+    listner_map: Arc<Mutex<HashMap<String, Vec<Arc<dyn UListener>>>>>,
+}
+impl Clone for UtrasnsportSocket {
     fn clone(&self) -> Self {
-        UTransportSocket {
+        UtrasnsportSocket {
+            socket: self.socket.clone(),
             socket_sync: self
                 .socket_sync
                 .try_clone()
                 .expect("issue in cloning sync socket"),
-            //  listener_map: self.listener_map.clone(),
-            listener_map: self.listener_map.clone(),
+            listner_map: self.listner_map.clone(),
         }
     }
 }
 
-impl Default for UTransportSocket {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl UTransportSocket {
-    #[must_use]
-    /// # Panics
-    ///
-    /// Will panic if issue connecting in sync socket
-    pub fn new() -> Self {
-        let _socket_sync: TcpStreamSync =
+impl UtrasnsportSocket {
+    pub async fn new() -> Self {
+        let socket_connecton = TcpStream::connect(DISPATCHER_ADDR).await.unwrap();
+        let socket_sync: TcpStreamSync =
             TcpStreamSync::connect(DISPATCHER_ADDR).expect("issue in connecting  sync socket");
-        let socket_sync = _socket_sync;
-        UTransportSocket {
+        let socket = Arc::new(Mutex::new(socket_connecton));
+        UtrasnsportSocket {
+            socket,
             socket_sync,
-            listener_map: Arc::new(Mutex::new(HashMap::new())),
+            listner_map: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
 
-    /// # Panics
-    ///
-    /// Will panic if failed to parse message
-    pub fn socket_init(&mut self) {
+impl UtransportExt for UtrasnsportSocket {
+    async fn socket_init(&mut self) {
         loop {
             // Receive data from the socket
             let mut buffer: [u8; BYTES_MSG_LENGTH] = [0; BYTES_MSG_LENGTH];
-            let bytes_read = match self.socket_sync.read(&mut buffer) {
+
+            let bytes_read = match self.read_socket(&mut buffer).await {
                 Ok(bytes_read) => bytes_read,
                 Err(e) => {
-                    dbg!("Socket error: {}", e);
+                    eprintln!("Socket error: {}", e);
                     break;
                 }
             };
@@ -100,71 +107,75 @@ impl UTransportSocket {
                 continue;
             }
 
-            let umessage =
-                UMessage::parse_from_bytes(&buffer[..bytes_read]).expect("Failed to parse message");
+            let mut umessage = UMessage::new(); // Assuming UMessage is a protobuf-generated message type
 
-            match umessage
-                .attributes
-                .type_
-                .enum_value_or(UMessageType::UMESSAGE_TYPE_UNSPECIFIED)
-            {
-                UMessageType::UMESSAGE_TYPE_PUBLISH => {
-                    dbg!("calling handle publish....");
-                    let _ = self.check_on_receive(&umessage.attributes.source, &umessage);
-                }
-                UMessageType::UMESSAGE_TYPE_NOTIFICATION => todo!(),
-                UMessageType::UMESSAGE_TYPE_UNSPECIFIED | UMessageType::UMESSAGE_TYPE_RESPONSE => (),
-                UMessageType::UMESSAGE_TYPE_REQUEST => {
-                    let _ = self.check_on_receive(&umessage.attributes.sink, &umessage);
-                }
+            if let Err(err) = umessage.merge_from_bytes(&buffer) {
+                eprintln!("Error deserializing UMessage: {}", err);
+            } else {
+                eprint!("data seems to be correct!");
+            }
+
+            match umessage.attributes.type_.enum_value() {
+                Ok(mt) => match mt {
+                    UMessageType::UMESSAGE_TYPE_PUBLISH  => {
+                        self._handle_publish_message(umessage);
+                        // Ok(())
+                        ()
+                    }
+                    UMessageType::UMESSAGE_TYPE_UNSPECIFIED => (), //Err("Umessage type unspecified".to_string()),
+                    UMessageType::UMESSAGE_TYPE_RESPONSE => (),
+                    UMessageType::UMESSAGE_TYPE_REQUEST => {self._handle_request_message(umessage);
+                    // Ok(())
+                    ()} //Err("umessage type reponse not implemented".to_string()),
+                },
+                Err(_) => (), //Err("invalid arguments".to_string()),
             }
         }
     }
 
+    async fn read_socket(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        let mut socket = self
+            .socket
+            .lock()
+            .expect("error access dispatcher socket connection");
+        socket.read(buffer).await
+    }
 
-    /// # Panics
-    ///
-    /// Will panic if something breaks
-    /// # Errors
-    ///
-    /// Will return `Err` if no listeners registered for topic
-    pub fn check_on_receive(&self, uuri: &UUri, umessage: &UMessage) -> Result<(), UStatus> {
-        let mut topics_listeners = self.listener_map.lock().unwrap();
-        let listeners = topics_listeners.entry(uuri.clone());
-        dbg!("check_on_receive..\n");
-        match listeners {
-            Entry::Vacant(_) => {
-                dbg!("check_on_receive 1..\n");
-                return Err(UStatus::fail_with_code(
-                    UCode::NOT_FOUND,
-                    format!("No listeners registered for topic: {:?}", &uuri),
-                ));
-            }
-            Entry::Occupied(mut e) => {
-                let occupied = e.get_mut();
-                dbg!("check_on_receive 2..\n");
-                if occupied.is_empty() {
-                    return Err(UStatus::fail_with_code(
-                        UCode::NOT_FOUND,
-                        format!("No listeners registered for topic: {:?}", &uuri),
-                    ));
-                }
-                dbg!("invoking listner on receive..\n");
-                for listener in occupied.iter() {
-                    let task_listener = listener.clone();
-                    let task_umessage = umessage.clone();
-                    dbg!("invoking listner on receive\n");
-                    task::spawn(async move { task_listener.on_receive(task_umessage).await });
-                }
+    fn _handle_publish_message(&mut self, umsg: UMessage) {
+
+    
+        if let Some(listner_array) = self
+            .listner_map
+            .lock()
+            .unwrap()
+            .get(&umsg.attributes.source.to_string())
+        {
+            for listner_ref in listner_array {
+                listner_ref.on_receive(Ok(umsg.clone()));
             }
         }
+    }
 
-        Ok(())
+    fn _handle_request_message(&mut self, umsg: UMessage ) {
+        
+
+
+    
+        if let Some(listner_array) = self
+            .listner_map
+            .lock()
+            .unwrap()
+            .get(&umsg.attributes.sink.to_string())
+        {
+            for listner_ref in listner_array {
+                listner_ref.on_receive(Ok(umsg.clone()));
+            }
+        }
     }
 }
 
 #[async_trait]
-impl UTransport for UTransportSocket {
+impl UTransport for UtrasnsportSocket {
     /// Sends a message using this transport's message exchange mechanism.
     ///
     /// # Arguments
@@ -183,15 +194,14 @@ impl UTransport for UTransportSocket {
     ///
     /// Returns an error if the message could not be sent.
     async fn send(&self, message: UMessage) -> Result<(), UStatus> {
-        let mut socket_clone = self.socket_sync.try_clone().expect("issue in sending data");
+        let mut socket_clone = self
+            .socket_sync
+            .try_clone()
+            .expect("dispatcher socket connection cloning failed");
 
-        let umsg_serialized = message
-            .clone()
-            .write_to_bytes()
-            .expect("Send Serialization Issue");
-        let _result = UMessage::parse_from_bytes(&umsg_serialized.clone());
-        //todo: handle result
-
+        let umsg_serialized = message.to_string().as_bytes().to_vec().clone();
+        // Acquire the lock on the mutex to access the TcpStream
+        // Perform the write operation on the TcpStream
         let _payload = *message
             .payload
             .0
@@ -207,7 +217,7 @@ impl UTransport for UTransportSocket {
             .map_err(|_| UStatus::fail_with_code(UCode::INTERNAL, "Unable to parse type"))?
         {
             UMessageType::UMESSAGE_TYPE_PUBLISH => {
-                println!("UMESSAGE_TYPE_PUBLISH sending data");
+                // PublishValidator::validate(, &attributes) /* .map(|e|{ UStatus::fail_with_code(UCode::INVALID_ARGUMENT,format!("wrong Publish Uattribute{e:?}"),})?;*/
                 UAttributesValidators::Publish
                     .validator()
                     .validate(&attributes)
@@ -219,7 +229,7 @@ impl UTransport for UTransportSocket {
                     })?;
 
                 match socket_clone.write_all(&umsg_serialized) {
-                    Ok(()) => Ok(()),
+                    Ok(_) => Err(UStatus::ok()),
                     Err(_) => Err(UStatus::fail_with_code(
                         UCode::UNAVAILABLE,
                         "Dispatcher communication issue",
@@ -236,9 +246,8 @@ impl UTransport for UTransportSocket {
                             format!("Wrong Request UAttributes {e:?}"),
                         )
                     })?;
-
                 match socket_clone.write_all(&umsg_serialized) {
-                    Ok(()) => Ok(()),
+                    Ok(_) => Err(UStatus::ok()),
                     Err(_) => Err(UStatus::fail_with_code(
                         UCode::UNAVAILABLE,
                         "Dispatcher communication issue",
@@ -256,19 +265,17 @@ impl UTransport for UTransportSocket {
                         )
                     })?;
                 match socket_clone.write_all(&umsg_serialized) {
-                    Ok(()) => Ok(()),
+                    Ok(_) => Err(UStatus::ok()),
                     Err(_) => Err(UStatus::fail_with_code(
                         UCode::UNAVAILABLE,
                         "Dispatcher communication issue",
                     )),
                 }
             }
-            UMessageType::UMESSAGE_TYPE_UNSPECIFIED | UMessageType::UMESSAGE_TYPE_NOTIFICATION => {
-                Err(UStatus::fail_with_code(
-                    UCode::INVALID_ARGUMENT,
-                    "Wrong Message type in UAttributes",
-                ))
-            }
+            UMessageType::UMESSAGE_TYPE_UNSPECIFIED => Err(UStatus::fail_with_code(
+                UCode::INVALID_ARGUMENT,
+                "Wrong Message type in UAttributes",
+            )),
         }
     }
 
@@ -282,7 +289,7 @@ impl UTransport for UTransportSocket {
     ///
     /// Returns an error if no message could be received. Possible reasons are that the topic does not exist
     /// or that no message is available from the topic.
-    async fn receive(&self, _topic: UUri) -> Result<UMessage, UStatus> {
+    async fn receive(&self, topic: UUri) -> Result<UMessage, UStatus> {
         Err(UStatus::fail_with_code(
             UCode::UNIMPLEMENTED,
             "Not implemented",
@@ -306,15 +313,17 @@ impl UTransport for UTransportSocket {
     ///
     ///
     ///
-    ///
-    ///
 
-    async fn register_listener(
-        &self,
-        topic: UUri,
-        listener: Arc<dyn UListener>,
-    ) -> Result<(), UStatus> {
-        dbg!("register listner called !");
+    async fn register_listener<T>(&self, topic: UUri, listener: &Arc<T>) -> Result<(), UStatus>
+    where
+        T: UListener, // async fn register_listener(
+                      //   &self,
+                      // topic: UUri,
+                      //listener: Box<dyn Fn(Result<UMessage, UStatus>) + Send + Sync + 'static>,
+                      //) -> Result<String, UStatus>
+    {
+        //let listener = Arc::new(listener);
+        // self.listner_map.lock().unwrap().insert(topic.to_string(),listener);
         if topic.authority.is_some() && topic.entity.is_none() && topic.resource.is_none() {
             // This is special UUri which means we need to register for all of Publish, Request, and Response
             // RPC response
@@ -324,53 +333,36 @@ impl UTransport for UTransportSocket {
             ))
         } else {
             // Do the validation
-            dbg!(topic.authority.is_some());
-            dbg!(UriValidator::is_remote(&topic));
             UriValidator::validate(&topic)
-                .map_err(|err| UStatus::fail_with_code(UCode::INVALID_ARGUMENT, err.to_string()))?;
+                .map_err(|_| UStatus::fail_with_code(UCode::INVALID_ARGUMENT, "Invalid topic"))?;
 
             if UriValidator::is_rpc_response(&topic) {
-                let mut topics_listeners = self.listener_map.lock().unwrap();
-                let listeners = topics_listeners.entry(topic).or_default();
-                let identified_listener = ComparableListener::new(listener);
-                let inserted = listeners.insert(identified_listener);
+                self.listner_map
+                    .lock()
+                    .unwrap()
+                    .entry(topic.to_string())
+                    .and_modify(|listener_local| listener_local.push(listener.clone()))
+                    //.or_insert_with(|| vec![listener]);
+                    .or_insert_with(|| vec![Arc::clone(listener)as Arc<dyn UListener>]);
 
-                return if inserted {
-                    Ok(())
-                } else {
-                    Err(UStatus::fail_with_code(
-                        UCode::ALREADY_EXISTS,
-                        "UUri + UListener pair already exists!",
-                    ))
-                };
+                Ok(/*"register listner successful".to_string*/ ())
             } else if UriValidator::is_rpc_method(&topic) {
-                let mut topics_listeners = self.listener_map.lock().unwrap();
-                let listeners = topics_listeners.entry(topic).or_default();
-                let identified_listener = ComparableListener::new(listener);
-                let inserted = listeners.insert(identified_listener);
-                dbg!("register listner called for rpc !");
-                return if inserted {
-                    Ok(())
-                } else {
-                    Err(UStatus::fail_with_code(
-                        UCode::ALREADY_EXISTS,
-                        "UUri + UListener pair already exists!",
-                    ))
-                };
-            }
-            let mut topics_listeners = self.listener_map.lock().unwrap();
-            let listeners = topics_listeners.entry(topic).or_default();
-            let identified_listener = ComparableListener::new(listener);
-            let inserted = listeners.insert(identified_listener);
-            dbg!("register listner called for topic !");
-            return if inserted {
-                Ok(())
+                self.listner_map
+                    .lock()
+                    .unwrap()
+                    .entry(topic.to_string())
+                    .and_modify(|listener_local| listener_local.push(listener.clone()))
+                    .or_insert_with(|| vec![Arc::clone(listener) as Arc<dyn UListener>]);
+                Ok(/*"register listner successful".to_string*/ ())
             } else {
-                Err(UStatus::fail_with_code(
-                    UCode::ALREADY_EXISTS,
-                    "UUri + UListener pair already exists!",
-                ))
-            };
+                self.listner_map
+                    .lock()
+                    .unwrap()
+                    .entry(topic.to_string())
+                    .and_modify(|listener_local| listener_local.push(listener.clone()))
+                    .or_insert_with(|| vec![Arc::clone(listener) as Arc<dyn UListener>]);
+                Ok(/*"register listner successful".to_string()*/ ())
+            }
         }
     }
 
@@ -386,32 +378,33 @@ impl UTransport for UTransportSocket {
     /// # Errors
     ///
     /// Returns an error if the listener could not be unregistered, for example if the given listener does not exist.
-    async fn unregister_listener(
-        &self,
-        topic: UUri,
-        listener: Arc<dyn UListener>,
-    ) -> Result<(), UStatus> {
-        let mut topics_listeners = self.listener_map.lock().unwrap();
-        let listeners = topics_listeners.entry(topic.clone());
-        return match listeners {
-            Entry::Vacant(_) => Err(UStatus::fail_with_code(
-                UCode::NOT_FOUND,
-                format!("No listeners registered for topic: {:?}", &topic),
-            )),
-            Entry::Occupied(mut e) => {
-                let occupied = e.get_mut();
-                let identified_listener = ComparableListener::new(listener);
-                let removed = occupied.remove(&identified_listener);
+    async fn unregister_listener<T>(&self, topic: UUri, listener: &Arc<T>) -> Result<(), UStatus>
+    where
+        T: UListener,
+    {
+        let mut map = self.listner_map.lock().expect("Failed to acquire lock");
+        let mut listner_clone = Arc::clone(listener) as Arc<dyn UListener>;
 
-                if removed {
-                    Ok(())
-                } else {
-                    Err(UStatus::fail_with_code(
-                        UCode::NOT_FOUND,
-                        "UUri + UListener not found!",
-                    ))
+        if let Some(listeners) = map.get_mut(&topic.to_string()) {
+            if let Some(index) = listeners
+                .iter()
+                .position(|l| Arc::ptr_eq(l, &listner_clone))
+            {
+                let _ = listeners.remove(index);
+
+                // If the vector becomes empty after removal, delete the entry from the map
+                if listeners.is_empty() {
+                    map.remove(&topic.to_string());
                 }
             }
-        };
+        }
+
+        Err(UStatus {
+            code: up_rust::UCode::OK.into(),
+            message: Some("OK".to_string()), // Convert &str to String and wrap it into Some
+            details: todo!(),
+            special_fields: todo!(),
+        })
+        //UStatus { code: up_rust::UCode::OK, message: "OK", details: todo!(), special_fields: todo!() }
     }
 }

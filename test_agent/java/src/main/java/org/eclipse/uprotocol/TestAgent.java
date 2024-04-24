@@ -28,12 +28,13 @@ import com.google.gson.Gson;
 import com.google.protobuf.Any;
 import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
-import org.eclipse.uprotocol.rpc.CallOptions;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
 import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
-import org.eclipse.uprotocol.uuid.factory.UuidFactory;
+import org.eclipse.uprotocol.uri.validator.UriValidator;
+import org.eclipse.uprotocol.validation.ValidationResult;
 import org.eclipse.uprotocol.uuid.serializer.LongUuidSerializer;
+import org.eclipse.uprotocol.uuid.factory.UuidFactory;
 import org.eclipse.uprotocol.v1.*;
 import org.json.JSONObject;
 
@@ -45,6 +46,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -61,10 +63,11 @@ public class TestAgent {
         actionHandlers.put(Constant.REGISTER_LISTENER_COMMAND, TestAgent::handleRegisterListenerCommand);
         actionHandlers.put(Constant.UNREGISTER_LISTENER_COMMAND, TestAgent::handleUnregisterListenerCommand);
         actionHandlers.put(Constant.INVOKE_METHOD_COMMAND, TestAgent::handleInvokeMethodCommand);
-        actionHandlers.put(Constant.SERIALIZE_URI, TestAgent::handleSerializeUriCommand);
-        actionHandlers.put(Constant.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
-        actionHandlers.put(Constant.SERIALIZE_UUID, TestAgent::handleSerializeUuidCommand);
-        actionHandlers.put(Constant.DESERIALIZE_UUID, TestAgent::handleDeserializeUuidCommand);
+        actionHandlers.put(Constant.SERIALIZE_URI, TestAgent::handleLongSerializeUriCommand);
+        actionHandlers.put(Constant.DESERIALIZE_URI, TestAgent::handleLongDeserializeUriCommand);
+        actionHandlers.put(Constant.VALIDATE_URI, TestAgent::handleValidateUriCommand);
+        actionHandlers.put(Constant.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
+        actionHandlers.put(Constant.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
 
     }
 
@@ -83,23 +86,41 @@ public class TestAgent {
         if (actionHandlers.containsKey(action)) {
             UStatus status = (UStatus) actionHandlers.get(action).handle(jsonData);
             if (status != null) {
-                sendToTestManager(status, action);
+                String testID = (String) jsonData.get("test_id");
+                sendToTestManager(status, action, testID);
             }
         }
     }
 
+    private static void sendToTestManager(Object json, String action) {
+        sendToTestManager(json, action, null);
+    }
+    
     private static void sendToTestManager(Message proto, String action) {
-        // Create a new dictionary
+        sendToTestManager(proto, action, null);
+    }
+    
+    private static void sendToTestManager(Object json, String action, String received_test_id) {
+        JSONObject responseDict = new JSONObject();
+        responseDict.put("data", json);
+        if (received_test_id != null) {
+            responseDict.put("test_id", received_test_id);
+        }
+        writeDataToTMSocket(responseDict, action);
+    }
+    
+    private static void sendToTestManager(Message proto, String action, String received_test_id) {
         JSONObject responseDict = new JSONObject();
         responseDict.put("data", ProtoConverter.convertMessageToMap(proto));
+        if (received_test_id != null) {
+            responseDict.put("test_id", received_test_id);
+        }
         writeDataToTMSocket(responseDict, action);
     }
 
     private static void writeDataToTMSocket(JSONObject responseDict, String action) {
         responseDict.put("action", action);
         responseDict.put("ue", "java");
-
-
         try {
             OutputStream outputStream = clientSocket.getOutputStream();
             outputStream.write(responseDict.toString().getBytes(StandardCharsets.UTF_8));
@@ -110,14 +131,6 @@ public class TestAgent {
             logger.log(Level.SEVERE, "Error sending data to TM:  " + ioException.getMessage(), ioException);
 
         }
-    }
-
-    private static void sendToTestManager(Object json, String action) {
-        // Create a new dictionary
-        JSONObject responseDict = new JSONObject();
-        responseDict.put("data", json);
-        writeDataToTMSocket(responseDict, action);
-
     }
 
     private static UStatus handleSendCommand(Map<String, Object> jsonData) {
@@ -145,40 +158,100 @@ public class TestAgent {
         UPayload payload = (UPayload) ProtoConverter.dictToProto((Map<String, Object>) data.get("payload"),
                 UPayload.newBuilder());
         CompletionStage<UMessage> responseFuture = transport.invokeMethod(uri, payload,
-                CallOptions.newBuilder().build());
-        responseFuture.whenComplete(
-                (responseMessage, exception) -> sendToTestManager(responseMessage, Constant.RESPONSE_RPC));
+                CallOptions.newBuilder().setTtl(10000).build());
+        responseFuture.whenComplete((responseMessage, exception) -> {
+            sendToTestManager(responseMessage, Constant.INVOKE_METHOD_COMMAND, (String) jsonData.get("test_id"));
+        });
         return null;
     }
 
-    private static Object handleSerializeUriCommand(Map<String, Object> jsonData) {
+    private static Object handleLongSerializeUriCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
-        sendToTestManager(LongUriSerializer.instance().serialize(uri), Constant.SERIALIZE_URI);
+        String serializedUuri = LongUriSerializer.instance().serialize(uri);
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(serializedUuri, Constant.SERIALIZE_URI, testID);
         return null;
     }
 
-    private static Object handleDeserializeUriCommand(Map<String, Object> jsonData) {
-        sendToTestManager(LongUriSerializer.instance().deserialize(jsonData.get("data").toString()),
-                Constant.DESERIALIZE_URI);
+    private static Object handleLongDeserializeUriCommand(Map<String, Object> jsonData) {
+    	UUri uri = LongUriSerializer.instance().deserialize(jsonData.get("data").toString());
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(uri, Constant.DESERIALIZE_URI, testID);
         return null;
     }
 
-    private static Object handleSerializeUuidCommand(Map<String, Object> jsonData) {
+    private static Object handleValidateUriCommand(Map<String, Object> jsonData) {
+        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
+        String valType = (String) data.get("type");
+        String uriValue = (String) data.get("uri");
+
+        UUri uri = LongUriSerializer.instance().deserialize(uriValue);
+
+        Function<UUri, ValidationResult> validatorFunc = null;
+        Function<UUri, Boolean> validatorFuncBool = null;
+
+        switch (valType) {
+            case "uri":
+                validatorFunc = UriValidator::validate;
+                break;
+            case "rpc_response":
+                validatorFunc = UriValidator::validateRpcResponse;
+                break;
+            case "rpc_method":
+                validatorFunc = UriValidator::validateRpcMethod;
+                break;
+            case "is_empty":
+                validatorFuncBool = UriValidator::isEmpty;
+                break;
+            case "is_resolved":
+                validatorFuncBool = UriValidator::isResolved;
+                break;
+            case "is_micro_form":
+                validatorFuncBool = UriValidator::isMicroForm;
+                break;
+            case "is_long_form_uuri":
+                validatorFuncBool = UriValidator::isLongForm;
+                break;
+            case "is_long_form_uauthority":
+                validatorFuncBool = UriValidator::isLongForm;
+                break;
+        }
+
+        if (validatorFunc != null) {
+            ValidationResult status = validatorFunc.apply(uri);
+            String result = status.isSuccess() ? "True" : "False";
+            String message = status.getMessage();
+            String testID = (String) jsonData.get("test_id");
+            sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_URI, testID);
+        } else if (validatorFuncBool != null) {
+            Boolean status = validatorFuncBool.apply(uri);
+            String result = status ? "True" : "False";
+            String testID = (String) jsonData.get("test_id");
+            sendToTestManager(Map.of("result", result, "message", ""), Constant.VALIDATE_URI, testID);
+        }
+
+        return null;
+    }
+
+    private static Object handleLongSerializeUuidCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         UUID uuid = (UUID) ProtoConverter.dictToProto(data, UUID.newBuilder());
-        sendToTestManager(LongUuidSerializer.instance().serialize(uuid), Constant.SERIALIZE_UUID);
+        String serializedUUid = LongUuidSerializer.instance().serialize(uuid);
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(serializedUUid, Constant.SERIALIZE_UUID, testID);
         return null;
     }
 
-    private static Object handleDeserializeUuidCommand(Map<String, Object> jsonData) {
-        sendToTestManager(LongUuidSerializer.instance().deserialize(jsonData.get("data").toString()),
-                Constant.DESERIALIZE_UUID);
+    private static Object handleLongDeserializeUuidCommand(Map<String, Object> jsonData) {
+    	UUID uuid = LongUuidSerializer.instance().deserialize(jsonData.get("data").toString());
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(uuid, Constant.DESERIALIZE_UUID, testID);
         return null;
     }
 
     private static void handleOnReceive(UMessage uMessage) {
-        logger.info("Java on_receive called");
+        logger.info("Java on_receive called: " + uMessage);
         if (uMessage.getAttributes().getType().equals(UMessageType.UMESSAGE_TYPE_REQUEST)) {
             UAttributes reqAttributes = uMessage.getAttributes();
             UAttributes uAttributes = UAttributesBuilder.response(reqAttributes.getSink(), reqAttributes.getSource(),
@@ -214,10 +287,8 @@ public class TestAgent {
                 if (readSize < 1) {
                     return;
                 }
-                logger.info("Received data from test manager: " + readSize);
 
                 String jsonData = new String(buffer, 0, readSize);
-                logger.info("Received data from test manager: " + jsonData);
 
                 // Parse the JSON string using Gson
                 Map<String, Object> jsonMap = gson.fromJson(jsonData, Map.class);

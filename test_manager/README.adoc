@@ -21,8 +21,10 @@ To run these example tests:
 1. Go to the Test Manager Folder (cd test_manager)
 2. If in Windows, run "testrunner.bat".
 When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
+You will also be prompted for the language you want to test. For now, you can enter "python" or "java".
 If in Linux, run "sh testrunner.sh".
 When prompted, enter in the feature file name (for the example, it's "register_and_send.feature").
+You will also be prompted for the language you want to test. For now, you can enter "python" or "java".
 
 After running a BDD test, ensure that you close all opened command prompt windows before running a new test.
 Your report will be located in test_manager/reports.

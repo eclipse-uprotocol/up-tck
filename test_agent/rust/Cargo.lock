@@ -1601,6 +1601,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "up-rust",
+ "utransport-socket",
  "uuid",
 ]
 
@@ -2081,6 +2082,10 @@ dependencies = [
  "idna",
  "percent-encoding",
 ]
+
+[[package]]
+name = "utransport-socket"
+version = "0.1.0"
 
 [[package]]
 name = "uuid"

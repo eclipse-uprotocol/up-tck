@@ -21,29 +21,28 @@
  * SPDX-FileCopyrightText: 2023 General Motors GTO LLC
  * SPDX-License-Identifier: Apache-2.0
  */
-
 pub const SEND_COMMAND: &str = "send";
 pub const REGISTER_LISTENER_COMMAND: &str = "registerlistener";
 pub const UNREGISTER_LISTENER_COMMAND: &str = "unregisterlistener";
-
-pub const RESPONSE_ON_RECEIVE: &str = "onreceive";
+pub const INVOKE_METHOD_COMMAND: &str = "invokemethod";
 
 // Define constants for addresses
 pub const DISPATCHER_ADDR: (&str, u16) = ("127.0.0.1", 44444);
 pub const TEST_MANAGER_ADDR: (&str, u16) = ("127.0.0.5", 12345);
 
 // Define constant for maximum message length
-pub const BYTES_MSG_LENGTH: usize = 32_767;
+pub const BYTES_MSG_LENGTH: usize = 32767;
 
 #[test]
 pub fn test_constants() {
-    dbg!("SEND_COMMAND: {}", SEND_COMMAND);
-    dbg!("REGISTER_LISTENER_COMMAND: {}", REGISTER_LISTENER_COMMAND);
-    dbg!(
+    println!("SEND_COMMAND: {}", SEND_COMMAND);
+    println!("REGISTER_LISTENER_COMMAND: {}", REGISTER_LISTENER_COMMAND);
+    println!(
         "UNREGISTER_LISTENER_COMMAND: {}",
         UNREGISTER_LISTENER_COMMAND
     );
-    dbg!("DISPATCHER_ADDR: {:?}", DISPATCHER_ADDR);
-    dbg!("TEST_MANAGER_ADDR: {:?}", TEST_MANAGER_ADDR);
-    dbg!("BYTES_MSG_LENGTH: {}", BYTES_MSG_LENGTH);
+    println!("INVOKE_METHOD_COMMAND: {}", INVOKE_METHOD_COMMAND);
+    println!("DISPATCHER_ADDR: {:?}", DISPATCHER_ADDR);
+    println!("TEST_MANAGER_ADDR: {:?}", TEST_MANAGER_ADDR);
+    println!("BYTES_MSG_LENGTH: {}", BYTES_MSG_LENGTH);
 }

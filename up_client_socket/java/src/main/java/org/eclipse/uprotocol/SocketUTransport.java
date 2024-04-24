@@ -24,7 +24,6 @@
 
 package org.eclipse.uprotocol;
 
-import org.eclipse.uprotocol.rpc.CallOptions;
 import org.eclipse.uprotocol.rpc.RpcClient;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.UTransport;
@@ -244,12 +243,12 @@ public class SocketUTransport implements UTransport, RpcClient {
      */
     public CompletionStage<UMessage> invokeMethod(UUri methodUri, UPayload requestPayload, CallOptions options) {
         UAttributes attributes = UAttributesBuilder.request(RESPONSE_URI, methodUri, UPriority.UPRIORITY_CS4,
-                options.timeout()).build();
+                options.getTtl()).build();
         UUID requestId = attributes.getId();
         CompletableFuture<UMessage> responseFuture = new CompletableFuture<>();
         reqid_to_future.put(requestId, responseFuture);
 
-        Thread timeoutThread = new Thread(() -> timeoutCounter(responseFuture, requestId, options.timeout()));
+        Thread timeoutThread = new Thread(() -> timeoutCounter(responseFuture, requestId, options.getTtl()));
         timeoutThread.start();
 
         UMessage umsg = UMessage.newBuilder().setPayload(requestPayload).setAttributes(attributes).build();

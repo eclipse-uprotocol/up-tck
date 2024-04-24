@@ -26,54 +26,60 @@ mod constants;
 
 #[path = "../../../up_client_socket/rust/u_transport_socket.rs"]
 pub mod u_transport_socket;
- 
+
 mod utils;
 
 use std::thread;
 
-use crate::constants::*;
+use crate::constants::TEST_MANAGER_ADDR;
 use testagent::SocketTestAgent;
-use u_transport_socket::{UtransportExt, UtransportSocket};
+use u_transport_socket::UTransportSocket;
 mod testagent;
-use tokio::runtime::Runtime;
 use std::net::TcpStream as TcpStreamSync;
+use tokio::runtime::Runtime;
 
 fn main() {
-  let handle = thread::spawn(|| {
-      // Create a new Tokio runtime
-      let rt = Runtime::new().unwrap();
+    let handle = thread::spawn(|| {
+        // Create a new Tokio runtime
+        let Ok(rt) = Runtime::new() else {
+            eprintln!("Error creating runtime");
+            return;
+        };
 
+        let test_agent_socket: TcpStreamSync =
+            TcpStreamSync::connect(TEST_MANAGER_ADDR).expect("issue in connecting  sync socket");
+        let test_agent_socket_to_tm: TcpStreamSync =
+            TcpStreamSync::connect(TEST_MANAGER_ADDR).expect("issue in connecting  sync socket");
 
-      let test_agent_socket: TcpStreamSync =
-      TcpStreamSync::connect(TEST_MANAGER_ADDR).expect("issue in connecting  sync socket");
-      let test_agent_socket_to_tm: TcpStreamSync =
-      TcpStreamSync::connect(TEST_MANAGER_ADDR).expect("issue in connecting  sync socket");
-      
-      rt.block_on(async {
-          // Spawn a Tokio task to connect to TEST_MANAGER_ADDR asynchronously
-         
-          let mut transport_socket = UtransportSocket::new();
-          let transport_socket_clone = transport_socket.clone();
+        rt.block_on(async {
+            // Spawn a Tokio task to connect to TEST_MANAGER_ADDR asynchronously
 
-          // Spawn a blocking task within the runtime
-          let blocking_task = tokio::task::spawn_blocking(move || {
-            println!("calling socket_init..");
-            transport_socket.socket_init();
-          });
+            let mut transport_socket = UTransportSocket::new();
+            let transport_socket_clone = transport_socket.clone();
 
-          // Don't wait for the blocking task to finish
-          tokio::spawn(async move {
-              if let Err(err) = blocking_task.await {
-                  dbg!("Error in socket_init: {}", err);
-                  return;
-              }
-              dbg!("socket_init completed successfully");
-          });
-         
-          let agent = SocketTestAgent::new(test_agent_socket,test_agent_socket_to_tm, transport_socket_clone);
-          agent.clone().receive_from_tm().await;
-      });
-  });
+            // Spawn a blocking task within the runtime
+            let blocking_task = tokio::task::spawn_blocking(move || {
+                println!("calling socket_init..");
+                transport_socket.socket_init();
+            });
 
-  handle.join().unwrap();
+            // Don't wait for the blocking task to finish
+            tokio::spawn(async move {
+                if let Err(err) = blocking_task.await {
+                    dbg!("Error in socket_init: {}", err);
+                    return;
+                }
+                dbg!("socket_init completed successfully");
+            });
+
+            let agent = SocketTestAgent::new(
+                test_agent_socket,
+                test_agent_socket_to_tm,
+                transport_socket_clone,
+            );
+            agent.clone().receive_from_tm().await;
+        });
+    });
+
+    handle.join().unwrap();
 }
