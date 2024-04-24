@@ -28,9 +28,11 @@ import json
 import logging
 import socket
 import sys
+import git
 from threading import Thread
 from typing import Any, Dict, List, Union
 import time
+from datetime import datetime, timezone
 
 from google.protobuf import any_pb2
 from google.protobuf.message import Message
@@ -54,14 +56,19 @@ from uprotocol.proto.uuid_pb2 import UUID
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from uprotocol.uri.serializer.microuriserializer import MicroUriSerializer
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.uri.validator.urivalidator import UriValidator
 from uprotocol.validation.validationresult import ValidationResult
+from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
+from uprotocol.uuid.factory.uuidutils import UUIDUtils
+from uprotocol.proto.ustatus_pb2 import UCode
 
 import constants as CONSTANTS
 
-sys.path.append("../")
+repo = git.Repo(".", search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
 from up_client_socket.python.socket_transport import SocketUTransport
 
 logging.basicConfig(
@@ -114,17 +121,21 @@ def message_to_dict(message: Message) -> Dict[str, Any]:
         if isinstance(value, bytes):
             value: str = value.decode()
 
+        # If a protobuf Message object
         if hasattr(value, "DESCRIPTOR"):
             result[field.name] = message_to_dict(value)
         elif field.label == FieldDescriptor.LABEL_REPEATED:
             repeated = []
             for sub_msg in value:
                 if hasattr(sub_msg, "DESCRIPTOR"):
+                    # Add Message type protobuf
                     repeated.append(message_to_dict(sub_msg))
                 else:
+                    # Add primitive type (str, bool, bytes, int)
                     repeated.append(value)
             result[field.name] = repeated
 
+        # If the field is not a protobuf object (e.g. primitive type)
         elif (
             field.label == FieldDescriptor.LABEL_REQUIRED
             or field.label == FieldDescriptor.LABEL_OPTIONAL
@@ -140,7 +151,7 @@ def send_to_test_manager(
     received_test_id: str = "",
 ):
     if not isinstance(response, (dict, str)):
-        # converts protobuf to dict
+        # Converts protobuf to dict
         response = message_to_dict(response)
 
     # Create response as json/dict
@@ -281,6 +292,64 @@ def handle_uri_validate_command(json_msg):
             received_test_id=json_msg["test_id"],
         )
 
+def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
+    uri: UUri = dict_to_proto(json_msg["data"], UUri())
+    serialized_uuri: bytes = MicroUriSerializer().serialize(uri)
+    # Use "iso-8859-1" to decode bytes -> str, so no UnicodeDecodeError if "utf-8" decode
+    serialized_uuri_json_packed: str = serialized_uuri.decode("iso-8859-1")
+    send_to_test_manager(
+        serialized_uuri_json_packed, 
+        CONSTANTS.MICRO_SERIALIZE_URI, 
+        received_test_id=json_msg["test_id"]
+    )
+
+def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
+    sent_micro_serialized_uuri: str = json_msg["data"]
+    # Incoming micro serialized uuri is sent as an "iso-8859-1" str
+    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("iso-8859-1")
+    uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
+    send_to_test_manager(
+        uuri, 
+        CONSTANTS.MICRO_DESERIALIZE_URI, 
+        received_test_id=json_msg["test_id"]
+    )
+
+def handle_uuid_validate_command(json_msg):
+    uuid_type = json_msg["data"].get("uuid_type")
+    validator_type = json_msg["data"]["validator_type"]
+
+    uuid = {
+        "uprotocol": Factories.UPROTOCOL.create(),
+        "invalid": UUID(msb=0, lsb=0),
+        "uprotocol_time": Factories.UPROTOCOL.create(
+            datetime.utcfromtimestamp(0).replace(tzinfo=timezone.utc)
+        ),
+        "uuidv6": Factories.UUIDV6.create(),
+        "uuidv4": LongUuidSerializer().deserialize(
+            "195f9bd1-526d-4c28-91b1-ff34c8e3632d"
+        ),
+    }.get(uuid_type)
+
+    status = {
+        "get_validator": UuidValidator.get_validator(uuid).validate(uuid),
+        "uprotocol": Validators.UPROTOCOL.validator().validate(uuid),
+        "uuidv6": Validators.UUIDV6.validator().validate(uuid),
+        "get_validator_is_uuidv6": UUIDUtils.is_uuidv6(uuid),
+    }.get(validator_type)
+
+    if isinstance(status, bool):
+        result = str(status)
+        message = ""
+    else:
+        result = "True" if status.code == UCode.OK else "False"
+        message = status.message
+
+    send_to_test_manager(
+        {"result": result, "message": message},
+        CONSTANTS.VALIDATE_UUID,
+        received_test_id=json_msg["test_id"],
+    )
+
 
 def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
     data = json_msg["data"]
@@ -376,6 +445,9 @@ action_handlers = {
     CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
     CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
     CONSTANTS.VALIDATE_UATTRIBUTES: handle_uattributes_validate_command,
+    CONSTANTS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
+    CONSTANTS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
+    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command
 }
 
 

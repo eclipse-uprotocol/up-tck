@@ -35,7 +35,8 @@ import git
 from behave.runner import Context
 
 repo = git.Repo(".", search_parent_directories=True)
-sys.path.append(repo.working_tree_dir)
+sys.path.insert(0, repo.working_tree_dir)
+
 from test_manager.testmanager import TestManager
 from dispatcher.dispatcher import Dispatcher
 from test_manager.features.utils import loggerutils

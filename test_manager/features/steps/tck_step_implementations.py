@@ -365,7 +365,6 @@ def send_micro_serialized_command(
     context.logger.info(f"Response Json {command} -> {response_json}")
     context.response_data = response_json["data"]
 
-
 def access_nested_dict(dictionary, keys):
     keys = keys.split(".")
     value = dictionary
