@@ -355,8 +355,8 @@ action_handlers = {
     CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
     CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
     CONSTANTS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
-    CONSTANTS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command
-    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command,
+    CONSTANTS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
+    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command
 }
 
 
