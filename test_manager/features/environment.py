@@ -42,7 +42,8 @@ from utils import loggerutils
 PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
-
+UE1_PATH = "/home/hzkv71/projects/uspace/ultifi/build-zenoh-examples/bin/tck_agent"
+USTREMER_PATH = "/home/hzkv71/projects/uspace/ultifi/build-ustreamer-release-test"
 
 def create_command(filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []
@@ -55,9 +56,12 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
             command.append("python")
         elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
             command.append("python3")
+    elif filepath_from_root_repo.endswith('.out') or filepath_from_root_repo.endswith('tck_agent'):
+        command.append(filepath_from_root_repo)
     else:
-        raise Exception("only accept .jar and .py files")
+        raise Exception("only accept .jar, .py, and .out files or tck_agent")
     command.append(os.path.abspath(os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo))
+    print(command)
     return command
 
 
@@ -71,6 +75,20 @@ def create_subprocess(command: List[str]) -> subprocess.Popen:
         raise Exception("only handle Windows and Linux commands for now")
     return process
 
+def run_script_in_directory(directory: str, script: str, log_file: str):
+
+    env = os.environ.copy()
+    env['VSOMEIP_CONFIGURATION'] = './bin/src/ustreamer-config.json'
+
+    with open("logs/" + log_file, 'w') as f:
+        process = subprocess.Popen(
+            ["bash", "-c", f"cd {directory} && ./{script}"],
+            stdout=f,
+            stderr=subprocess.STDOUT,
+            env=env
+        )
+
+    return process
 
 def before_all(context):
     """Set up test environment
@@ -88,11 +106,11 @@ def before_all(context):
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
-    command = create_command(DISPATCHER_PATH)
-    process: subprocess.Popen = create_subprocess(command)
-    context.dispatcher_process = process
-    context.logger.info("Created Dispatcher...")
-    time.sleep(5)
+    # command = create_command(DISPATCHER_PATH)
+    # process: subprocess.Popen = create_subprocess(command)
+    # context.dispatcher_process = process
+    # context.logger.info("Created Dispatcher...")
+    # time.sleep(5)
 
     test_manager = TestManager(context, "127.0.0.5", 12345)
     thread = Thread(target=test_manager.listen_for_client_connections)
@@ -101,13 +119,23 @@ def before_all(context):
 
     context.logger.info("Created Test Manager...")
 
-    command = create_command(PYTHON_TA_PATH)
-    process: subprocess.Popen = create_subprocess(command)
-    context.python_ta_process = process
+    process: subprocess.Popen = run_script_in_directory(USTREMER_PATH, "bin/gmultifi_uStreamer", "ustreamer.log")
+    context.ustreamer_process = process
+    time.sleep(5)
+    context.logger.info("Created UStreamer...")
 
-    command = create_command(JAVA_TA_PATH)
+    # command = create_command(PYTHON_TA_PATH)
+    # process: subprocess.Popen = create_subprocess(command)
+    # context.python_ta_process = process
+
+    # command = create_command(JAVA_TA_PATH)
+    # process: subprocess.Popen = create_subprocess(command)
+    # context.java_ta_process = process
+
+    command = create_command(UE1_PATH)
     process: subprocess.Popen = create_subprocess(command)
-    context.java_ta_process = process
+    context.cpp_ta_process = process
+    context.logger.info("Created uE1 Test Agent...")
 
     context.logger.info("Created All Test Agents...")
 
@@ -125,13 +153,16 @@ def after_all(context: Context):
     context.on_receive_deserialized_uri = None
     context.on_receive_serialized_uuid = None
     context.on_receive_deserialized_uuid = None
-    context.tm.close_socket(sdk="python")
-    context.tm.close_socket(sdk="java")
+    #context.tm.close_socket(sdk="python")
+    #context.tm.close_socket(sdk="java")
+    context.tm.close_socket(sdk="ue1")
     context.tm.close()
 
     try:
-        context.dispatcher_process.terminate()
-        context.java_ta_process.terminate()
-        context.python_ta_process.terminate()
+        # context.dispatcher_process.terminate()
+        context.ustreamer_process.terminate()
+        context.cpp_ta_process.terminate()
+        #context.java_ta_process.terminate()
+        #context.python_ta_process.terminate()
     except Exception as e:
         context.logger.error(e)

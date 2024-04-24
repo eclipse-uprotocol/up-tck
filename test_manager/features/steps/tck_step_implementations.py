@@ -26,6 +26,8 @@
 import base64
 import codecs
 import time
+import json
+import os
 
 from behave import when, then, given
 from behave.runner import Context
@@ -153,6 +155,30 @@ def send_command_request(context, command: str):
 def user_wait(context, sec):
     time.sleep(int(sec))
 
+@when(u'triggers "{usecase}" to "{value}"')
+@then(u'triggers "{usecase}" to "{value}"')
+def update_usecase(context, usecase, value):
+    context.logger.info("trigger {} to {}".format(usecase, value))
+    file_path = "/home/hzkv71/projects/uspace/ultifi/gmultifi_ustreamer/testDemos/trigger_usecase.json" 
+    data = {}
+
+    # If the file exists, load the existing data
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+    
+    # Convert the value string to a boolean
+    value = value.lower() in ['true', '1', 'yes']
+
+    # Update the execute value for the specified usecase
+    if usecase in data:
+        data[usecase]['execute'] = value
+    else:
+        context.logger.error("Usecase {} not found in data".format(usecase))
+
+    # Write the updated data back to the file
+    with open(file_path, 'w') as f:
+        json.dump(data, f, indent=4)
 
 @then(u'the status received with "{field}" is "{field_value}"')
 def receive_status(context, field, field_value):
