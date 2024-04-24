@@ -34,6 +34,7 @@ import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
 import org.eclipse.uprotocol.uri.validator.UriValidator;
 import org.eclipse.uprotocol.validation.ValidationResult;
 import org.eclipse.uprotocol.uuid.serializer.LongUuidSerializer;
+import org.eclipse.uprotocol.uri.serializer.MicroUriSerializer;
 import org.eclipse.uprotocol.uuid.factory.UuidFactory;
 import org.eclipse.uprotocol.uuid.factory.UuidUtils;
 import org.eclipse.uprotocol.uuid.validate.UuidValidator;
@@ -43,6 +44,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -72,12 +74,12 @@ public class TestAgent {
         actionHandlers.put(Constant.VALIDATE_UUID, TestAgent::handleValidateUuidCommand);
         actionHandlers.put(Constant.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
         actionHandlers.put(Constant.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
-
+        actionHandlers.put(Constant.MICRO_SERIALIZE_URI, TestAgent::handleMicroSerializeUuriCommand);
+        actionHandlers.put(Constant.MICRO_DESERIALIZE_URI, TestAgent::handleMicroDeserializeUuriCommand);
     }
 
     static {
         try {
-
             transport = new SocketUTransport();
             clientSocket = new Socket(Constant.TEST_MANAGER_IP, Constant.TEST_MANAGER_PORT);
         } catch (IOException e) {
@@ -133,7 +135,6 @@ public class TestAgent {
 
         } catch (IOException ioException) {
             logger.log(Level.SEVERE, "Error sending data to TM:  " + ioException.getMessage(), ioException);
-
         }
     }
 
@@ -306,6 +307,33 @@ public class TestAgent {
     	UUID uuid = LongUuidSerializer.instance().deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uuid, Constant.DESERIALIZE_UUID, testID);
+        return null;
+    }
+
+    private static Object handleMicroSerializeUuriCommand(Map<String, Object> jsonData) {
+        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
+        UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
+        byte[] serializedUuri = MicroUriSerializer.instance().serialize(uri);
+        String serializedUuriAsStr = "";
+        try {
+			serializedUuriAsStr = new String(serializedUuri, "ISO-8859-1");
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(serializedUuriAsStr, Constant.MICRO_SERIALIZE_URI, testID);
+        return null;
+    }
+    
+    private static Object handleMicroDeserializeUuriCommand(Map<String, Object> jsonData) {
+    	String microSerializedUuriAsStr = (String) jsonData.get("data");
+    	byte[] microSerializedUuri = microSerializedUuriAsStr.getBytes(StandardCharsets.ISO_8859_1);
+        UUri uri = MicroUriSerializer.instance().deserialize(microSerializedUuri);
+ 
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(uri, Constant.MICRO_DESERIALIZE_URI, testID);
         return null;
     }
 

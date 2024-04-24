@@ -23,6 +23,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
+
 TEST_MANAGER_ADDR = ("127.0.0.5", 12345)
 BYTES_MSG_LENGTH: int = 32767
 SEND_COMMAND = "send"
@@ -37,3 +38,5 @@ VALIDATE_URI = "uri_validate"
 VALIDATE_UUID = "uuid_validate"
 SERIALIZE_UUID = "uuid_serialize"
 DESERIALIZE_UUID = "uuid_deserialize"
+MICRO_SERIALIZE_URI = "micro_serialize_uri"
+MICRO_DESERIALIZE_URI = "micro_deserialize_uri"

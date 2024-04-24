@@ -28,6 +28,7 @@ import json
 import logging
 import socket
 import sys
+import git
 from threading import Thread
 from typing import Any, Dict, List, Union
 from datetime import datetime, timezone
@@ -49,6 +50,7 @@ from uprotocol.proto.uuid_pb2 import UUID
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from uprotocol.uri.serializer.microuriserializer import MicroUriSerializer
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.uri.validator.urivalidator import UriValidator
@@ -58,7 +60,8 @@ from uprotocol.proto.ustatus_pb2 import UCode
 
 import constants as CONSTANTS
 
-sys.path.append("../")
+repo = git.Repo(".", search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
 from up_client_socket.python.socket_transport import SocketUTransport
 
 logging.basicConfig(
@@ -111,17 +114,21 @@ def message_to_dict(message: Message) -> Dict[str, Any]:
         if isinstance(value, bytes):
             value: str = value.decode()
 
+        # If a protobuf Message object
         if hasattr(value, "DESCRIPTOR"):
             result[field.name] = message_to_dict(value)
         elif field.label == FieldDescriptor.LABEL_REPEATED:
             repeated = []
             for sub_msg in value:
                 if hasattr(sub_msg, "DESCRIPTOR"):
+                    # Add Message type protobuf
                     repeated.append(message_to_dict(sub_msg))
                 else:
+                    # Add primitive type (str, bool, bytes, int)
                     repeated.append(value)
             result[field.name] = repeated
 
+        # If the field is not a protobuf object (e.g. primitive type)
         elif (
             field.label == FieldDescriptor.LABEL_REQUIRED
             or field.label == FieldDescriptor.LABEL_OPTIONAL
@@ -137,7 +144,7 @@ def send_to_test_manager(
     received_test_id: str = "",
 ):
     if not isinstance(response, (dict, str)):
-        # converts protobuf to dict
+        # Converts protobuf to dict
         response = message_to_dict(response)
 
     # Create response as json/dict
@@ -278,6 +285,27 @@ def handle_uri_validate_command(json_msg):
             received_test_id=json_msg["test_id"],
         )
 
+def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
+    uri: UUri = dict_to_proto(json_msg["data"], UUri())
+    serialized_uuri: bytes = MicroUriSerializer().serialize(uri)
+    # Use "iso-8859-1" to decode bytes -> str, so no UnicodeDecodeError if "utf-8" decode
+    serialized_uuri_json_packed: str = serialized_uuri.decode("iso-8859-1")
+    send_to_test_manager(
+        serialized_uuri_json_packed, 
+        CONSTANTS.MICRO_SERIALIZE_URI, 
+        received_test_id=json_msg["test_id"]
+    )
+
+def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
+    sent_micro_serialized_uuri: str = json_msg["data"]
+    # Incoming micro serialized uuri is sent as an "iso-8859-1" str
+    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("iso-8859-1")
+    uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
+    send_to_test_manager(
+        uuri, 
+        CONSTANTS.MICRO_DESERIALIZE_URI, 
+        received_test_id=json_msg["test_id"]
+    )
 
 def handle_uuid_validate_command(json_msg):
     uuid_type = json_msg["data"].get("uuid_type")
@@ -326,7 +354,9 @@ action_handlers = {
     CONSTANTS.SERIALIZE_UUID: handle_long_serialize_uuid,
     CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
     CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
-    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command,
+    CONSTANTS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
+    CONSTANTS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
+    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command
 }
 
 
