@@ -116,7 +116,6 @@ def receive_validation_result(context, expected_message):
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
-
 @when('sends a "{command}" request with serialized input "{serialized}"')
 def send_serialized_command(context, command: str, serialized: str):
     context.logger.info(f"Json request for {command} -> {serialized}")
@@ -124,7 +123,6 @@ def send_serialized_command(context, command: str, serialized: str):
         context.ue, context.action, serialized
     )
     context.logger.info(f"Response Json {command} -> {response_json}")
-
     if response_json is None:
         raise AssertionError("Response from Test Manager is None")
     elif "data" not in response_json:
@@ -237,7 +235,6 @@ def send_command_request(context, command: str):
     context.logger.info(f"Response Json {command} -> {response_json}")
     context.response_data = response_json["data"]
 
-
 @then('the status received with "{field_name}" is "{expected_value}"')
 def receive_status(context, field_name: str, expected_value: str):
     try:
@@ -279,7 +276,7 @@ def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expec
         raise AssertionError(f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
                              f"received {rec_field_value}")
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 @then(u'"{sdk_name}" receives data field "{field_name}" as b"{expected_value}"')
@@ -308,7 +305,7 @@ def receive_rpc_response_as_bytes(context, sdk_name, field_name: str, expected_v
         raise AssertionError(f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
                              f"received {repr(actual_value)}")
     except Exception as ae:
-        raise ValueError(f"Expection occured. {ae}")
+        raise ValueError(f"Exception occurred. {ae}")
 
 
 def bytes_to_base64_str(b: bytes) -> str:
