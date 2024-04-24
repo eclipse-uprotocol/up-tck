@@ -22,23 +22,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-pub const SEND_COMMAND: &str = "send";
-pub const REGISTER_LISTENER_COMMAND: &str = "registerlistener";
-pub const UNREGISTER_LISTENER_COMMAND: &str = "unregisterlistener";
+// Define constants for addresses
+pub const DISPATCHER_ADDR: (&str, u16) = ("127.0.0.1", 44444);
 
-pub const RESPONSE_ON_RECEIVE: &str = "onreceive";
-
-pub const TEST_MANAGER_ADDR: (&str, u16) = ("127.0.0.5", 12345);
-
-#[test]
-pub fn test_constants() {
-    dbg!("SEND_COMMAND: {}", SEND_COMMAND);
-    dbg!("REGISTER_LISTENER_COMMAND: {}", REGISTER_LISTENER_COMMAND);
-    dbg!(
-        "UNREGISTER_LISTENER_COMMAND: {}",
-        UNREGISTER_LISTENER_COMMAND
-    );
-    dbg!("DISPATCHER_ADDR: {:?}", DISPATCHER_ADDR);
-    dbg!("TEST_MANAGER_ADDR: {:?}", TEST_MANAGER_ADDR);
-    dbg!("BYTES_MSG_LENGTH: {}", BYTES_MSG_LENGTH);
-}
+// Define constant for maximum message length
+pub const BYTES_MSG_LENGTH: usize = 32_767;

@@ -24,8 +24,8 @@
 
 mod constants;
 
-#[path = "../../../up_client_socket/rust/u_transport_socket.rs"]
-pub mod u_transport_socket;
+// #[path = "../../../up_client_socket/rust/u_transport_socket.rs"]
+// pub mod u_transport_socket;
 
 mod utils;
 
@@ -33,7 +33,7 @@ use std::thread;
 
 use crate::constants::TEST_MANAGER_ADDR;
 use testagent::SocketTestAgent;
-use u_transport_socket::UTransportSocket;
+use utransport_socket::UTransportSocket;
 mod testagent;
 use std::net::TcpStream as TcpStreamSync;
 use tokio::runtime::Runtime;

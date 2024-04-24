@@ -2086,6 +2086,27 @@ dependencies = [
 [[package]]
 name = "utransport-socket"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "anystruct",
+ "async-std",
+ "async-trait",
+ "base64",
+ "chrono",
+ "env_logger",
+ "json2pb",
+ "log",
+ "once_cell",
+ "prost 0.12.4",
+ "prost-types 0.12.4",
+ "protobuf",
+ "protobuf-json-mapping",
+ "serde",
+ "serde_json",
+ "tokio",
+ "up-rust",
+ "uuid",
+]
 
 [[package]]
 name = "uuid"
