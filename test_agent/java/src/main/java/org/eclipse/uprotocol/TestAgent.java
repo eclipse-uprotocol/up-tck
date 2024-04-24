@@ -35,6 +35,8 @@ import org.eclipse.uprotocol.uri.validator.UriValidator;
 import org.eclipse.uprotocol.validation.ValidationResult;
 import org.eclipse.uprotocol.uuid.serializer.LongUuidSerializer;
 import org.eclipse.uprotocol.uuid.factory.UuidFactory;
+import org.eclipse.uprotocol.uuid.factory.UuidUtils;
+import org.eclipse.uprotocol.uuid.validate.UuidValidator;
 import org.eclipse.uprotocol.v1.*;
 import org.json.JSONObject;
 
@@ -43,6 +45,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -66,6 +69,7 @@ public class TestAgent {
         actionHandlers.put(Constant.SERIALIZE_URI, TestAgent::handleLongSerializeUriCommand);
         actionHandlers.put(Constant.DESERIALIZE_URI, TestAgent::handleLongDeserializeUriCommand);
         actionHandlers.put(Constant.VALIDATE_URI, TestAgent::handleValidateUriCommand);
+        actionHandlers.put(Constant.VALIDATE_UUID, TestAgent::handleValidateUuidCommand);
         actionHandlers.put(Constant.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
         actionHandlers.put(Constant.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
 
@@ -231,6 +235,61 @@ public class TestAgent {
             sendToTestManager(Map.of("result", result, "message", ""), Constant.VALIDATE_URI, testID);
         }
 
+        return null;
+    }
+
+
+    public static Object handleValidateUuidCommand(Map<String, Object> jsonData) {
+        String uuidType = ((Map<String, Object>) jsonData.get("data")).getOrDefault("uuid_type", "default").toString();
+        String validatorType = ((Map<String, Object>) jsonData.get("data")).getOrDefault("validator_type", "default").toString();
+
+        UUID uuid;
+        switch (uuidType) {
+            case "uprotocol":
+                uuid = UuidFactory.Factories.UPROTOCOL.factory().create();
+                break;
+            case "invalid":
+                uuid = UUID.newBuilder().setMsb(0L).setLsb(0L).build();
+                break;
+            case "uprotocol_time":
+                Instant epochTime = Instant.ofEpochMilli(0);
+                uuid = UuidFactory.Factories.UPROTOCOL.factory().create(epochTime);
+                break;
+            case "uuidv6":
+                uuid = UuidFactory.Factories.UUIDV6.factory().create();
+                break;
+            case "uuidv4":
+                java.util.UUID uuid_java = java.util.UUID.randomUUID();
+                uuid = UUID.newBuilder().setMsb(uuid_java.getMostSignificantBits())
+                        .setLsb(uuid_java.getLeastSignificantBits()).build();
+                break;
+            default:
+                uuid = null;
+        }
+
+        UStatus status;
+        switch (validatorType) {
+            case "get_validator":
+                status = UuidValidator.getValidator(uuid).validate(uuid);
+                break;
+            case "uprotocol":
+                status = UuidValidator.Validators.UPROTOCOL.validator().validate(uuid);
+                break;
+            case "uuidv6":
+                status = UuidValidator.Validators.UUIDV6.validator().validate(uuid);
+                break;
+            case "get_validator_is_uuidv6":
+                status = UuidUtils.isUuidv6(uuid) ? UStatus.newBuilder().setCode(UCode.OK).setMessage("").build()
+                        : UStatus.newBuilder().setCode(UCode.FAILED_PRECONDITION).setMessage("").build();
+                break;
+            default:
+                status = UStatus.newBuilder().setCode(UCode.FAILED_PRECONDITION).setMessage("").build();
+        }
+
+        String result = (status.getCode() == UCode.OK) ? "True" : "False";
+        String message = status.getMessage();
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_UUID, testID);
         return null;
     }
 
