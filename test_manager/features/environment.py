@@ -42,7 +42,7 @@ from utils import loggerutils
 PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
-UE1_PATH = "/home/hzkv71/projects/uspace/ultifi/build-zenoh-examples/bin/tck_agent"
+UE1_PATH = "/home/hzkv71/projects/uspace/ultifi/build-zenoh-examples/bin"
 USTREMER_PATH = "/home/hzkv71/projects/uspace/ultifi/build-ustreamer-release-test"
 
 def create_command(filepath_from_root_repo: str) -> List[str]:
@@ -75,14 +75,19 @@ def create_subprocess(command: List[str]) -> subprocess.Popen:
         raise Exception("only handle Windows and Linux commands for now")
     return process
 
-def run_script_in_directory(directory: str, script: str, log_file: str):
+def run_script_in_directory(directory: str, script: str, log_file: str, flag: str = None, env_var: str = None):
 
     env = os.environ.copy()
-    env['VSOMEIP_CONFIGURATION'] = './bin/src/ustreamer-config.json'
+    if env_var is not None and script == "bin/gmultifi_uStreamer":
+        env['VSOMEIP_CONFIGURATION'] = env_var
+
+    command = f"cd {directory} && ./{script}"
+    if flag is not None:
+        command += f" {flag}"
 
     with open("logs/" + log_file, 'w') as f:
         process = subprocess.Popen(
-            ["bash", "-c", f"cd {directory} && ./{script}"],
+            ["bash", "-c", command],
             stdout=f,
             stderr=subprocess.STDOUT,
             env=env
@@ -119,7 +124,12 @@ def before_all(context):
 
     context.logger.info("Created Test Manager...")
 
-    process: subprocess.Popen = run_script_in_directory(USTREMER_PATH, "bin/gmultifi_uStreamer", "ustreamer.log")
+    process: subprocess.Popen = run_script_in_directory(
+        USTREMER_PATH, 
+        script="bin/gmultifi_uStreamer", 
+        log_file="ustreamer.log", 
+        env_var='./bin/src/ustreamer-config.json'
+    )
     context.ustreamer_process = process
     time.sleep(5)
     context.logger.info("Created UStreamer...")
@@ -132,8 +142,12 @@ def before_all(context):
     # process: subprocess.Popen = create_subprocess(command)
     # context.java_ta_process = process
 
-    command = create_command(UE1_PATH)
-    process: subprocess.Popen = create_subprocess(command)
+    process: subprocess.Popen = run_script_in_directory(
+        UE1_PATH,
+        script="tck_agent",
+        log_file="ue1.log",
+        flag="zenoh"
+    )
     context.cpp_ta_process = process
     context.logger.info("Created uE1 Test Agent...")
 

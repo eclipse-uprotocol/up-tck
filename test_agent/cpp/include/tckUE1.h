@@ -38,6 +38,7 @@ using namespace uprotocol::v1;
  * This class provides functionality for sending and receiving messages using the Zenoh client.
  * It also handles the registration and processing of listener commands.
  */
+template <typename T>
 class ZenohClientTestAgent : public uprotocol::utransport::UListener {
 public:
     /**
@@ -117,7 +118,7 @@ private:
      */
     void handle_send_command();
 
-    std::shared_ptr<uprotocol::client::UpZenohClient> transport_;
+    std::shared_ptr<T> transport_;
     atomic<bool> is_running_;
     boost::asio::io_context io_context_;
     boost::asio::ip::tcp::socket ta_socket_;
