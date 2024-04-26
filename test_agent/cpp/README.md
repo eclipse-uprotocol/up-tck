@@ -60,7 +60,8 @@ cd build-x86_64-release/bin
 ./testagent-app
 
 # 5. Steps to run with TCK
-#### copy the contents of build-x86_64-release to up-tck/test_agent/cpp/target folder
+#### create target folder and copy the contents of build-x86_64-release to up-tck/test_agent/cpp/target folder
+mkdir up-tck/test_agent/cpp/target
 cp -rf build-x86_64-release/bin up-tck/test_agent/cpp/target/
 cd up-tck/test_manager
 sh testrunner.sh
