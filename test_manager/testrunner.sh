@@ -1,8 +1,8 @@
 echo Enter the feature file name
 read fname
-echo Enter Language1 Under Test [python/java]
+echo Enter Language1 Under Test [python/java/cpp]
 read language1
-echo Enter Language2 Under Test [python/java/_blank_]
+echo Enter Language2 Under Test [python/java/cpp/_blank_]
 read language2
 echo Enter Transport Under Test [socket]
 read transport

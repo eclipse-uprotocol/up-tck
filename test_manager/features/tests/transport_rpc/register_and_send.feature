@@ -69,5 +69,11 @@ Feature: Testing Publish and Subscribe Functionality
       | java   | rust   |
       | python | python |
       | java   | java   |
+      | cpp    | cpp    |
       | java   | python |
       | python | java   |
+      | cpp    | python |
+      | python | cpp    |
+      | java   | cpp    |
+      | cpp    | java   |
+      

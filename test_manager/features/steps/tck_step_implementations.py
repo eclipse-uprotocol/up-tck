@@ -580,6 +580,8 @@ def access_nested_dict(dictionary, keys):
 
     keys = keys.split(".")
     value = dictionary
+    if isinstance(value,str):
+        value = json.loads(value)
     for key in keys:
         value = value[key]
     return value
