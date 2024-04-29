@@ -57,7 +57,7 @@ public:
      * This function is responsible for releasing any resources that were acquired during the execution of the program.
      * It should be called before the program terminates to ensure proper cleanup.
      */
-    void cleanup();
+    void cleanUp();
 
     /**
      * \brief Callback function called when a message is received.
@@ -79,17 +79,17 @@ public:
      * \param response The JSON document to send.
      * \param action The action to perform.
      */
-    void send_to_test_manager(const rapidjson::Document& response, const string& action);
+    void sendToTestMananger(const rapidjson::Document& response, const string& action);
 
     /**
      * \brief Receives data from the test manager.
      */
-    void receive_from_tm();
+    void receiveFromTM();
 
     /**
      * \brief Stops receiving data from the test manager.
      */
-    void stop_receive_from_tm();
+    void stopReceiveFromTM();
     
     /**
      * \brief Returns the TCP socket used by the test agent.
@@ -103,7 +103,7 @@ private:
     /**
      * \brief Handles the register listener command.
      */
-    void handle_register_listener_command();
+    void handleRegisterListener();
 
     //void handle_unregister_listener_command(const rapidjson::Document& json_data);
 
@@ -111,15 +111,15 @@ private:
      * \brief Processes the received message.
      * \param json_data The JSON document containing the message data.
      */
-    void process_message(const rapidjson::Document& json_data);
+    void processMessage(const rapidjson::Document& json_data);
 
     /**
      * \brief Handles the send command.
      */
-    void handle_send_command();
+    void handleSendCommand();
 
     std::shared_ptr<T> transport_;
-    atomic<bool> is_running_;
+    atomic<bool> isRunning_;
     boost::asio::io_context io_context_;
     boost::asio::ip::tcp::socket ta_socket_;
     boost::asio::ip::tcp::resolver resolver_;

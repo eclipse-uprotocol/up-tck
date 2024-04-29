@@ -15,7 +15,7 @@ using namespace google::protobuf;
 template <typename T>
 ZenohClientTestAgent<T>::ZenohClientTestAgent() 
     : transport_(uprotocol::client::UpZenohClient::instance()),
-      is_running_(true),
+      isRunning_(true),
       ta_socket_(io_context_),
       resolver_(io_context_) 
 {
@@ -24,13 +24,13 @@ ZenohClientTestAgent<T>::ZenohClientTestAgent()
 
 template <typename T>
 ZenohClientTestAgent<T>::~ZenohClientTestAgent() {
-    cleanup();
+    cleanUp();
 }
 
 template <typename T>
-void ZenohClientTestAgent<T>::cleanup() {
+void ZenohClientTestAgent<T>::cleanUp() {
     spdlog::info("{}", __FUNCTION__);
-    stop_receive_from_tm();
+    stopReceiveFromTM();
     ta_socket_.close();
 }
 
@@ -55,7 +55,7 @@ uprotocol::v1::UStatus ZenohClientTestAgent<T>::onReceive(uprotocol::utransport:
     std::string payloadDataStr(payloadData);
     if (payloadDataStr == "012345678"){
         auto response = const_cast<ZenohClientTestAgent*>(this)->createJSONDocument("payload", "012345678");
-        const_cast<ZenohClientTestAgent*>(this)->send_to_test_manager(response, REGISTER_LISTENER_COMMAND);
+        const_cast<ZenohClientTestAgent*>(this)->sendToTestMananger(response, REGISTER_LISTENER_COMMAND);
     }
 
     uprotocol::v1::UStatus status;
@@ -65,20 +65,20 @@ uprotocol::v1::UStatus ZenohClientTestAgent<T>::onReceive(uprotocol::utransport:
 }
 
 template <typename T>
-void ZenohClientTestAgent<T>::process_message(const rapidjson::Document& json_data) {
+void ZenohClientTestAgent<T>::processMessage(const rapidjson::Document& json_data) {
     spdlog::info("{}", __FUNCTION__);
     jsonParser_.setJSONValue(json_data);
     auto action = jsonParser_.getValueString(json_data, "action");
 
     if (action == SEND_COMMAND) {
-        handle_send_command();
+        handleSendCommand();
     } else if (action == REGISTER_LISTENER_COMMAND) {
-        handle_register_listener_command();
+        handleRegisterListener();
     }
 }
 
 template <typename T>
-void ZenohClientTestAgent<T>::handle_send_command() {
+void ZenohClientTestAgent<T>::handleSendCommand() {
     spdlog::info("{}", __FUNCTION__);
     const uprotocol::utransport::UMessage umsg = jsonParser_.parseToUMessage();
     //spdlog::info("UMESSAGE_IP {}", umsg.attributes().source().authority().ip());
@@ -89,11 +89,11 @@ void ZenohClientTestAgent<T>::handle_send_command() {
     auto status_str = jsonParser_.convertUStatusToString(status);
     auto response = createJSONDocument("code", status_str);
     
-    send_to_test_manager(response, SEND_COMMAND);
+    sendToTestMananger(response, SEND_COMMAND);
 }
 
 template <typename T>
-void ZenohClientTestAgent<T>::handle_register_listener_command() {
+void ZenohClientTestAgent<T>::handleRegisterListener() {
     spdlog::info("{}", __FUNCTION__);
     auto umsg = jsonParser_.parseToUMessage();
     auto uri = umsg.attributes().source();
@@ -103,11 +103,11 @@ void ZenohClientTestAgent<T>::handle_register_listener_command() {
     auto status_str = jsonParser_.convertUStatusToString(status);
     auto response = createJSONDocument("code", status_str);
 
-    send_to_test_manager(response, REGISTER_LISTENER_COMMAND);
+    sendToTestMananger(response, REGISTER_LISTENER_COMMAND);
 }
 
 template <typename T>
-void ZenohClientTestAgent<T>::send_to_test_manager(const rapidjson::Document& response, const string& action) {
+void ZenohClientTestAgent<T>::sendToTestMananger(const rapidjson::Document& response, const string& action) {
     rapidjson::Document response_dict;
     response_dict.SetObject();
     rapidjson::Document::AllocatorType& allocator = response_dict.GetAllocator();
@@ -129,11 +129,11 @@ void ZenohClientTestAgent<T>::send_to_test_manager(const rapidjson::Document& re
 }
 
 template <typename T>
-void ZenohClientTestAgent<T>::receive_from_tm() {
+void ZenohClientTestAgent<T>::receiveFromTM() {
     spdlog::info("{}", __FUNCTION__);
     std::string recv_data;
 
-    while (is_running_) {
+    while (isRunning_) {
         boost::asio::streambuf buf;
         boost::system::error_code error;
         boost::asio::read(ta_socket_, buf, boost::asio::transfer_at_least(1), error);
@@ -158,18 +158,18 @@ void ZenohClientTestAgent<T>::receive_from_tm() {
             // If parsing was successful, clear the accumulated data
             spdlog::info("Received data from test manager: {}", recv_data);
             recv_data.clear();
-            process_message(json_data);
+            processMessage(json_data);
         }
     }
 }
 
 template <typename T>
-void ZenohClientTestAgent<T>::stop_receive_from_tm() {
-    is_running_ = false;
+void ZenohClientTestAgent<T>::stopReceiveFromTM() {
+    isRunning_ = false;
 }
 
 std::atomic<int> exitSignal = 0;
-void handle_signal(int signal) {
+void hangleSignal(int signal) {
     spdlog::info("Received signal to terminate {}", signal);
     exitSignal = signal;
 }
@@ -181,12 +181,12 @@ ZenohClientTestAgent<T> createTestAgent() {
 
 template <typename T>
 void runTestAgent(ZenohClientTestAgent<T>& testAgent) {
-    std::thread receive_thread(&ZenohClientTestAgent<T>::receive_from_tm, &testAgent);
+    std::thread receive_thread(&ZenohClientTestAgent<T>::receiveFromTM, &testAgent);
     receive_thread.detach();    
 
     auto sdk_name = testAgent.createJSONDocument("SDK_name", "ue1");
 
-    testAgent.send_to_test_manager(sdk_name, "initialize");
+    testAgent.sendToTestMananger(sdk_name, "initialize");
 
     //add wait for the receive thread to finish 3 minutes
     while (exitSignal == 0) {
@@ -198,8 +198,8 @@ void runTestAgent(ZenohClientTestAgent<T>& testAgent) {
 
 int main(int argc, char* argv[]) {
     // Register signal handlers
-    std::signal(SIGTERM, handle_signal);
-    std::signal(SIGINT, handle_signal);
+    std::signal(SIGTERM, hangleSignal);
+    std::signal(SIGINT, hangleSignal);
 
     spdlog::info("Starting the test agent");
     if (argc < 2){
@@ -264,7 +264,7 @@ int main(int argc, char* argv[]) {
 
 //     rapidjson::Document result_json;
 //     result_json.Parse(response);
-//     send_to_test_manager(result_json(response), RESPONSE_RPC);
+//     sendToTestMananger(result_json(response), RESPONSE_RPC);
 // }
 
 // void ZenohClientTestAgent<T>::handle_uri_serialize_command(const rapidjson::Document& json_msg) {
@@ -274,7 +274,7 @@ int main(int argc, char* argv[]) {
 //     uprotocol::v1::LongUriSerializer serializer;
 //     string serialized_uri = serializer.serialize(uri);
 
-//     send_to_test_manager(serialized_uri, SERIALIZE_URI);
+//     sendToTestMananger(serialized_uri, SERIALIZE_URI);
 // }
 
 // void ZenohClientTestAgent<T>::handle_uri_deserialize_command(const rapidjson::Document& json_msg) {
@@ -283,7 +283,7 @@ int main(int argc, char* argv[]) {
 //     uprotocol::v1::LongUriSerializer serializer;
 //     uprotocol::v1::UUri uri = serializer.deserialize(serialized_uri);
 
-//     send_to_test_manager(uri, DESERIALIZE_URI);
+//     sendToTestMananger(uri, DESERIALIZE_URI);
 // }
 
 // void ZenohClientTestAgent<T>::handle_uri_validate_command(const rapidjson::Document& json_msg) {
@@ -300,7 +300,7 @@ int main(int argc, char* argv[]) {
 //     }
 //     // ...
 
-//     ZenohClientTestAgent<T>::send_to_test_manager(status, VALIDATE_URI);
+//     ZenohClientTestAgent<T>::sendToTestMananger(status, VALIDATE_URI);
 // }
 
 // void ZenohClientTestAgent<T>::handle_uuid_deserialize_command(const rapidjson::Document& json_msg) {
@@ -309,7 +309,7 @@ int main(int argc, char* argv[]) {
 //     LongUuidSerializer serializer;
 //     UUID uuid = serializer.deserialize(serialized_uuid);
 
-//     send_to_test_manager(uuid, DESERIALIZE_UUID);
+//     sendToTestMananger(uuid, DESERIALIZE_UUID);
 // }
 
 // void ZenohClientTestAgent<T>::handle_uuid_serialize_command(const rapidjson::Document& json_msg) {
@@ -319,5 +319,5 @@ int main(int argc, char* argv[]) {
 //     LongUuidSerializer serializer;
 //     string serialized_uuid = serializer.serialize(uuid);
 
-//     ZenohClientTestAgent<T>::send_to_test_manager(serialized_uuid, SERIALIZE_UUID);
+//     ZenohClientTestAgent<T>::sendToTestMananger(serialized_uuid, SERIALIZE_UUID);
 // }
