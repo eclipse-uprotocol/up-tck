@@ -348,6 +348,33 @@ public class TestAgent {
         return null;
     }
 
+    private static Object handleMicroSerializeUuriCommand(Map<String, Object> jsonData) {
+        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
+        UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
+        byte[] serializedUuri = MicroUriSerializer.instance().serialize(uri);
+        String serializedUuriAsStr = "";
+        try {
+			serializedUuriAsStr = new String(serializedUuri, "ISO-8859-1");
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(serializedUuriAsStr, Constant.MICRO_SERIALIZE_URI, testID);
+        return null;
+    }
+    
+    private static Object handleMicroDeserializeUuriCommand(Map<String, Object> jsonData) {
+    	String microSerializedUuriAsStr = (String) jsonData.get("data");
+    	byte[] microSerializedUuri = microSerializedUuriAsStr.getBytes(StandardCharsets.ISO_8859_1);
+        UUri uri = MicroUriSerializer.instance().deserialize(microSerializedUuri);
+ 
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(uri, Constant.MICRO_DESERIALIZE_URI, testID);
+        return null;
+    }
+
     private static void handleOnReceive(UMessage uMessage) {
         logger.info("Java on_receive called: " + uMessage);
         if (uMessage.getAttributes().getType().equals(UMessageType.UMESSAGE_TYPE_REQUEST)) {

@@ -612,13 +612,7 @@ action_handlers = {
     CONSTANTS.SERIALIZE_UUID: handle_long_serialize_uuid,
     CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
     CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
-    CONSTANTS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
-    CONSTANTS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
     CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command,
-    UAttributeBuilderCommands.PUBLISH.value: build_publish_uattributes,
-    UAttributeBuilderCommands.NOTIFICATION.value: build_notification_uattributes,
-    UAttributeBuilderCommands.REQUEST.value: build_request_uattributes,
-    UAttributeBuilderCommands.RESPONSE.value: build_response_uattributes
 }
 
 
