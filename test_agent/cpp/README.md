@@ -18,10 +18,7 @@ docker login artifactory.ultracruise.gm.com
 # 2. preparing the build environment
 #### from the uDev container
 cd ~/projects/uspace_deploy/ultifi
-#### clone cpp testagent
-mkdir testagent 
-cd testagent
-##### Download and test agent code from https://github.com/eclipse-uprotocol/up-tck/test_agent/cpp to testagent folder
+#### clone/download up-tck from https://github.com/eclipse-uprotocol/up-tck to ultifi folder
 
 #### create the main CMAKE file
 cat << EOF > CMakeLists.txt
@@ -30,13 +27,14 @@ project(ultifi)
  
 set(CONANFILES_ROOT \${CMAKE_CURRENT_SOURCE_DIR})
 include(cmake/CmakeCommonInit.cmake)
-add_repo(testagent)
+add_repo(up-tck/up_client_socket/cpp)
+add_repo(up-tck/test_agent/cpp)
 EOF
  
 #### Set the path of the 'conanfile.py'. Will be used by the UFW-Build-System.
 rm conanfile.py
 
-ln -sf testagent/conanfile.py conanfile.py
+ln -sf up-tck/up_client_socket/cpp/conanfile.py conanfile.py
 
 # 3. compiling 
 #### from the uDev container
@@ -57,7 +55,7 @@ virtual std::future<uprotocol::utransport::UPayload> invokeMethod(const UUri &to
 cd build-x86_64-release/bin
 
 #### run the below executable for standalone launch of cpp testagent
-./testagent-app
+./test_agent_cpp
 
 # 5. Steps to run with TCK
 #### create target folder and copy the contents of build-x86_64-release to up-tck/test_agent/cpp/target folder
@@ -67,4 +65,3 @@ cd up-tck/test_manager
 sh testrunner.sh
 ####  provide feature test name say register_and_unregister
 register_and_unregister
-

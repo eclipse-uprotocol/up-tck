@@ -1,4 +1,6 @@
 #include <TestAgent.h>
+#include <up-cpp/uuid/factory/Uuidv8Factory.h>
+#include <google/protobuf/any.pb.h>
 
 SocketUTransport *TestAgent::transport = new SocketUTransport();
 const UListener *TestAgent::listener = new SocketUListener(transport);
@@ -58,6 +60,10 @@ void TestAgent::sendToTestManager(const Message& proto, const string& action, co
 		jsonStrValue.SetString(strTest_id.c_str(), static_cast<rapidjson::SizeType>(strTest_id.length()), responseDict.GetAllocator());
 		responseDict.AddMember("test_id", jsonStrValue, responseDict.GetAllocator());
 	}
+	else
+	{
+		responseDict.AddMember("test_id", "", responseDict.GetAllocator());
+	}
 
 	writeDataToTMSocket(responseDict, action);
 }
@@ -71,6 +77,11 @@ void TestAgent::sendToTestManager(Document &document, Value &jsonData, string ac
 		jsonStrValue.SetString(strTest_id.c_str(), static_cast<rapidjson::SizeType>(strTest_id.length()), document.GetAllocator());
 		document.AddMember("test_id", jsonStrValue, document.GetAllocator());
 	}
+	else
+	{
+		document.AddMember("test_id", "", document.GetAllocator());
+	}
+
 	writeDataToTMSocket(document, action);
 }
 
@@ -85,7 +96,9 @@ UStatus TestAgent::handleSendCommand(Document &jsonData)
 	string str = pay.value();
 	//std::cout << "TestAgent::handleSendCommand(), payload is : " << str << std::endl;
 	uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),UPayloadType::REFERENCE);
-	uprotocol::utransport::UAttributes attributes(umsg.attributes().id(), (uprotocol::utransport::UMessageType)umsg.attributes().type(),
+	auto id = uprotocol::uuid::Uuidv8Factory::create();
+
+	uprotocol::utransport::UAttributes attributes(id, (uprotocol::utransport::UMessageType)umsg.attributes().type(),
 			(uprotocol::utransport::UPriority)umsg.attributes().priority());
 
 	return transport->send(uri, payload, attributes);

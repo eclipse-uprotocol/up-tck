@@ -86,6 +86,7 @@ UStatus SocketUTransport::send(const UUri& topic, const uprotocol::utransport::U
 	attrV1.mutable_source()->CopyFrom(topic); // Assuming topic is of type UUri
 	attrV1.set_type((uprotocol::v1::UMessageType)attributes.type());
 	attrV1.set_priority((uprotocol::v1::UPriority)attributes.priority());
+	attrV1.mutable_id()->CopyFrom(attributes.id());
 	/*if(!UuidSerializer::serializeToString(attributes.id()).empty())
 	{
 	attrV1.mutable_id()->CopyFrom(attributes.id());
@@ -115,7 +116,7 @@ UStatus SocketUTransport::send(const UUri& topic, const uprotocol::utransport::U
 	status.set_code(UCode::OK);
 	status.set_message("OK");
 
-	if (::send(socketFd, umsgSerialized.c_str(), strlen(umsgSerialized.c_str()),0) < 0) {
+	if (::send(socketFd, umsgSerialized.c_str(), serializedSize,0) < 0) {
 		std::cerr << "SocketUTransport::send(), Error sending UMessage" << std::endl;
 		status.set_code(UCode::INTERNAL);
 		status.set_message("Sending data in socket failed.");
@@ -161,8 +162,6 @@ UStatus SocketUTransport::unregisterListener(const UUri& topic, const UListener&
 
 	if(valid_uri(LongUriSerializer::serialize(topic)))
 	{
-		status.set_code(UCode::OK);
-		status.set_message("OK");
 		auto uriHash = std::hash<std::string>{}(LongUriSerializer::serialize(topic));
 		std::vector<const UListener *>& vec = uriToListener[uriHash];
 
@@ -172,6 +171,13 @@ UStatus SocketUTransport::unregisterListener(const UUri& topic, const UListener&
 		if (it != vec.end()) {
 			std::cout << "SocketUTransport::unregisterListener(), found listner and removing the same." << std::endl;
 			vec.erase(it);
+			status.set_code(UCode::OK);
+			status.set_message("OK");
+		}
+		else
+		{
+			status.set_code(UCode::NOT_FOUND);
+			status.set_message("Listener not found for the given UUri");
 		}
 	}
 	else

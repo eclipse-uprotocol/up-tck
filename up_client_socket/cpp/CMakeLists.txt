@@ -18,8 +18,7 @@
 # under the License.
 
 cmake_minimum_required(VERSION 3.20.1)
-project(test_agent)
-set(APP_NAME test_agent_cpp)
+project(up_client_socket)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -36,8 +35,7 @@ endif()
 
 # Specify the source files
 set(SOURCE_FILES
-    ${CMAKE_SOURCE_DIR}/up-tck/test_agent/cpp/src/TestAgent.cpp
-    ${CMAKE_SOURCE_DIR}/up-tck/test_agent/cpp/src/ProtoConverter.cpp   
+    ${CMAKE_SOURCE_DIR}/up-tck/up_client_socket/cpp/src/SocketUTransport.cpp 
 )
 
 # find and set 
@@ -55,27 +53,26 @@ set(libs_required
      rapidjson
 )
 
-# Add an executable target
-add_executable(${APP_NAME} ${SOURCE_FILES})
+# Add an library target
+add_library(${PROJECT_NAME} ${SOURCE_FILES})
+# Comment above line abd uncomment below line to create shared library
+#add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
-target_include_directories(${APP_NAME} SYSTEM PUBLIC
+target_include_directories(${PROJECT_NAME}  SYSTEM PUBLIC
 						${rapidjson_INCLUDE_DIRS}
 						${up-cpp_INCLUDE_DIR}
-						${CMAKE_SOURCE_DIR}/up-tck/test_agent/cpp/src
 						${CMAKE_SOURCE_DIR}/up-tck/up_client_socket/cpp/src
 						${CMAKE_CURRENT_BINARY_DIR})
-
-string(TOLOWER "${CMAKE_BUILD_TYPE}" lowerbuildtype)
 						
-target_link_directories(${APP_NAME} PUBLIC 
-						${CMAKE_SOURCE_DIR}/build-${CMAKE_SYSTEM_PROCESSOR}-${lowerbuildtype}/lib)
-
-target_link_libraries(${APP_NAME} PUBLIC
+target_link_libraries(${PROJECT_NAME} PUBLIC
     pthread
     rt
     dl
     ${libs_required}
     libuuid::libuuid
-    up_client_socket
 )
+
+INSTALL(TARGETS ${PROJECT_NAME})
+INSTALL(DIRECTORY include DESTINATION .)
+
 
