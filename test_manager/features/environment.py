@@ -42,11 +42,12 @@ def before_all(context):
     context.transport = {}
     context.ues = {}
     context.dispatcher = {}
+    context.subprocesses = []
 
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
-    test_manager = TestManager(context, "127.0.0.5", 12345)
+    test_manager = TestManager(context, "0.0.0.0", 12345)
     thread = Thread(target=test_manager.listen_for_incoming_events)
     thread.start()
     context.tm = test_manager
@@ -62,7 +63,19 @@ def after_all(context: Context):
     context.tm.close_test_agent("python")
     context.tm.close_test_agent("java")
     context.tm.close()
-    context.dispatcher["socket"].close()
+
+    context.logger.info("Close dispatcher...")
+    value = next(iter(context.dispatcher.values()))
+
+    if isinstance(value, subprocess.Popen):
+        value.terminate()  # terminate if it's a subprocess
+    elif hasattr(value, 'close'):
+        value.close()  # close if it has a close method
+    else:
+        context.logger.error("Unable to close the dispatcher...")
+
+    for process in context.subprocesses:
+        process.terminate()
 
     context.logger.info("Closed All Test Agents and Test Manager...")
     try:

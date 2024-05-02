@@ -21,7 +21,8 @@ import time
 import sys
 import os
 import subprocess
-from typing import Any, Dict
+import docker
+from typing import Any, Dict, Optional
 from uprotocol.proto.ustatus_pb2 import UCode
 from threading import Thread
 from typing import List
@@ -42,6 +43,17 @@ sys.path.insert(0, repo.working_tree_dir)
 
 from dispatcher.dispatcher import Dispatcher
 
+def get_absolute_path(filepath_from_root_repo: str) -> str:
+    return os.path.abspath(os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo)
+
+def get_docker_host_ip():
+    cmd = "ip -4 addr show docker0 | grep -Po 'inet \\K[\\d.]+'"
+    try:
+        docker_host_ip = subprocess.check_output(cmd, shell=True).decode().strip()
+    except Exception as e:
+        raise RuntimeError("Failed to get Docker host IP") from e
+    return docker_host_ip
+
 
 def create_command(filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []
@@ -60,23 +72,49 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
             command.append("python3")
     else:
         raise Exception("only accept .jar and .py files")
-    command.append(
-        os.path.abspath(
-            os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo
-        )
-    )
+    command.append(get_absolute_path(filepath_from_root_repo))
     return command
 
 
-def create_subprocess(command: List[str]) -> subprocess.Popen:
+def create_docker_command(input_command: str, container_name: str, env_param: Optional[str] = None, flag: Optional[str] = None) -> List[str]:
+    command = ["docker", "exec", "-u", "0"]
+    client = docker.from_env()
+    container = client.containers.get(container_name)
+    env = os.environ.copy()
+    env['DOCKER_HOST_IP'] = get_docker_host_ip()
+
+    if env_param and '=' in env_param:
+        env_key, env_value = env_param.split('=')
+        env[env_key] = env_value
+    
+    for env_key in env:
+        command.extend(["-e", f"{env_key}={env[env_key]}"])
+
+    command.extend([
+        container.attrs['Name'][1:], 
+        "/bin/bash", "-c", 
+        f"chmod 777 /tmp && {input_command}"
+    ])
+
+    if flag:
+        command[-1] += ' ' + flag
+
+    return command
+
+
+def create_subprocess(command: List[str], log_file: Optional[str] = None) -> subprocess.Popen:
+    LOG_PATH = get_absolute_path(filepath_from_root_repo="test_manager/logs") + "/" + log_file
+    log_file = open(LOG_PATH, 'w') if log_file else None
+    #write command to log file
+    log_file.write("Process command: " + " ".join(command) + "\n")
     if sys.platform == "win32":
-        process = subprocess.Popen(command, shell=True)
+        process = subprocess.Popen(command, shell=True, stdout=log_file, stderr=subprocess.STDOUT)
     elif (
         sys.platform == "linux"
         or sys.platform == "linux2"
         or sys.platform == "darwin"
     ):
-        process = subprocess.Popen(command)
+        process = subprocess.Popen(command, stdout=log_file, stderr=subprocess.STDOUT)
     else:
         print(sys.platform)
         raise Exception("only handle Windows and Linux commands for now")
@@ -104,12 +142,13 @@ def create_sdk_data(context, sdk_name: str, command: str):
 
     if sdk_name not in context.ues:
         context.logger.info(f"Creating {sdk_name} process...")
-        run_command = create_command(PYTHON_TA_PATH if sdk_name == "python" else JAVA_TA_PATH)
-        process = create_subprocess(run_command)
         if sdk_name in ["python", "java"]:
-            context.ues.setdefault(sdk_name, []).append(process)
+            run_command = create_command(PYTHON_TA_PATH if sdk_name == "python" else JAVA_TA_PATH)
         else:
             raise ValueError("Invalid SDK name")
+        
+        process = create_subprocess(run_command, log_file=f"{sdk_name}.log")
+        context.ues.setdefault(sdk_name, []).append(process)
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
@@ -434,6 +473,18 @@ def send_micro_serialized_command(
 
     context.logger.info(f"Response Json {command} -> {response_json}")
     context.response_data = response_json["data"]
+
+
+@given('start docker process "{input_command}" in container "{container_name}" with log {log_file}, env param "{env_param}" and flag "{flag}"')
+@when('start docker process "{input_command}" in container "{container_name}" with log {log_file}, env param "{env_param}" and flag "{flag}"')
+def step_with_env_and_flag(context, input_command: str, container_name: str, log_file: str, env_param: str, flag: str):
+    if env_param == "none":
+        env_param = None
+    if flag == "none":
+        flag = None 
+    command = create_docker_command(input_command, container_name, env_param, flag)
+    process = create_subprocess(command, log_file=f"{log_file}.log")
+    context.subprocesses.append(process)
 
 
 def access_nested_dict(dictionary, keys):
