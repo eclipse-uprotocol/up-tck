@@ -45,10 +45,13 @@ public:
     //static bool dictToProto(const Value& parentJsonObj, Message& parentProtoObj);
     static Message* dictToProto(const Value& parentJsonObj, Message& parentProtoObj);
     static Value convertMessageToJson(const Message& message, Document& doc);
+    static Value convertMessageToDocument(const Message& message, Document& doc);
 
 private:
     static void populateFields(const Value& jsonObj, Message& protoObj);
     static void setFieldValue(Message& protoObj, const FieldDescriptor* fieldDescriptor, const Value& value);
+    static Value convertRepeatedFieldToValue(const FieldDescriptor* field, const Message& message, Document& doc);
+    static Value convertFieldToValue(const FieldDescriptor* field, const Message& message, Document& doc);
 };
 
 #endif /* _PROTO_CONVERTER_H_ */

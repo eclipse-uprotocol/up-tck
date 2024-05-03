@@ -87,6 +87,9 @@ UStatus SocketUTransport::send(const UUri& topic, const uprotocol::utransport::U
 	attrV1.set_type((uprotocol::v1::UMessageType)attributes.type());
 	attrV1.set_priority((uprotocol::v1::UPriority)attributes.priority());
 	attrV1.mutable_id()->CopyFrom(attributes.id());
+	std::optional<uprotocol::v1::UUID> optionalreqid = attributes.reqid();
+	if(optionalreqid.has_value())
+		attrV1.mutable_reqid()->CopyFrom(optionalreqid.value());
 	/*if(!UuidSerializer::serializeToString(attributes.id()).empty())
 	{
 	attrV1.mutable_id()->CopyFrom(attributes.id());
@@ -202,13 +205,14 @@ void SocketUTransport::timeout_counter(UUID &req_id, std::future<uprotocol::utra
 		//std::cout << "SocketUTransport::timeout_counter(),  going to sleep for " << timeinsecs << " seconds" << std::endl;
 		std::this_thread::sleep_for(std::chrono::seconds(timeinsecs));
 		//std::cout << "SocketUTransport::timeout_counter(),  sleep is done" << std::endl;
+		std::lock_guard<std::mutex> lock(mutex_promise);
 		if (!resFuture.valid()) {
 			auto uuidStr = UuidSerializer::serializeToString(req_id);
 			promise.set_exception( std::make_exception_ptr(std::runtime_error("Not received response for request " +
 					uuidStr + " within " + std::to_string(timeout) + " ms")));
 		}
 		else{
-			std::cout << "SocketUTransport::timeout_counter(), resFuture is not valid" << std::endl;
+			std::cout << "SocketUTransport::timeout_counter(), resFuture is valid" << std::endl;
 		}
 	} catch (const std::exception& e) {
 		std::cerr << "SocketUTransport::timeout_counter(), Exception received from thread: " << e.what() << std::endl;
@@ -220,10 +224,10 @@ std::future<uprotocol::utransport::UPayload> SocketUTransport::invokeMethod(cons
 		const uprotocol::utransport::UAttributes &attributes)
 {
 	std::promise<uprotocol::utransport::UPayload> promise;
-	auto responseFuture = promise.get_future();
+	std::future<uprotocol::utransport::UPayload> responseFuture = promise.get_future();
 
 	auto requestId = uprotocol::uuid::Uuidv8Factory::create();
-	//TODO: RESPONSE is REQUEST in v1, signalling is cs4 in v1, not using attributes
+	//TODO: RESPONSE is REQUEST in v1, signalling is cs4 in v1, not using input attributes
 	auto attr = uprotocol::utransport::UAttributesBuilder(requestId, uprotocol::utransport::UMessageType::RESPONSE,
 			uprotocol::utransport::UPriority::SIGNALING).withSink(RESPONSE_URI).build();
 
@@ -244,12 +248,13 @@ void SocketUTransport::handlePublishMessage(UMessage umsg) {
 }
 
 void SocketUTransport::handleRequestMessage(UMessage umsg) {
-	UUri uri = umsg.attributes().sink();
-	notifyListeners(uri, umsg);
+	//TODO: temporarily directly passing from source manually, later will pass from sink once integtrated sdk
+	//UUri uri = umsg.attributes().sink();
+	notifyListeners(umsg.attributes().source(), umsg);
 }
 
 void SocketUTransport::handleResponseMessage(UMessage umsg) {
-	UUID requestId = umsg.attributes().id();
+	UUID requestId = umsg.attributes().reqid();
 	auto uuidStr = UuidSerializer::serializeToString(requestId);
 	auto it = reqidToFutureUMessage.find(uuidStr);
 	if (it != reqidToFutureUMessage.end()) {
@@ -257,7 +262,9 @@ void SocketUTransport::handleResponseMessage(UMessage umsg) {
 		//const char * chTest = "hello";
 		uprotocol::v1::UPayload pay = umsg.payload();
 		string str = pay.value();
+		std::cout << "SocketUTransport::handleResponseMessage(),  payload : " << str << std::endl;
 		uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(), UPayloadType::VALUE);
+		std::lock_guard<std::mutex> lock(mutex_promise);
 		it->second.set_value(payload);
 		reqidToFutureUMessage.erase(it);
 	}

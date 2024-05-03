@@ -58,5 +58,10 @@ Feature: Testing RPC Functionality
       | uE1    | uE2    |
       | java   | java   |
       | python | python |
+      | cpp    | cpp    |
       | java   | python |
       | python | java   |
+      | cpp    | python |
+      | python | cpp    |
+      | java   | cpp    |
+      | cpp    | java   |

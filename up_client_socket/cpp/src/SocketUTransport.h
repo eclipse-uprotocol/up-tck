@@ -72,11 +72,13 @@ class SocketUTransport : public UTransport, public RpcClient {
   std::future<uprotocol::utransport::UPayload> invokeMethod(const UUri &topic,
                                                      const uprotocol::utransport::UPayload &payload,
                                                      const uprotocol::utransport::UAttributes &attributes) override;
+  //TODO: make private once upgraded sdk
+  static const UUri RESPONSE_URI ;
  private:
   constexpr static const char * DISPATCHER_IP = "127.0.0.1";
   constexpr static const int DISPATCHER_PORT = 44444;
   constexpr static const int BYTES_MSG_LENGTH = 32767;
-  static const UUri RESPONSE_URI ;
+
 
   //static constexpr auto queueSize_ = size_t(20);
   //static constexpr auto maxNumOfCuncurrentRequests_ = size_t(2);
@@ -84,6 +86,7 @@ class SocketUTransport : public UTransport, public RpcClient {
   std::thread processThread;
   int socketFd;
   std::mutex mutex_;
+  std::mutex mutex_promise;
 
   using uuriKey = size_t;
   using uuidStr = std::string;

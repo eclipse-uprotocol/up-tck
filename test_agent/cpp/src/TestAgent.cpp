@@ -1,5 +1,4 @@
 #include <TestAgent.h>
-#include <up-cpp/uuid/factory/Uuidv8Factory.h>
 #include <google/protobuf/any.pb.h>
 
 SocketUTransport *TestAgent::transport = new SocketUTransport();
@@ -51,7 +50,8 @@ void TestAgent::sendToTestManager(const Message& proto, const string& action, co
 {
 	Document responseDict;
 	responseDict.SetObject();
-	Value dataValue = ProtoConverter::convertMessageToJson(proto, responseDict);
+	//Value dataValue = ProtoConverter::convertMessageToJson(proto, responseDict);
+	Value dataValue = ProtoConverter::convertMessageToDocument(proto, responseDict);
 	responseDict.AddMember("data", dataValue, responseDict.GetAllocator());
 
 	if(!strTest_id.empty())
@@ -131,23 +131,43 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData)
 	uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),UPayloadType::VALUE);
 	uprotocol::utransport::UAttributes attr;
 
+	// TODO: get umsg from transport and send to test manager
 	std::future<uprotocol::utransport::UPayload> responseFuture = transport->invokeMethod(uri, payload, attr);
 	// CallOptions.newBuilder().build());
 
-	Document document;
-	document.SetObject();
 
-	Value jsonValue(rapidjson::kStringType);
 	try
 	{
+	//std::cout << "handleInvokeMethodCommand(), waiting for payload from responseFuture " << std::endl;
+	responseFuture.wait();
 	//std::cout << "handleInvokeMethodCommand(), getting payload from responseFuture " << std::endl;
-	string strPayload =std::string(reinterpret_cast<const char*>(responseFuture.get().data()), responseFuture.get().size());
-	//std::cout << "handleInvokeMethodCommand(), payload got from responseFuture is : " << strPayload << std::endl;
-	jsonValue.SetString(strPayload.c_str(), static_cast<rapidjson::SizeType>(strPayload.length()), document.GetAllocator());
+	uprotocol::utransport::UPayload pay2 = responseFuture.get();
+	//std::cout << "handleInvokeMethodCommand(), payload size from responseFuture is : " << pay2.size() << std::endl;
+	string strPayload = std::string(reinterpret_cast<const char*>(pay2.data()), pay2.size());
+	std::cout << "handleInvokeMethodCommand(), payload got from responseFuture is : " << strPayload << std::endl;
+
 
 	std::string strTest_id = jsonData["test_id"].GetString();
 
-	sendToTestManager(document, jsonValue, Constants::RESPONSE_RPC, strTest_id);
+	uprotocol::v1::UPayload payV1;
+	payV1.set_format(uprotocol::v1::UPayloadFormat::UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY);
+	payV1.set_value(pay2.data(), pay2.size());
+
+	//TODO: Get all details from response message
+	uprotocol::v1::UAttributes attrV1;
+	attrV1.set_priority((uprotocol::v1::UPriority)uprotocol::utransport::UPriority::SIGNALING);
+	attrV1.mutable_source()->CopyFrom(uri); // Assuming topic is of type UUri
+	attrV1.set_type((uprotocol::v1::UMessageType)uprotocol::utransport::UMessageType::RESPONSE);
+	attrV1.mutable_id()->CopyFrom(attr.id());
+	std::optional<uprotocol::v1::UUID> optionalreqid = attr.reqid();
+	if(optionalreqid.has_value())
+		attrV1.mutable_reqid()->CopyFrom(optionalreqid.value());
+	attrV1.mutable_sink()->CopyFrom(transport->RESPONSE_URI);
+
+	UMessage umsg;
+	umsg.mutable_payload()->CopyFrom(payV1);
+	    		umsg.mutable_attributes()->CopyFrom(attrV1);
+	sendToTestManager(umsg, Constants::INVOKE_METHOD_COMMAND, strTest_id);
 
 	} catch (const std::exception& e) {
 		std::cerr << "TestAgent::handleInvokeMethodCommand(), Exception received while getting payload: " << e.what() << std::endl;
