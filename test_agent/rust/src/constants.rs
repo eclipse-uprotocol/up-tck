@@ -25,6 +25,8 @@
 pub const SEND_COMMAND: &str = "send";
 pub const REGISTER_LISTENER_COMMAND: &str = "registerlistener";
 pub const UNREGISTER_LISTENER_COMMAND: &str = "unregisterlistener";
+pub const SDK_INIT_MESSAGE: &str =
+    r#"{"ue":"rust","data":{"SDK_name":"rust"},"action":"initialize"}"#;
 
 pub const RESPONSE_ON_RECEIVE: &str = "onreceive";
 
@@ -38,7 +40,6 @@ pub fn test_constants() {
         "UNREGISTER_LISTENER_COMMAND: {}",
         UNREGISTER_LISTENER_COMMAND
     );
-    dbg!("DISPATCHER_ADDR: {:?}", DISPATCHER_ADDR);
+
     dbg!("TEST_MANAGER_ADDR: {:?}", TEST_MANAGER_ADDR);
-    dbg!("BYTES_MSG_LENGTH: {}", BYTES_MSG_LENGTH);
 }

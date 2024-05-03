@@ -24,62 +24,62 @@
 
 mod constants;
 
-// #[path = "../../../up_client_socket/rust/u_transport_socket.rs"]
-// pub mod u_transport_socket;
-
 mod utils;
 
-use std::thread;
+use std::{sync::Arc, thread};
 
 use crate::constants::TEST_MANAGER_ADDR;
-use testagent::SocketTestAgent;
+use testagent::{ListenerHandlers, SocketTestAgent};
 use utransport_socket::UTransportSocket;
 mod testagent;
-use std::net::TcpStream as TcpStreamSync;
+use log::error;
+use std::net::TcpStream;
 use tokio::runtime::Runtime;
 
-fn main() {
+fn connect_to_socket(addr: &str, port: u16) -> Result<TcpStream, Box<dyn std::error::Error>> {
+    let socket_addr = format!("{addr}:{port}");
+    match TcpStream::connect(socket_addr) {
+        Ok(socket) => Ok(socket),
+        Err(err) => {
+            error!("Error connecting socket: {}", err);
+            Err(Box::new(err))
+        }
+    }
+}
+
+async fn connect_and_receive() -> Result<(), Box<dyn std::error::Error>> {
+    let test_agent = connect_to_socket(TEST_MANAGER_ADDR.0, TEST_MANAGER_ADDR.1)?;
+    let ta_to_tm_socket = connect_to_socket(TEST_MANAGER_ADDR.0, TEST_MANAGER_ADDR.1)?;
+    let foo_listener_socket_to_tm = connect_to_socket(TEST_MANAGER_ADDR.0, TEST_MANAGER_ADDR.1)?;
+
+    let u_transport = UTransportSocket::new()?;
+    dbg!("Socket transport created successfully");
+
+    let foo_listener = Arc::new(ListenerHandlers::new(foo_listener_socket_to_tm));
+    let agent = SocketTestAgent::new(test_agent, foo_listener);
+    agent
+        .clone()
+        .receive_from_tm(u_transport, ta_to_tm_socket)
+        .await;
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handle = thread::spawn(|| {
-        // Create a new Tokio runtime
-        let Ok(rt) = Runtime::new() else {
-            eprintln!("Error creating runtime");
-            return;
+        let rt = Runtime::new().expect("Error creating runtime");
+        match rt.block_on(connect_and_receive()) {
+            Ok(()) => (),
+            Err(err) => eprintln!("Error occurred: {err}"),
         };
-
-        let test_agent_socket: TcpStreamSync =
-            TcpStreamSync::connect(TEST_MANAGER_ADDR).expect("issue in connecting  sync socket");
-        let test_agent_socket_to_tm: TcpStreamSync =
-            TcpStreamSync::connect(TEST_MANAGER_ADDR).expect("issue in connecting  sync socket");
-
-        rt.block_on(async {
-            // Spawn a Tokio task to connect to TEST_MANAGER_ADDR asynchronously
-
-            let mut transport_socket = UTransportSocket::new();
-            let transport_socket_clone = transport_socket.clone();
-
-            // Spawn a blocking task within the runtime
-            let blocking_task = tokio::task::spawn_blocking(move || {
-                println!("calling socket_init..");
-                transport_socket.socket_init();
-            });
-
-            // Don't wait for the blocking task to finish
-            tokio::spawn(async move {
-                if let Err(err) = blocking_task.await {
-                    dbg!("Error in socket_init: {}", err);
-                    return;
-                }
-                dbg!("socket_init completed successfully");
-            });
-
-            let agent = SocketTestAgent::new(
-                test_agent_socket,
-                test_agent_socket_to_tm,
-                transport_socket_clone,
-            );
-            agent.clone().receive_from_tm().await;
-        });
     });
 
-    handle.join().unwrap();
+    if let Err(err) = handle.join() {
+        eprintln!("Error joining thread: {err:?}");
+        std::process::exit(1);
+    } else {
+        dbg!("Successfully joined thread");
+    }
+    Ok(())
 }
