@@ -23,6 +23,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
+from enum import Enum
 
 TEST_MANAGER_ADDR = ("127.0.0.5", 12345)
 BYTES_MSG_LENGTH: int = 32767
