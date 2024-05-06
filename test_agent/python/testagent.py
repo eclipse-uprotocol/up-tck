@@ -30,13 +30,14 @@ import socket
 import sys
 import git
 from threading import Thread
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, timezone
 
 from google.protobuf import any_pb2
 from google.protobuf.message import Message
 from google.protobuf.descriptor import FieldDescriptor
 from google.protobuf.wrappers_pb2 import StringValue
+from google.protobuf.internal.enum_type_wrapper import EnumTypeWrapper
 from uprotocol.proto.uattributes_pb2 import (
     UPriority,
     UMessageType,
@@ -162,7 +163,8 @@ def send_to_test_manager(
 def dict_to_proto(parent_json_obj, parent_proto_obj):
     def populate_fields(json_obj, proto_obj):
         for field_name, value in json_obj.items():
-            if "BYTES:" in value:
+            # check if incoming json request is a "bytes" type with prepended prefix
+            if isinstance(value, str) and 'BYTES:' in value:
                 value = value.replace("BYTES:", "")
                 value = value.encode("utf-8")
             if hasattr(proto_obj, field_name):
@@ -181,10 +183,19 @@ def dict_to_proto(parent_json_obj, parent_proto_obj):
                     setattr(proto_obj, field_name, value)
         return proto_obj
 
-    populate_fields(parent_json_obj, parent_proto_obj)
-
+    if isinstance(parent_json_obj, dict):
+        populate_fields(parent_json_obj, parent_proto_obj)
+    else:
+        raise TypeError("variable parent_json_obj is not a Dict type")
+    
     return parent_proto_obj
 
+def check_proto_enum_value(value: Any, proto_enum: EnumTypeWrapper) -> Optional[Any]:
+    try:
+        proto_enum.Name(value)
+        return value
+    except:
+        return None
 
 def handle_send_command(json_msg):
     umsg = dict_to_proto(json_msg["data"], UMessage())
