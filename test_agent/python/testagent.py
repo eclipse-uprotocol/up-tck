@@ -42,6 +42,7 @@ from uprotocol.proto.uattributes_pb2 import (
     UPriority,
     UMessageType,
     CallOptions,
+    UAttributes
 )
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
@@ -60,6 +61,7 @@ from uprotocol.uuid.factory.uuidutils import UUIDUtils
 from uprotocol.proto.ustatus_pb2 import UCode
 
 import constants as CONSTANTS
+from constants import UAttributeBuilderCommands, UAttributeBuilderErrors
 
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
@@ -160,13 +162,14 @@ def send_to_test_manager(
     logger.info(f"Sent to TM {response_dict}")
 
 
-def dict_to_proto(parent_json_obj, parent_proto_obj):
-    def populate_fields(json_obj, proto_obj):
+def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
+    def populate_fields(json_obj: Dict[str, Any], proto_obj):
         for field_name, value in json_obj.items():
             # check if incoming json request is a "bytes" type with prepended prefix
             if isinstance(value, str) and 'BYTES:' in value:
                 value = value.replace("BYTES:", "")
                 value = value.encode("utf-8")
+                
             if hasattr(proto_obj, field_name):
                 if isinstance(value, dict):
                     # Recursively update the nested message object
@@ -180,6 +183,7 @@ def dict_to_proto(parent_json_obj, parent_proto_obj):
                             value = float(value)
                     except Exception:
                         pass
+                    
                     setattr(proto_obj, field_name, value)
         return proto_obj
 
@@ -355,6 +359,249 @@ def handle_uuid_validate_command(json_msg):
     )
 
 
+def build_UAttributes(builder: UAttributesBuilder, requested_uattribute_data: Dict[str, Any]) -> Union[UAttributes, str]:
+    for uattr_field_name, uattr_value in requested_uattribute_data.items():
+        try:
+            builder_field_value = getattr(builder, uattr_field_name) 
+        except AttributeError:
+            # if attribute does not exist in UAttributesBuilder, ignore it
+            continue
+        
+        if builder_field_value is None:  # if builder field is empty
+            try:
+                if uattr_field_name in ["source", "sink"]:
+                    uattr_value: UUri = dict_to_proto(uattr_value, UUri())
+                elif uattr_field_name == "reqid":
+                    uattr_value: UUID = dict_to_proto(uattr_value, UUID())
+                elif uattr_field_name == "commstatus":
+                    uattr_value: Optional[int] = check_proto_enum_value(uattr_value, UCode)
+                    if uattr_value is None:
+                        raise ValueError("enum value out of bound!")
+                elif uattr_field_name == "ttl" or uattr_field_name == "plevel":
+                    if not isinstance(uattr_value, int):
+                        raise TypeError(f"{uattr_field_name} should be int type")
+                    elif uattr_value < 0:
+                        raise ValueError(f"{uattr_field_name} should be >= 0")
+                elif uattr_field_name == "token" or uattr_field_name == "traceparent":
+                    if not isinstance(uattr_value, str):
+                        raise TypeError(f"{uattr_field_name} should be str type")
+
+            except TypeError:
+                attributes = UAttributeBuilderErrors.bad_data_type(uattr_field_name)
+                return attributes
+            except ValueError:
+                attributes = UAttributeBuilderErrors.bad_data_value(uattr_field_name)
+                return attributes
+            except AttributeError:
+                attributes = UAttributeBuilderErrors.bad_data_type(uattr_field_name)
+                return attributes
+                
+            setattr(builder, uattr_field_name, uattr_value)
+    
+    attributes: UAttributes = builder.build()
+    return attributes
+
+
+def get_uuri(field_name: str, uattributes_data: Dict[str, Any], command: str,  test_id: str) -> UUri:
+    if field_name not in uattributes_data:
+        send_to_test_manager(UAttributeBuilderErrors.not_given(field_name), 
+                             command, 
+                             received_test_id=test_id)
+        return
+    try:
+        source: UUri = dict_to_proto(uattributes_data[field_name], UUri())
+        return source
+    except TypeError:
+        send_to_test_manager(UAttributeBuilderErrors.bad_data_type(field_name), 
+                             command, 
+                             received_test_id=test_id)
+        return
+    except ValueError:
+        send_to_test_manager(UAttributeBuilderErrors.bad_data_value(field_name), 
+                             command, 
+                             received_test_id=test_id)
+        return
+    except AttributeError:
+        send_to_test_manager(UAttributeBuilderErrors.bad_data_type(field_name), 
+                             command, 
+                             received_test_id=test_id)
+        return
+
+def get_priority(uattributes_data: Dict[str, Any], command: str,  test_id: str) -> str:
+    if "priority" not in uattributes_data:
+        send_to_test_manager(UAttributeBuilderErrors.not_given("priority"), 
+                             command, 
+                             received_test_id=test_id)
+        return
+    priority: Optional[int] = check_proto_enum_value(uattributes_data["priority"], UPriority)
+    if priority is None:
+        send_to_test_manager(UAttributeBuilderErrors.bad_data_value("priority"), 
+                             command, 
+                             received_test_id=test_id)
+        return
+    
+    return priority
+
+def get_ttl(uattributes_data: Dict[str, Any], command: str,  test_id: str) -> int:
+    if "ttl" not in uattributes_data:
+        send_to_test_manager(UAttributeBuilderErrors.not_given("ttl"),
+                             command, 
+                             received_test_id=test_id)
+        return
+    
+    try:        
+        if not isinstance(uattributes_data["ttl"], int):
+            raise TypeError("ttl should be int type")
+        elif uattributes_data["ttl"] < 0:
+            raise ValueError("ttl should be >= 0")
+        
+        ttl: int = int(uattributes_data["ttl"])   
+    except TypeError:
+        send_to_test_manager(UAttributeBuilderErrors.bad_data_type("ttl"), 
+                             command, 
+                             received_test_id=test_id)
+        return
+    except ValueError:
+        send_to_test_manager(UAttributeBuilderErrors.bad_data_value("ttl"), 
+                             command, 
+                             received_test_id=test_id)
+        return
+        
+    
+    return ttl
+
+def get_reqid(uattributes_data: Dict[str, Any], command: str,  test_id: str):
+    if "reqid" not in uattributes_data:
+        send_to_test_manager(UAttributeBuilderErrors.not_given("reqid"), 
+                             command, 
+                             received_test_id=test_id)
+        return
+    try:
+        reqid: UUID = dict_to_proto(uattributes_data["reqid"], UUID()) 
+        return reqid
+    except TypeError:
+        send_to_test_manager(UAttributeBuilderErrors.bad_data_type("reqid"), 
+                             command, 
+                             received_test_id=test_id)
+        return
+    except ValueError:
+        send_to_test_manager(UAttributeBuilderErrors.bad_data_value("reqid"), 
+                             command, 
+                             received_test_id=test_id)
+        return
+    except AttributeError:
+        send_to_test_manager(UAttributeBuilderErrors.bad_data_type("reqid"), 
+                             command, 
+                             received_test_id=test_id)
+        return
+
+
+def build_publish_uattributes(json_msg: Dict[str, Any]):
+    """Builds UAttribute protobuf and replies back to Test Manager
+    Prerequisite: incoming keys in json_msg["data"] MUST match with UAttributesBuilder's fields
+    Args:
+        json_msg (Dict[str, Any]): incoming json data
+    """
+    uattributes_data: Dict[str, Any] = json_msg["data"]
+    test_id: str = json_msg["test_id"]
+    
+    source: UUri = get_uuri("source", uattributes_data, UAttributeBuilderCommands.PUBLISH.value, test_id)
+    if source is None:
+        return
+    
+    priority: UPriority = get_priority(uattributes_data, UAttributeBuilderCommands.PUBLISH.value, test_id)
+    if priority is None:
+        return
+    
+    builder: UAttributesBuilder = UAttributesBuilder.publish(source, priority)
+
+    attributes = build_UAttributes(builder, uattributes_data)
+    
+    send_to_test_manager(attributes, UAttributeBuilderCommands.PUBLISH.value, 
+                         received_test_id=json_msg["test_id"])
+
+
+def build_notification_uattributes(json_msg: Dict[str, Any]):
+    uattributes_data: Dict[str, Any] = json_msg["data"]
+    test_id: str = json_msg["test_id"]
+    
+    source: UUri = get_uuri("source", uattributes_data, UAttributeBuilderCommands.NOTIFICATION.value, test_id)
+    if source is None:
+        return
+    
+    priority: UPriority = get_priority(uattributes_data, UAttributeBuilderCommands.NOTIFICATION.value, test_id)
+    if priority is None:
+        return
+    
+    sink: UUri = get_uuri("sink", uattributes_data, UAttributeBuilderCommands.NOTIFICATION.value, test_id)
+    if sink is None:
+        return
+
+    builder: UAttributesBuilder = UAttributesBuilder.notification(source, sink, priority)
+
+    attributes = build_UAttributes(builder, uattributes_data)
+    
+    send_to_test_manager(attributes, UAttributeBuilderCommands.NOTIFICATION.value, 
+                         received_test_id=json_msg["test_id"])
+
+
+
+def build_request_uattributes(json_msg: Dict[str, Any]):
+    uattributes_data: Dict[str, Any] = json_msg["data"]    
+    test_id: str = json_msg["test_id"]
+    
+    source: UUri = get_uuri("source", uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id)
+    if source is None:
+        return
+    
+    priority: UPriority = get_priority(uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id)
+    if priority is None:
+        return
+    
+    sink: UUri = get_uuri("sink", uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id)
+    if sink is None:
+        return
+
+    ttl: int = get_ttl(uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id)
+    if ttl is None:
+        return
+    
+    builder: UAttributesBuilder = UAttributesBuilder.request(source, sink, priority, ttl)
+
+    attributes = build_UAttributes(builder, uattributes_data)
+    
+    send_to_test_manager(attributes, UAttributeBuilderCommands.REQUEST.value, 
+                         received_test_id=json_msg["test_id"])
+
+
+def build_response_uattributes(json_msg: Dict[str, Any]):
+    uattributes_data: Dict[str, Any] = json_msg["data"]
+    test_id: str = json_msg["test_id"]
+    
+    source: UUri = get_uuri("source", uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id)
+    if source is None:
+        return
+    
+    priority: UPriority = get_priority(uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id)
+    if priority is None:
+        return
+    
+    sink: UUri = get_uuri("sink", uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id)
+    if sink is None:
+        return
+    
+    reqid: UUID = get_reqid(uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id)
+    if reqid is None: 
+        return
+    
+    builder: UAttributesBuilder = UAttributesBuilder.response(source, sink, priority, reqid)
+
+    attributes = build_UAttributes(builder, uattributes_data)
+
+    send_to_test_manager(attributes, UAttributeBuilderCommands.RESPONSE.value, 
+                         received_test_id=json_msg["test_id"])
+    
+
 action_handlers = {
     CONSTANTS.SEND_COMMAND: handle_send_command,
     CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
@@ -367,7 +614,11 @@ action_handlers = {
     CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
     CONSTANTS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
     CONSTANTS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
-    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command
+    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command,
+    UAttributeBuilderCommands.PUBLISH.value: build_publish_uattributes,
+    UAttributeBuilderCommands.NOTIFICATION.value: build_notification_uattributes,
+    UAttributeBuilderCommands.REQUEST.value: build_request_uattributes,
+    UAttributeBuilderCommands.RESPONSE.value: build_response_uattributes
 }
 
 

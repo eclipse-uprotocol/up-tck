@@ -30,6 +30,7 @@ import com.google.protobuf.Message;
 import com.google.protobuf.StringValue; 
 import org.eclipse.uprotocol.Constants.ActionCommands;
 import org.eclipse.uprotocol.Constants.Constant;
+import org.eclipse.uprotocol.Constants.UAttributesBuilderErrors;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
 import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
@@ -51,7 +52,9 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -78,6 +81,11 @@ public class TestAgent {
         actionHandlers.put(ActionCommands.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
         actionHandlers.put(ActionCommands.MICRO_SERIALIZE_URI, TestAgent::handleMicroSerializeUuriCommand);
         actionHandlers.put(ActionCommands.MICRO_DESERIALIZE_URI, TestAgent::handleMicroDeserializeUuriCommand);
+    
+        actionHandlers.put(ActionCommands.BUILD_UATTRIBUTE_PUBLISH, TestAgent::handleBuildPublishUAttributesCommand);
+        actionHandlers.put(ActionCommands.BUILD_UATTRIBUTE_NOTIFICATION, TestAgent::handleBuildNotificationUAttributesCommand);
+        actionHandlers.put(ActionCommands.BUILD_UATTRIBUTE_REQUEST, TestAgent::handleBuildRequestUAttributesCommand);
+        actionHandlers.put(ActionCommands.BUILD_UATTRIBUTE_RESPONSE, TestAgent::handleBuildResponseUAttributesCommand);
     }
 
     static {
@@ -354,6 +362,330 @@ public class TestAgent {
             sendToTestManager(uMessage, ActionCommands.RESPONSE_ON_RECEIVE);
         }
 
+    }
+
+    /**
+      * creates UAttribute Protobuf with given json.
+      * If given json has bad input (e.g. wrong data type, out of scope values, nulls, nonexistent fields), then throw error
+      * @param builder
+      * @param uattributeData: given json/map
+      * @param presetFields: fields that were already set when initializing the UAttributeBuilder
+      * @return
+      * @throws ClassCastException
+      */
+    private static UAttributesResult buildUAttributes(
+            UAttributesBuilder builder, 
+            Map<String, Object> uattributeData, 
+            Set<String> presetFields
+            ) throws ClassCastException {
+        for (Map.Entry<String, Object> entry: uattributeData.entrySet()) {
+            String uattrFieldName = entry.getKey();
+            System.out.println("uattrFieldName: " + uattrFieldName);
+            
+            try {
+                // if field hasn't been set
+                if (!presetFields.contains(uattrFieldName)) {
+    
+                    if (uattrFieldName.equals("sink")) {
+                        Map<String, Object> uattrValue =  (Map<String, Object>) entry.getValue();
+                        System.out.println("sink uattrValue: \n" + uattrValue);
+    
+                        UUri sink = (UUri) ProtoConverter.dictToProto(uattrValue, UUri.newBuilder());
+                        builder.withSink(sink);
+                    }
+                    else if (uattrFieldName.equals("reqid")) {
+                        Map<String, Object> uattrValue =  (Map<String, Object>) entry.getValue();
+                        UUID reqid = (UUID) ProtoConverter.dictToProto(uattrValue, UUID.newBuilder());
+                        builder.withReqId(reqid);
+                    }
+                    else if (uattrFieldName.equals("ttl")){
+                        int ttl = Caster.toInt(entry.getValue());
+                        if (ttl < 0) {
+                            throw new IllegalStateException("ttl is an unsigned int32 type!");
+                        }
+                        builder.withTtl(ttl);
+                    }
+                    else if (uattrFieldName.equals("token")){
+                        String token = (String) entry.getValue();
+                        builder.withToken(token);
+                    }
+                    else if (uattrFieldName.equals("plevel")) {
+                        int plevel = Caster.toInt(entry.getValue());
+                        builder.withPermissionLevel(plevel);
+                    }
+                    else if (uattrFieldName.equals("commstatus")) {
+                        int commstatusValue = Caster.toInt(entry.getValue());
+                        UCode commstatus = UCode.forNumber(commstatusValue);
+                        if (commstatus == null) {
+                            throw new IllegalStateException("given value is not used in commstatus");
+                        }
+                        builder.withCommStatus(commstatus);
+                    }
+                    else if (uattrFieldName.equals("traceparent")) {
+                        String traceparent = (String) entry.getValue();
+                        builder.withTraceparent(traceparent);
+                    }
+                }
+                
+            }catch(ClassCastException cce) {
+                return new UAttributesResult(UAttributesBuilderErrors.badDataType(uattrFieldName));
+            }catch (IllegalArgumentException e) {
+                return new UAttributesResult(UAttributesBuilderErrors.badDataType(uattrFieldName));
+            }catch (IllegalStateException e) {
+                return new UAttributesResult(UAttributesBuilderErrors.badDataValue(uattrFieldName));
+            }
+        }
+        return new UAttributesResult(builder.build());
+    }
+    
+    private static UUri getUUri(String name, Map<String, Object> uattributesData, String command, String testID) {
+        if (!uattributesData.containsKey(name)) {
+            sendToTestManager(UAttributesBuilderErrors.notGiven(name), command, testID);
+            return null;
+        }
+        UUri uuri = null;
+        try {
+            uuri = (UUri) ProtoConverter.dictToProto((Map<String, Object>) uattributesData.get(name), UUri.newBuilder());
+        }catch (NumberFormatException nfe) {
+            sendToTestManager(UAttributesBuilderErrors.badDataValue(name), command, testID);
+            return null;
+        }catch (IllegalArgumentException e) {
+            sendToTestManager(UAttributesBuilderErrors.badDataType(name), command, testID);
+            return null;
+        }catch (ClassCastException e) {
+            sendToTestManager(UAttributesBuilderErrors.badDataType(name), command, testID);
+            return null;
+        }
+        return uuri;
+    }
+    
+    private static UPriority getPriority(Map<String, Object> uattributesData, String command, String testID) {
+        if (!uattributesData.containsKey("priority")) {
+            sendToTestManager(UAttributesBuilderErrors.notGiven("priority"), command, testID);
+            return null;
+        }    	
+        
+        try {
+            double sentPriority = (double) uattributesData.get("priority");    	
+            UPriority priority = UPriority.forNumber((int) sentPriority);
+            if (priority == null) {
+                throw new Exception("Priority's value was out of range");
+            }
+            return priority;
+        }catch (Exception e) {
+            sendToTestManager(UAttributesBuilderErrors.badDataValue("priority"), command, testID);
+            return null;
+        }
+    }
+    
+    private static int getTTL(Map<String, Object> uattributesData, String command, String testID) {
+        if (!uattributesData.containsKey("ttl")) {
+            sendToTestManager(UAttributesBuilderErrors.notGiven("ttl"), command, testID);
+            return -1;
+        }    	
+        
+        try {
+            double sentTTL = (double) uattributesData.get("ttl");    	
+            int ttl = (int) sentTTL;
+            if (ttl < 0) {
+                throw new NumberFormatException("ttl should be >= 0");
+            }
+            return ttl;
+        }catch (NumberFormatException nfe) {
+            sendToTestManager(UAttributesBuilderErrors.badDataValue("ttl"), command, testID);
+            return -1;
+        }catch (IllegalArgumentException e) {
+            sendToTestManager(UAttributesBuilderErrors.badDataType("ttl"), command, testID);
+            return -1;
+        }catch (ClassCastException e) {
+            sendToTestManager(UAttributesBuilderErrors.badDataType("ttl"), command, testID);
+            return -1;
+        }
+    }
+    
+    private static UUID getUUID(String name, Map<String, Object> uattributesData, String command, String testID) {
+        if (!uattributesData.containsKey(name)) {
+            sendToTestManager(UAttributesBuilderErrors.notGiven(name), command, testID);
+            return null;
+        }
+        UUID uuid = null;
+        try {
+            uuid = (UUID) ProtoConverter.dictToProto((Map<String, Object>) uattributesData.get(name), UUID.newBuilder());
+        }catch (NumberFormatException nfe) {
+            sendToTestManager(UAttributesBuilderErrors.badDataValue(name), command, testID);
+            return null;
+        }catch (IllegalArgumentException e) {
+            sendToTestManager(UAttributesBuilderErrors.badDataType(name), command, testID);
+            return null;
+        }catch (ClassCastException e) {
+            sendToTestManager(UAttributesBuilderErrors.badDataType(name), command, testID);
+            return null;
+        }
+        return uuid;
+    }
+    
+    private static Object handleBuildPublishUAttributesCommand(Map<String, Object> jsonData) {
+        Map<String, Object> uattributesData = (Map<String, Object>) jsonData.get("data");
+        String testID = (String) jsonData.get("test_id");
+        
+        UUri source = getUUri("source", uattributesData, ActionCommands.BUILD_UATTRIBUTE_PUBLISH, testID);
+        if (source == null) {
+            return null;
+        }
+        
+        UPriority priority = getPriority(uattributesData, ActionCommands.BUILD_UATTRIBUTE_PUBLISH, testID);
+        if (priority == null) {
+            return null;
+        }
+        
+        UAttributesBuilder builder = UAttributesBuilder.publish(source, priority);
+        
+        Set<String> setFields = new HashSet<String>();
+        setFields.add("source");
+        setFields.add("priority");
+        UAttributesResult result =  buildUAttributes(builder, uattributesData, setFields );
+        
+        if (result.hasPassed()) {
+            UAttributes attributes = result.getAttributes();
+            sendToTestManager(attributes, ActionCommands.BUILD_UATTRIBUTE_PUBLISH, testID);
+            return null;
+        }
+        else {
+            String error = result.getError();
+            sendToTestManager(error, ActionCommands.BUILD_UATTRIBUTE_PUBLISH, testID);
+            return null;
+        }
+    }
+    
+    private static Object handleBuildNotificationUAttributesCommand(Map<String, Object> jsonData) {
+        Map<String, Object> uattributesData = (Map<String, Object>) jsonData.get("data");
+        String testID = (String) jsonData.get("test_id");
+        
+        UUri source = getUUri("source", uattributesData, ActionCommands.BUILD_UATTRIBUTE_NOTIFICATION, testID);
+        if (source == null) {
+            return null;
+        }
+        
+        UPriority priority = getPriority(uattributesData, ActionCommands.BUILD_UATTRIBUTE_NOTIFICATION, testID);
+        if (priority == null) {
+            return null;
+        }
+        
+        UUri sink = getUUri("sink", uattributesData, ActionCommands.BUILD_UATTRIBUTE_NOTIFICATION, testID);
+        if (sink == null) {
+            return null;
+        }
+        
+        UAttributesBuilder builder = UAttributesBuilder.notification(source, sink, priority);
+        
+        Set<String> setFields = new HashSet<String>();
+        setFields.add("source");
+        setFields.add("priority");
+        setFields.add("sink");
+        UAttributesResult result =  buildUAttributes(builder, uattributesData, setFields );
+        
+        if (result.hasPassed()) {
+            UAttributes attributes = result.getAttributes();
+            sendToTestManager(attributes, ActionCommands.BUILD_UATTRIBUTE_NOTIFICATION, testID);
+            return null;
+        }
+        else {
+            String error = result.getError();
+            sendToTestManager(error, ActionCommands.BUILD_UATTRIBUTE_NOTIFICATION, testID);
+            return null;
+        }
+    }
+    
+    private static Object handleBuildRequestUAttributesCommand(Map<String, Object> jsonData) {
+        Map<String, Object> uattributesData = (Map<String, Object>) jsonData.get("data");
+        String testID = (String) jsonData.get("test_id");
+        
+        UUri source = getUUri("source", uattributesData, ActionCommands.BUILD_UATTRIBUTE_REQUEST, testID);
+        if (source == null) {
+            return null;
+        }
+        
+        UPriority priority = getPriority(uattributesData, ActionCommands.BUILD_UATTRIBUTE_REQUEST, testID);
+        if (priority == null) {
+            return null;
+        }
+        
+        UUri sink = getUUri("sink", uattributesData, ActionCommands.BUILD_UATTRIBUTE_REQUEST, testID);
+        if (sink == null) {
+            return null;
+        }
+        
+        int ttl = getTTL(uattributesData, ActionCommands.BUILD_UATTRIBUTE_REQUEST, testID);
+        if (ttl == -1) {
+            return null;
+        }
+        
+        UAttributesBuilder builder = UAttributesBuilder.request(source, sink, priority, ttl);
+        
+        Set<String> setFields = new HashSet<String>();
+        setFields.add("source");
+        setFields.add("priority");
+        setFields.add("sink");
+        setFields.add("ttl");
+
+        UAttributesResult result =  buildUAttributes(builder, uattributesData, setFields );
+        
+        if (result.hasPassed()) {
+            UAttributes attributes = result.getAttributes();
+            sendToTestManager(attributes, ActionCommands.BUILD_UATTRIBUTE_REQUEST, testID);
+            return null;
+        }
+        else {
+            String error = result.getError();
+            sendToTestManager(error, ActionCommands.BUILD_UATTRIBUTE_REQUEST, testID);
+            return null;
+        }
+    }
+    
+    private static Object handleBuildResponseUAttributesCommand(Map<String, Object> jsonData) {
+        Map<String, Object> uattributesData = (Map<String, Object>) jsonData.get("data");
+        String testID = (String) jsonData.get("test_id");
+        
+        UUri source = getUUri("source", uattributesData, ActionCommands.BUILD_UATTRIBUTE_RESPONSE, testID);
+        if (source == null) {
+            return null;
+        }
+        
+        UPriority priority = getPriority(uattributesData, ActionCommands.BUILD_UATTRIBUTE_RESPONSE, testID);
+        if (priority == null) {
+            return null;
+        }
+        
+        UUri sink = getUUri("sink", uattributesData, ActionCommands.BUILD_UATTRIBUTE_RESPONSE, testID);
+        if (sink == null) {
+            return null;
+        }
+        
+        UUID reqid = getUUID("reqid", uattributesData, ActionCommands.BUILD_UATTRIBUTE_RESPONSE, testID);
+        if (reqid == null) {
+            return null;
+        }
+        
+        UAttributesBuilder builder = UAttributesBuilder.response(source, sink, priority, reqid);
+        
+        Set<String> setFields = new HashSet<String>();
+        setFields.add("source");
+        setFields.add("priority");
+        setFields.add("sink");
+        setFields.add("reqid");
+
+        UAttributesResult result =  buildUAttributes(builder, uattributesData, setFields );
+        
+        if (result.hasPassed()) {
+            UAttributes attributes = result.getAttributes();
+            sendToTestManager(attributes, ActionCommands.BUILD_UATTRIBUTE_RESPONSE, testID);
+            return null;
+        }
+        else {
+            String error = result.getError();
+            sendToTestManager(error, ActionCommands.BUILD_UATTRIBUTE_RESPONSE, testID);
+            return null;
+        }
     }
 
     public static void main(String[] args) throws IOException {

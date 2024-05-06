@@ -41,4 +41,8 @@ public class ActionCommands {
     public static final String MICRO_SERIALIZE_URI = "micro_serialize_uri";
     public static final String MICRO_DESERIALIZE_URI = "micro_deserialize_uri";
 
+    public static final String BUILD_UATTRIBUTE_PUBLISH = "build_uattribute_publish";
+    public static final String BUILD_UATTRIBUTE_NOTIFICATION = "build_uattribute_notification";
+    public static final String BUILD_UATTRIBUTE_REQUEST = "build_uattribute_request";
+    public static final String BUILD_UATTRIBUTE_RESPONSE = "build_uattribute_response";
 }
