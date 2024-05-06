@@ -42,3 +42,27 @@ DESERIALIZE_UUID = "uuid_deserialize"
 VALIDATE_UATTRIBUTES = "uattributes_validate"
 MICRO_SERIALIZE_URI = "micro_serialize_uri"
 MICRO_DESERIALIZE_URI = "micro_deserialize_uri"
+
+class UAttributeBuilderCommands(Enum):
+    PUBLISH = "build_uattribute_publish"
+    NOTIFICATION = "build_uattribute_notification"
+    REQUEST = "build_uattribute_request"
+    RESPONSE = "build_uattribute_response"
+
+class UAttributeBuilderErrors(Enum):
+    @staticmethod
+    def not_given(field_name: str):
+        return f"ERROR: \"{field_name}\" field must exist"
+    
+    @staticmethod
+    def bad_data_value(field_name: str):
+        if field_name == "priority":
+            return f"ERROR: \"{field_name}\" field must be int between [0, 7]"
+        elif field_name == "commstatus":
+            return f"ERROR: \"{field_name}\" field must be int between [0, 16]"
+        else:
+            return f"ERROR: same data type but bad value in \"{field_name}\" uAttribute field assignment"
+    
+    @staticmethod
+    def bad_data_type(field_name: str):
+        return f"ERROR: data type misalignment in \"{field_name}\" uAttribute field assignment"
