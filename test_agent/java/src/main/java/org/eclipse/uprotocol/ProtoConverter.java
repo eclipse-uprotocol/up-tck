@@ -59,11 +59,10 @@ public class ProtoConverter {
         }
     }
 
-    private static void setFieldValue(
-    		Message.Builder protoObj, 
-    		Descriptors.FieldDescriptor fieldDescriptor,
-    		Object value){
-    	if (value instanceof String && ((String) value).startsWith("BYTES:")) {
+    private static void setFieldValue(Message.Builder protoObj, Descriptors.FieldDescriptor fieldDescriptor,
+                                      Object value) {
+
+        if (value instanceof String && ((String) value).startsWith("BYTES:")) {
             String byteString = ((String) value).substring(6); // Remove 'BYTES:' prefix
             value = ByteString.copyFromUtf8(byteString);
         }
@@ -73,8 +72,8 @@ public class ProtoConverter {
                 case INT:
                     int integer = Caster.toInt(value);
                     if (fieldDescriptor.getType() == Descriptors.FieldDescriptor.Type.UINT32 && integer < 0) {
-	                	throw new IllegalArgumentException("Field type is an unsigned int");
-	            	}
+                        throw new IllegalArgumentException("Field type is an unsigned int");
+                    }
                     protoObj.setField(fieldDescriptor, integer);
                     break;
                 case LONG:
@@ -94,11 +93,11 @@ public class ProtoConverter {
                     break;
                 case STRING:
                     // by default, the value's data type should be a string
-	                protoObj.setField(fieldDescriptor, value);
+                    protoObj.setField(fieldDescriptor, value);
                     break;
                 case BYTE_STRING:
-	            	protoObj.setField(fieldDescriptor, value);
-	                break;
+                    protoObj.setField(fieldDescriptor, value);
+                    break;
                 case ENUM:
                     protoObj.setField(fieldDescriptor, fieldDescriptor.getEnumType().findValueByName(value.toString()));
                     break;
@@ -116,8 +115,8 @@ public class ProtoConverter {
                     break;
             }
         }catch (NumberFormatException e) {
-    		throw new IllegalArgumentException("incorrect value type to field type");
-    	}
+            throw new IllegalArgumentException("incorrect value type to field type");
+        }
     }
 
     public static JSONObject convertMessageToJSON(Message message) {
@@ -213,7 +212,7 @@ public class ProtoConverter {
             }
             
     	}catch (Exception e) {
-            return defaultValue; // Return default value if field not found or cannot be accessed
+            return defaultValue;  // Return default value if field not found or cannot be accessed
         }
     }
 

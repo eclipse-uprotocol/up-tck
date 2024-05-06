@@ -24,7 +24,7 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: UAttributes Builder publish()
+Feature: UAttributes Builder response()
 
   Scenario Outline: Testing UAttributes Builder's response()
     Given "<uE1>" creates data for "build_uattribute_publish":

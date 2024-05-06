@@ -41,19 +41,14 @@ def cast_data_to_bytes(value: str):
     return value.encode()
 
 def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, bool, float]:
-    """cast value to a specific type represented as a string
-
-    Args:
-        value (str): the original value as string data type
-        data_type (str): data type to cast to
-
-    Raises:
-        ValueError: error if a data_type is not handled below
-
-    Returns:
-        Union[str, int, bool, float]: correctly typed value
     """
-            
+    Cast value to a specific type represented as a string
+    @param value The original value as string data type
+    @param data_type Data type to cast to
+    @raises ValueError Error if a data_type is not handled below
+    @return Correctly typed value
+    """
+
     if "UPriority" in value:
         enum_member: str = value.split(".")[1]
         value = getattr(UPriority, enum_member)
@@ -63,7 +58,7 @@ def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, b
     elif "UCode" in value:
         enum_member: str = value.split(".")[1]
         value = getattr(UCode, enum_member)
-    
+
     if data_type == "int": 
         value = int(value)
     elif data_type == "str": 
@@ -424,23 +419,7 @@ def send_micro_serialized_command(
     context.logger.info(f"Response Json {command} -> {response_json}")
     context.response_data = response_json["data"]
 
-@then(u'receives json with following set fields')
-def generic_expected_and_actual_json_comparison(context):
-    for row in context.table:
-        field_name: str = row["protobuf_field_names"]
-        expected_value: str = row["protobuf_field_values"] 
-        expected_value = cast(expected_value, row["protobuf_field_type"], jsonable=False)
-        
-        # get the field_name's value from incoming context.response_data
-        actual_value = access_nested_dict(context.response_data, field_name)
-        if row["protobuf_field_type"] == "bytes":
-            actual_value = actual_value.encode()
-            
-        context.logger.info(f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}")
-        assert_that( actual_value, equal_to(expected_value))
-        
-        
-def access_nested_dict(dictionary: Union[Dict[str, Any], str], keys: str):
+def access_nested_dict(dictionary, keys):
     if keys == "":
         return dictionary
     
@@ -473,3 +452,19 @@ def unflatten_dict(d, delimiter="."):
             temp = temp[part]
         temp[parts[-1]] = value
     return unflattened
+
+
+@then(u'receives json with following set fields')
+def generic_expected_and_actual_json_comparison(context):
+    for row in context.table:
+        field_name: str = row["protobuf_field_names"]
+        expected_value: str = row["protobuf_field_values"] 
+        expected_value = cast(expected_value, row["protobuf_field_type"], jsonable=False)
+        
+        # get the field_name's value from incoming context.response_data
+        actual_value = access_nested_dict(context.response_data, field_name)
+        if row["protobuf_field_type"] == "bytes":
+            actual_value = actual_value.encode()
+            
+        context.logger.info(f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}")
+        assert_that( actual_value, equal_to(expected_value))
