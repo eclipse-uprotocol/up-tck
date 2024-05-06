@@ -304,6 +304,9 @@ public class TestAgent {
                     case "validate_req_id":
                         val_result = pub_val.validateReqId(attributes);
                         break;
+                    case "validate_id":
+                        val_result = pub_val.validateId(attributes);
+                        break;
                     case "validate_permission_level":
                         val_result = pub_val.validatePermissionLevel(attributes);
                         break;
@@ -325,6 +328,9 @@ public class TestAgent {
                     case "validate_req_id":
                         val_result = req_val.validateReqId(attributes);
                         break;
+                    case "validate_id":
+                        val_result = req_val.validateId(attributes);
+                        break;
                     default:
                         val_result = req_val.validate(attributes);
                 }
@@ -343,6 +349,9 @@ public class TestAgent {
                     case "validate_req_id":
                         val_result = res_val.validateReqId(attributes);
                         break;
+                    case "validate_id":
+                        val_result = res_val.validateId(attributes);
+                        break;
                     default:
                         val_result = res_val.validate(attributes);
                 }
@@ -360,6 +369,9 @@ public class TestAgent {
                         break;
                     case "validate_req_id":
                         val_result = not_val.validateReqId(attributes);
+                        break;
+                    case "validate_id":
+                        val_result = not_val.validateId(attributes);
                         break;
                     case "validate_type":
                         val_result = not_val.validateType(attributes);

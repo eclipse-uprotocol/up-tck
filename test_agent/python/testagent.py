@@ -387,6 +387,7 @@ def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
             "validate_ttl": pub_val.validate_ttl,
             "validate_sink": pub_val.validate_sink,
             "validate_req_id": pub_val.validate_req_id,
+            "validate_id": pub_val.validate_id,
             "validate_permission_level": pub_val.validate_permission_level
         }.get(val_type, pub_val.validate),
         "request_validator": {
@@ -394,18 +395,21 @@ def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
             "validate_ttl": req_val.validate_ttl,
             "validate_sink": req_val.validate_sink,
             "validate_req_id": req_val.validate_req_id,
+            "validate_id": req_val.validate_id,
         }.get(val_type, req_val.validate),
         "response_validator": {
             "is_expired": res_val.is_expired,
             "validate_ttl": res_val.validate_ttl,
             "validate_sink": res_val.validate_sink,
             "validate_req_id": res_val.validate_req_id,
+            "validate_id": res_val.validate_id,
         }.get(val_type, res_val.validate),
         "notification_validator": {
             "is_expired": not_val.is_expired,
             "validate_ttl": not_val.validate_ttl,
             "validate_sink": not_val.validate_sink,
             "validate_req_id": not_val.validate_req_id,
+            "validate_id": not_val.validate_id,
             "validate_type": not_val.validate_type
         }.get(val_type, not_val.validate),
     }.get(val_method)
