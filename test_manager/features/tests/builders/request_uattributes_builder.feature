@@ -29,13 +29,13 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request()
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | source.entity.name          | petapp.ultifi.gm.com          | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | source.entity.name          | petapp.sample.gm.com          | str                 |
       | source.entity.version_major | 1                             | int                 |
       | source.resource.name        | rpc                           | str                 |
 
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | sink.entity.name            | petapp.ultifi.gm.com          | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
+      | sink.entity.name            | petapp.sample.gm.com          | str                 |
       | sink.entity.version_major   | 1                             | int                 |
       | sink.resource.name          | rpc                           | str                 |
       | sink.resource.instance      | response                      | str                 |
@@ -49,11 +49,11 @@ Feature: UAttributes Builder request()
     Then receives json with following set fields: 
       | protobuf_field_names        | protobuf_field_values              | protobuf_field_type |
 
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com      | str                 |
       | source.authority.id         |                                    | bytes               |
       | source.authority.ip         |                                    | bytes               |
       | source.entity.id            | 0                                  | int                 |
-      | source.entity.name          | petapp.ultifi.gm.com               | str                 |
+      | source.entity.name          | petapp.sample.gm.com               | str                 |
       | source.entity.version_major | 1                                  | int                 |
       | source.entity.version_minor | 0                                  | int                 |
       | source.resource.id          | 0                                  | int                 |
@@ -61,11 +61,11 @@ Feature: UAttributes Builder request()
       | source.resource.instance    |                                    | str                 |
       | source.resource.message     |                                    | str                 |
 
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com      | str                 |
       | sink.authority.id           |                                    | bytes               |
       | sink.authority.ip           |                                    | bytes               |
       | sink.entity.id              | 0                                  | int                 |
-      | sink.entity.name            | petapp.ultifi.gm.com               | str                 |
+      | sink.entity.name            | petapp.sample.gm.com               | str                 |
       | sink.entity.version_major   | 1                                  | int                 |
       | sink.entity.version_minor   | 0                                  | int                 |
       | sink.resource.id            | 0                                  | int                 |
@@ -160,8 +160,8 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
 
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | source.entity.name          | petapp.ultifi.gm.com          | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | source.entity.name          | petapp.sample.gm.com          | str                 |
       | source.entity.version_major | 1                             | int                 |
       | source.resource.name        | rpc                           | str                 |
 
@@ -169,8 +169,8 @@ Feature: UAttributes Builder request()
       | ttl                         | 100                           | int                 |
       | token                       | test_token                    | str                 |
 
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | sink.entity.name            | petapp.ultifi.gm.com          | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
+      | sink.entity.name            | petapp.sample.gm.com          | str                 |
       | sink.entity.version_major   | 1                             | int                 |
       | sink.resource.name          | rpc                           | str                 |
 
@@ -185,11 +185,11 @@ Feature: UAttributes Builder request()
     Then receives json with following set fields: 
       | protobuf_field_names        | protobuf_field_values              | protobuf_field_type |
 
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com      | str                 |
       | source.authority.id         |                                    | bytes               |
       | source.authority.ip         |                                    | bytes               |
       | source.entity.id            | 0                                  | int                 |
-      | source.entity.name          | petapp.ultifi.gm.com               | str                 |
+      | source.entity.name          | petapp.sample.gm.com               | str                 |
       | source.entity.version_major | 1                                  | int                 |
       | source.entity.version_minor | 0                                  | int                 |
       | source.resource.id          | 0                                  | int                 |
@@ -197,11 +197,11 @@ Feature: UAttributes Builder request()
       | source.resource.instance    |                                    | str                 |
       | source.resource.message     |                                    | str                 |
 
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com      | str                 |
       | sink.authority.id           |                                    | bytes               |
       | sink.authority.ip           |                                    | bytes               |
       | sink.entity.id              | 0                                  | int                 |
-      | sink.entity.name            | petapp.ultifi.gm.com               | str                 |
+      | sink.entity.name            | petapp.sample.gm.com               | str                 |
       | sink.entity.version_major   | 1                                  | int                 |
       | sink.entity.version_minor   | 0                                  | int                 |
       | sink.resource.id            | 0                                  | int                 |
@@ -229,11 +229,11 @@ Feature: UAttributes Builder request()
     Scenario Outline: Testing UAttributes Builder's request() when attribute field does not exist
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | source.entity.name          | petapp.ultifi.gm.com          | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | source.entity.name          | petapp.sample.gm.com          | str                 |
       | source.resource.name        | rpc                           | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | sink.entity.name            | petapp.ultifi.gm.com          | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
+      | sink.entity.name            | petapp.sample.gm.com          | str                 |
       | sink.entity.version_major   | 1                             | int                 |
       | sink.resource.name          | rpc                           | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
@@ -252,11 +252,11 @@ Feature: UAttributes Builder request()
     Then receives json with following set fields: 
       | protobuf_field_names        | protobuf_field_values              | protobuf_field_type |
 
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com      | str                 |
       | source.authority.id         |                                    | bytes               |
       | source.authority.ip         |                                    | bytes               |
       | source.entity.id            | 0                                  | int                 |
-      | source.entity.name          | petapp.ultifi.gm.com               | str                 |
+      | source.entity.name          | petapp.sample.gm.com               | str                 |
       | source.entity.version_major | 0                                  | int                 |
       | source.entity.version_minor | 0                                  | int                 |
       | source.resource.id          | 0                                  | int                 |
@@ -264,11 +264,11 @@ Feature: UAttributes Builder request()
       | source.resource.instance    |                                    | str                 |
       | source.resource.message     |                                    | str                 |
 
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com      | str                 |
       | sink.authority.id           |                                    | bytes               |
       | sink.authority.ip           |                                    | bytes               |
       | sink.entity.id              | 0                                  | int                 |
-      | sink.entity.name            | petapp.ultifi.gm.com               | str                 |
+      | sink.entity.name            | petapp.sample.gm.com               | str                 |
       | sink.entity.version_major   | 1                                  | int                 |
       | sink.entity.version_minor   | 0                                  | int                 |
       | sink.resource.id            | 0                                  | int                 |
@@ -292,7 +292,7 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
       | source.authority.id         | supposed to be bytes          | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 2                             | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -312,7 +312,7 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
       | source.authority.name       | 101                           | int                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 2                             | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -332,7 +332,7 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
       | source.entity.name          | 102                           | int                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 2                             | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -352,7 +352,7 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
       | source.entity.version_major | supposed to be int            | bytes                |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 2                             | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -372,7 +372,7 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
       | source.resource.name        | 103                           | int                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 2                             | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -392,7 +392,7 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
       | source.resource.name        | name                          | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 2                             | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -414,7 +414,7 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
       | source.resource.name        | name                          | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 2                             | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -436,7 +436,7 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
       | source.resource.name        | name                          | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 2                             | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -458,7 +458,7 @@ Feature: UAttributes Builder request()
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
       | source.resource.name        | name                          | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 2                             | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -479,8 +479,8 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() when primitive attribute field is set to incorrect data type 1
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
       | ttl                         | supposed to be int            | str                 | 
 
@@ -499,8 +499,8 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() when primitive attribute field is set to incorrect data type 2
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -521,8 +521,8 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() when primitive attribute field is set to incorrect data value/range
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -543,8 +543,8 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() when primitive attribute field is set to incorrect data type 3
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
       | ttl                         | 0                             | int                 |
 
@@ -607,7 +607,7 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() when attribute field is set to bad priority and cannot build
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | sink.authority.name         | nam                           | str                 |
       | priority                    | 100                           | int                 |
       | ttl                         | 1000                          | int                 |
@@ -627,7 +627,7 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() when attribute field is set to bad priority 2
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | sink.authority.name         | nam                           | str                 |
       | priority                    | string                        | str                 |
       | ttl                         | 1000                          | int                 |
@@ -647,7 +647,7 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() with no priority set
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | sink.authority.name         | nam                           | str                 |
       | ttl                         | 1000                          | int                 |
 
@@ -666,7 +666,7 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() with no sink set
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
       | ttl                         | 1000                          | int                 |
 
@@ -685,7 +685,7 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() with no ttl set
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | sink.authority.name         | nam                           | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
 
@@ -724,7 +724,7 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() with wrong depth protobuf's field assignment 2
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | sink                        | nam                           | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
       | ttl                         | 1000                          | int                 |
@@ -744,7 +744,7 @@ Feature: UAttributes Builder request()
   Scenario Outline: Testing UAttributes Builder's request() with wrong depth protobuf's field assignment 3
     Given "<uE1>" creates data for "build_uattribute_request":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
       | sink.authority              | wrong assignment              | str                 |
       | ttl                         | 1000                          | int                 |
