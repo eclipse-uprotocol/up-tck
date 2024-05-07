@@ -28,8 +28,8 @@ Feature: UAttributes Builder publish()
   Scenario Outline: Testing UAttributes Builder's publish()
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | source.entity.name          | petapp.ultifi.gm.com          | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | source.entity.name          | petapp.sample.gm.com          | str                 |
       | source.entity.version_major | 1                             | int                 |
       | source.resource.name        | rpc                           | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
@@ -39,11 +39,11 @@ Feature: UAttributes Builder publish()
     Then receives json with following set fields: 
       | protobuf_field_names        | protobuf_field_values              | protobuf_field_type |
 
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com      | str                 |
       | source.authority.id         |                                    | bytes               |
       | source.authority.ip         |                                    | bytes               |
       | source.entity.id            | 0                                  | int                 |
-      | source.entity.name          | petapp.ultifi.gm.com               | str                 |
+      | source.entity.name          | petapp.sample.gm.com               | str                 |
       | source.entity.version_major | 1                                  | int                 |
       | source.entity.version_minor | 0                                  | int                 |
       | source.resource.id          | 0                                  | int                 |
@@ -131,8 +131,8 @@ Feature: UAttributes Builder publish()
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
 
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | source.entity.name          | petapp.ultifi.gm.com          | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | source.entity.name          | petapp.sample.gm.com          | str                 |
       | source.entity.version_major | 1                             | int                 |
       | source.resource.name        | rpc                           | str                 |
 
@@ -140,8 +140,8 @@ Feature: UAttributes Builder publish()
       | ttl                         | 100                           | int                 |
       | token                       | test_token                    | str                 |
 
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | sink.entity.name            | petapp.ultifi.gm.com          | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com | str                 |
+      | sink.entity.name            | petapp.sample.gm.com          | str                 |
       | sink.entity.version_major   | 1                             | int                 |
       | sink.resource.name          | rpc                           | str                 |
 
@@ -156,11 +156,11 @@ Feature: UAttributes Builder publish()
     Then receives json with following set fields: 
       | protobuf_field_names        | protobuf_field_values              | protobuf_field_type |
 
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com      | str                 |
       | source.authority.id         |                                    | bytes               |
       | source.authority.ip         |                                    | bytes               |
       | source.entity.id            | 0                                  | int                 |
-      | source.entity.name          | petapp.ultifi.gm.com               | str                 |
+      | source.entity.name          | petapp.sample.gm.com               | str                 |
       | source.entity.version_major | 1                                  | int                 |
       | source.entity.version_minor | 0                                  | int                 |
       | source.resource.id          | 0                                  | int                 |
@@ -168,11 +168,11 @@ Feature: UAttributes Builder publish()
       | source.resource.instance    |                                    | str                 |
       | source.resource.message     |                                    | str                 |
 
-      | sink.authority.name         | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | sink.authority.name         | vcu.someVin.veh.sample.gm.com      | str                 |
       | sink.authority.id           |                                    | bytes               |
       | sink.authority.ip           |                                    | bytes               |
       | sink.entity.id              | 0                                  | int                 |
-      | sink.entity.name            | petapp.ultifi.gm.com               | str                 |
+      | sink.entity.name            | petapp.sample.gm.com               | str                 |
       | sink.entity.version_major   | 1                                  | int                 |
       | sink.entity.version_minor   | 0                                  | int                 |
       | sink.resource.id            | 0                                  | int                 |
@@ -199,8 +199,8 @@ Feature: UAttributes Builder publish()
   Scenario Outline: Testing UAttributes Builder's publish() when attribute field does not exist
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
-      | source.entity.name          | petapp.ultifi.gm.com          | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
+      | source.entity.name          | petapp.sample.gm.com          | str                 |
       | source.resource.name        | rpc                           | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
 
@@ -216,11 +216,11 @@ Feature: UAttributes Builder publish()
     Then receives json with following set fields: 
       | protobuf_field_names        | protobuf_field_values              | protobuf_field_type |
 
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com      | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com      | str                 |
       | source.authority.id         |                                    | bytes               |
       | source.authority.ip         |                                    | bytes               |
       | source.entity.id            | 0                                  | int                 |
-      | source.entity.name          | petapp.ultifi.gm.com               | str                 |
+      | source.entity.name          | petapp.sample.gm.com               | str                 |
       | source.entity.version_major | 0                                  | int                 |
       | source.entity.version_minor | 0                                  | int                 |
       | source.resource.id          | 0                                  | int                 |
@@ -423,7 +423,7 @@ Feature: UAttributes Builder publish()
   Scenario Outline: Testing UAttributes Builder's publish() when primitive attribute field is set to incorrect data type 1
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
       | ttl                         | supposed to be int            | str                 | 
 
@@ -443,7 +443,7 @@ Feature: UAttributes Builder publish()
   Scenario Outline: Testing UAttributes Builder's publish() when primitive attribute field is set to incorrect data type 2
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
 
       | plevel                      | supposed to be int            | bytes                 |
@@ -464,7 +464,7 @@ Feature: UAttributes Builder publish()
   Scenario Outline: Testing UAttributes Builder's publish() when primitive attribute field is set to incorrect data value/range
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
 
       | commstatus                  | -10                           | int                 |
@@ -484,7 +484,7 @@ Feature: UAttributes Builder publish()
   Scenario Outline: Testing UAttributes Builder's publish() when primitive attribute field is set to incorrect data type 3
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
 
       # was str
@@ -505,7 +505,7 @@ Feature: UAttributes Builder publish()
   Scenario Outline: Testing UAttributes Builder's publish() when primitive attribute field is set to incorrect data type but works
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
 
       | ttl                         | -10                           | int                 |
@@ -543,7 +543,7 @@ Feature: UAttributes Builder publish()
   Scenario Outline: Testing UAttributes Builder's publish() with bad priority set
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | 1000                          | int                 |
 
     When sends "build_uattribute_publish" request
@@ -561,7 +561,7 @@ Feature: UAttributes Builder publish()
     Scenario Outline: Testing UAttributes Builder's publish() with no priority set
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
 
     When sends "build_uattribute_publish" request
 
@@ -596,7 +596,7 @@ Feature: UAttributes Builder publish()
   Scenario Outline: Testing UAttributes Builder's publish() with wrong depth protobuf's field assignment 
     Given "<uE1>" creates data for "build_uattribute_publish":
       | protobuf_field_names        | protobuf_field_values         | protobuf_field_type |
-      | source.authority.name       | vcu.someVin.veh.ultifi.gm.com | str                 |
+      | source.authority.name       | vcu.someVin.veh.sample.gm.com | str                 |
       | priority                    | UPriority.UPRIORITY_CS1       | int                 |
       | sink.authority              | wrong assignment              | str                 |
 
