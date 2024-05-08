@@ -138,7 +138,6 @@ public class ProtoConverter {
     				if (subMsg instanceof Message) {
     					repeated.put( convertMessageToJSON((Message) subMsg) );
     				}
-                    // if a primitive type
     				else{
     					repeated.put(subMsg);
     				}
@@ -180,7 +179,6 @@ public class ProtoConverter {
     				if (subMsg instanceof Message) {
     					repeated.add( convertMessageToMap((Message) subMsg) );
     				}
-                    // if a primitive type
     				else{
     					repeated.add(subMsg);
     				}
@@ -209,7 +207,7 @@ public class ProtoConverter {
             }
             
     	}catch (Exception e) {
-            return defaultValue;  // Return default value if field not found or cannot be accessed
+            return defaultValue;
         }
     }
 

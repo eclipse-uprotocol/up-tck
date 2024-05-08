@@ -15,7 +15,6 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
-
 SEND_COMMAND = "send"
 REGISTER_LISTENER_COMMAND = "registerlistener"
 UNREGISTER_LISTENER_COMMAND = "unregisterlistener"
