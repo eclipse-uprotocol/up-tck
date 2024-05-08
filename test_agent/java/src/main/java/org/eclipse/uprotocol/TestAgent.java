@@ -80,10 +80,8 @@ public class TestAgent {
         actionHandlers.put(ActionCommands.VALIDATE_UUID, TestAgent::handleValidateUuidCommand);
         actionHandlers.put(ActionCommands.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
         actionHandlers.put(ActionCommands.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
-        actionHandlers.put(ActionCommands.VALIDATE_UATTRIBUTES, TestAgent::handleUAttributesValidateCommand);
         actionHandlers.put(ActionCommands.MICRO_SERIALIZE_URI, TestAgent::handleMicroSerializeUuriCommand);
         actionHandlers.put(ActionCommands.MICRO_DESERIALIZE_URI, TestAgent::handleMicroDeserializeUuriCommand);
-    
         actionHandlers.put(ActionCommands.BUILD_UATTRIBUTE_PUBLISH, TestAgent::handleBuildPublishUAttributesCommand);
         actionHandlers.put(ActionCommands.BUILD_UATTRIBUTE_NOTIFICATION, TestAgent::handleBuildNotificationUAttributesCommand);
         actionHandlers.put(ActionCommands.BUILD_UATTRIBUTE_REQUEST, TestAgent::handleBuildRequestUAttributesCommand);
@@ -410,7 +408,6 @@ public class TestAgent {
         sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_UATTRIBUTES, testID);
         return null;
     }
-
 
     public static Object handleValidateUuidCommand(Map<String, Object> jsonData) {
         String uuidType = ((Map<String, Object>) jsonData.get("data")).getOrDefault("uuid_type", "default").toString();

@@ -30,7 +30,7 @@ import socket
 import sys
 import git
 from threading import Thread
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Optional, Union
 import time
 from datetime import datetime, timezone
 

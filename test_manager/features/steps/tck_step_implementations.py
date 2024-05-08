@@ -135,6 +135,49 @@ def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, b
 
     return value
 
+def cast_data_to_jsonable_bytes(value: str):
+    return "BYTES:" + value
+
+def cast_data_to_bytes(value: str):
+    return value.encode()
+
+def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, bool, float]:
+    """
+    Cast value to a specific type represented as a string
+    @param value The original value as string data type
+    @param data_type Data type to cast to
+    @raises ValueError Error if a data_type is not handled below
+    @return Correctly typed value
+    """
+
+    if "UPriority" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UPriority, enum_member)
+    elif "UMessageType" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UMessageType, enum_member)
+    elif "UCode" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UCode, enum_member)
+
+    if data_type == "int": 
+        value = int(value)
+    elif data_type == "str": 
+        pass
+    elif data_type == "bool": 
+        value = bool(value)
+    elif data_type == "float": 
+        value = float(value)
+    elif data_type == "bytes":
+        if jsonable:
+            value = cast_data_to_jsonable_bytes(value)
+        else:
+            value = cast_data_to_bytes(value)
+    else:
+        raise ValueError(f"protobuf_field_type {data_type} not handled!")
+
+    return value
+
 @given('"{sdk_name}" creates data for "{command}"')
 @when('"{sdk_name}" creates data for "{command}"')
 def create_sdk_data(context, sdk_name: str, command: str):
