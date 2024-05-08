@@ -21,10 +21,11 @@ import time
 import sys
 import os
 import subprocess
-from typing import Any, Dict
+from typing import Any, Dict, Union
 from uprotocol.proto.ustatus_pb2 import UCode
 from threading import Thread
 from typing import List
+from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
 
 from behave import when, then, given
 from behave.runner import Context
@@ -82,11 +83,97 @@ def create_subprocess(command: List[str]) -> subprocess.Popen:
     return process
 
 
+def cast_data_to_jsonable_bytes(value: str):
+    return "BYTES:" + value
+
+def cast_data_to_bytes(value: str):
+    return value.encode()
+
+def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, bool, float]:
+    """
+    Cast value to a specific type represented as a string
+    @param value The original value as string data type
+    @param data_type Data type to cast to
+    @raises ValueError Error if a data_type is not handled below
+    @return Correctly typed value
+    """
+
+    if "UPriority" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UPriority, enum_member)
+    elif "UMessageType" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UMessageType, enum_member)
+    elif "UCode" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UCode, enum_member)
+
+    if data_type == "int": 
+        value = int(value)
+    elif data_type == "str": 
+        pass
+    elif data_type == "bool": 
+        value = bool(value)
+    elif data_type == "float": 
+        value = float(value)
+    elif data_type == "bytes":
+        if jsonable:
+            value = cast_data_to_jsonable_bytes(value)
+        else:
+            value = cast_data_to_bytes(value)
+    else:
+        raise ValueError(f"protobuf_field_type {data_type} not handled!")
+
+    return value
+
+def cast_data_to_jsonable_bytes(value: str):
+    return "BYTES:" + value
+
+def cast_data_to_bytes(value: str):
+    return value.encode()
+
+def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, bool, float]:
+    """
+    Cast value to a specific type represented as a string
+    @param value The original value as string data type
+    @param data_type Data type to cast to
+    @raises ValueError Error if a data_type is not handled below
+    @return Correctly typed value
+    """
+
+    if "UPriority" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UPriority, enum_member)
+    elif "UMessageType" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UMessageType, enum_member)
+    elif "UCode" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UCode, enum_member)
+
+    if data_type == "int": 
+        value = int(value)
+    elif data_type == "str": 
+        pass
+    elif data_type == "bool": 
+        value = bool(value)
+    elif data_type == "float": 
+        value = float(value)
+    elif data_type == "bytes":
+        if jsonable:
+            value = cast_data_to_jsonable_bytes(value)
+        else:
+            value = cast_data_to_bytes(value)
+    else:
+        raise ValueError(f"protobuf_field_type {data_type} not handled!")
+
+    return value
+
 @given('"{sdk_name}" creates data for "{command}"')
 @when('"{sdk_name}" creates data for "{command}"')
 def create_sdk_data(context, sdk_name: str, command: str):
     context.json_dict = {}
-    context.status_json = None
+
     if sdk_name == "uE1":
         sdk_name = context.config.userdata["uE1"]
 
@@ -130,6 +217,18 @@ def create_sdk_data(context, sdk_name: str, command: str):
 
     context.ue = sdk_name
     context.action = command
+    
+    # if feature file provides step-table data in step definition ...
+    if context.table is not None:
+        for row in context.table:
+            field_name: str = row["protobuf_field_names"]
+            value: str = row["protobuf_field_values"] 
+            
+            value = cast(value, row["protobuf_field_type"] )
+            context.json_dict[field_name] = value
+        
+        context.logger.info("context.json_dict")  
+        context.logger.info(context.json_dict)  
 
 
 @then('the serialized uri received is "{expected_uri}"')
@@ -446,7 +545,10 @@ def send_micro_serialized_command(
 
 
 def access_nested_dict(dictionary, keys):
-    keys = keys.split(".")
+    if keys == "":
+        return dictionary
+    
+    keys = keys.split('.')
     value = dictionary
     for key in keys:
         value = value[key]
@@ -475,3 +577,19 @@ def unflatten_dict(d, delimiter="."):
             temp = temp[part]
         temp[parts[-1]] = value
     return unflattened
+
+
+@then(u'receives json with following set fields')
+def generic_expected_and_actual_json_comparison(context):
+    for row in context.table:
+        field_name: str = row["protobuf_field_names"]
+        expected_value: str = row["protobuf_field_values"] 
+        expected_value = cast(expected_value, row["protobuf_field_type"], jsonable=False)
+        
+        # get the field_name's value from incoming context.response_data
+        actual_value = access_nested_dict(context.response_data, field_name)
+        if row["protobuf_field_type"] == "bytes":
+            actual_value = actual_value.encode()
+            
+        context.logger.info(f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}")
+        assert_that( actual_value, equal_to(expected_value))

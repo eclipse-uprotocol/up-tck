@@ -15,8 +15,7 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
-TEST_MANAGER_ADDR = ("127.0.0.5", 12345)
-BYTES_MSG_LENGTH: int = 32767
+
 SEND_COMMAND = "send"
 REGISTER_LISTENER_COMMAND = "registerlistener"
 UNREGISTER_LISTENER_COMMAND = "unregisterlistener"
