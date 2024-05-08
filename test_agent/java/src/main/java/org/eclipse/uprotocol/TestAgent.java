@@ -405,7 +405,7 @@ public class TestAgent {
         }
 
         String testID = (String) jsonData.get("test_id");
-        sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_UATTRIBUTES, testID);
+        sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_UATTRIBUTES, testID);
         return null;
     }
 
