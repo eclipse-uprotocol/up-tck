@@ -65,7 +65,8 @@ from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
 from uprotocol.uuid.factory.uuidutils import UUIDUtils
 from uprotocol.proto.ustatus_pb2 import UCode
 
-import constants as CONSTANTS
+import constants.constants as CONSTANTS
+import constants.actioncommands as ACTION_COMMANDS
 
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
@@ -100,7 +101,7 @@ class SocketUListener(UListener):
             )
             transport.send(res_msg)
         else:
-            send_to_test_manager(umsg, CONSTANTS.RESPONSE_ON_RECEIVE)
+            send_to_test_manager(umsg, ACTION_COMMANDS.RESPONSE_ON_RECEIVE)
 
 
 def message_to_dict(message: Message) -> Dict[str, Any]:
@@ -169,7 +170,8 @@ def send_to_test_manager(
 def dict_to_proto(parent_json_obj, parent_proto_obj):
     def populate_fields(json_obj, proto_obj):
         for field_name, value in json_obj.items():
-            if "BYTES:" in value:
+            # check if incoming json request is a "bytes" type with prepended prefix
+            if isinstance(value, str) and 'BYTES:' in value:
                 value = value.replace("BYTES:", "")
                 value = value.encode("utf-8")
             if hasattr(proto_obj, field_name):
@@ -188,7 +190,10 @@ def dict_to_proto(parent_json_obj, parent_proto_obj):
                     setattr(proto_obj, field_name, value)
         return proto_obj
 
-    populate_fields(parent_json_obj, parent_proto_obj)
+    if isinstance(parent_json_obj, dict):
+        populate_fields(parent_json_obj, parent_proto_obj)
+    else:
+        raise TypeError("variable parent_json_obj is not a Dict type")
 
     return parent_proto_obj
 
@@ -221,7 +226,7 @@ def handle_invoke_method_command(json_msg):
         message: Message = message.result()
         send_to_test_manager(
             message,
-            CONSTANTS.INVOKE_METHOD_COMMAND,
+            ACTION_COMMANDS.INVOKE_METHOD_COMMAND,
             received_test_id=json_msg["test_id"],
         )
 
@@ -233,7 +238,7 @@ def handle_long_serialize_uuri(json_msg: Dict[str, Any]):
     serialized_uuri: str = LongUriSerializer().serialize(uri)
     send_to_test_manager(
         serialized_uuri,
-        CONSTANTS.SERIALIZE_URI,
+        ACTION_COMMANDS.SERIALIZE_URI,
         received_test_id=json_msg["test_id"],
     )
 
@@ -241,14 +246,14 @@ def handle_long_serialize_uuri(json_msg: Dict[str, Any]):
 def handle_long_deserialize_uri(json_msg: Dict[str, Any]):
     uuri: UUri = LongUriSerializer().deserialize(json_msg["data"])
     send_to_test_manager(
-        uuri, CONSTANTS.DESERIALIZE_URI, received_test_id=json_msg["test_id"]
+        uuri, ACTION_COMMANDS.DESERIALIZE_URI, received_test_id=json_msg["test_id"]
     )
 
 
 def handle_long_deserialize_uuid(json_msg: Dict[str, Any]):
     uuid: UUID = LongUuidSerializer().deserialize(json_msg["data"])
     send_to_test_manager(
-        uuid, CONSTANTS.DESERIALIZE_UUID, received_test_id=json_msg["test_id"]
+        uuid, ACTION_COMMANDS.DESERIALIZE_UUID, received_test_id=json_msg["test_id"]
     )
 
 
@@ -257,7 +262,7 @@ def handle_long_serialize_uuid(json_msg: Dict[str, Any]):
     serialized_uuid: str = LongUuidSerializer().serialize(uuid)
     send_to_test_manager(
         serialized_uuid,
-        CONSTANTS.SERIALIZE_UUID,
+        ACTION_COMMANDS.SERIALIZE_UUID,
         received_test_id=json_msg["test_id"],
     )
 
@@ -288,7 +293,7 @@ def handle_uri_validate_command(json_msg):
             message = status.get_message()
         send_to_test_manager(
             {"result": result, "message": message},
-            CONSTANTS.VALIDATE_URI,
+            ACTION_COMMANDS.VALIDATE_URI,
             received_test_id=json_msg["test_id"],
         )
 
@@ -299,7 +304,7 @@ def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
     serialized_uuri_json_packed: str = serialized_uuri.decode("iso-8859-1")
     send_to_test_manager(
         serialized_uuri_json_packed, 
-        CONSTANTS.MICRO_SERIALIZE_URI, 
+        ACTION_COMMANDS.MICRO_SERIALIZE_URI, 
         received_test_id=json_msg["test_id"]
     )
 
@@ -310,7 +315,7 @@ def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
     uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
     send_to_test_manager(
         uuri, 
-        CONSTANTS.MICRO_DESERIALIZE_URI, 
+        ACTION_COMMANDS.MICRO_DESERIALIZE_URI, 
         received_test_id=json_msg["test_id"]
     )
 
@@ -346,7 +351,7 @@ def handle_uuid_validate_command(json_msg):
 
     send_to_test_manager(
         {"result": result, "message": message},
-        CONSTANTS.VALIDATE_UUID,
+        ACTION_COMMANDS.VALIDATE_UUID,
         received_test_id=json_msg["test_id"],
     )
 
@@ -434,24 +439,24 @@ def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
 
     send_to_test_manager(
         {"result": result, "message": message},
-        CONSTANTS.VALIDATE_UATTRIBUTES,
+        ACTION_COMMANDS.VALIDATE_UATTRIBUTES,
         received_test_id=json_msg["test_id"],
     )
 
 action_handlers = {
-    CONSTANTS.SEND_COMMAND: handle_send_command,
-    CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
-    CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
-    CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
-    CONSTANTS.SERIALIZE_URI: handle_long_serialize_uuri,
-    CONSTANTS.DESERIALIZE_URI: handle_long_deserialize_uri,
-    CONSTANTS.SERIALIZE_UUID: handle_long_serialize_uuid,
-    CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
-    CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
-    CONSTANTS.VALIDATE_UATTRIBUTES: handle_uattributes_validate_command,
-    CONSTANTS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
-    CONSTANTS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
-    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command
+    ACTION_COMMANDS.SEND_COMMAND: handle_send_command,
+    ACTION_COMMANDS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
+    ACTION_COMMANDS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
+    ACTION_COMMANDS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
+    ACTION_COMMANDS.SERIALIZE_URI: handle_long_serialize_uuri,
+    ACTION_COMMANDS.DESERIALIZE_URI: handle_long_deserialize_uri,
+    ACTION_COMMANDS.SERIALIZE_UUID: handle_long_serialize_uuid,
+    ACTION_COMMANDS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
+    ACTION_COMMANDS.VALIDATE_URI: handle_uri_validate_command,
+    ACTION_COMMANDS.VALIDATE_UATTRIBUTES: handle_uattributes_validate_command,
+    ACTION_COMMANDS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
+    ACTION_COMMANDS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
+    ACTION_COMMANDS.VALIDATE_UUID: handle_uuid_validate_command
 }
 
 
