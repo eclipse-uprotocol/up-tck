@@ -24,7 +24,6 @@
 #
 # -------------------------------------------------------------------------
 
-
 SEND_COMMAND = "send"
 REGISTER_LISTENER_COMMAND = "registerlistener"
 UNREGISTER_LISTENER_COMMAND = "unregisterlistener"
