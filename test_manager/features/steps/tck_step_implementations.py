@@ -43,6 +43,7 @@ PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = (
     "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
 )
+RUST_TA_PATH = "/test_agent/rust/target/debug/rust_tck"
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
 
 repo = git.Repo(".", search_parent_directories=True)
@@ -66,8 +67,6 @@ def create_command(filepath_from_root_repo: str) -> List[str]:
             or sys.platform == "darwin"
         ):
             command.append("python3")
-    else:
-        raise Exception("only accept .jar and .py files")
     command.append(
         os.path.abspath(
             os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo
@@ -112,9 +111,16 @@ def create_sdk_data(context, sdk_name: str, command: str):
 
     if sdk_name not in context.ues:
         context.logger.info(f"Creating {sdk_name} process...")
-        run_command = create_command(PYTHON_TA_PATH if sdk_name == "python" else JAVA_TA_PATH)
+
+        if sdk_name == "python":
+            run_command = create_command(PYTHON_TA_PATH)
+        elif sdk_name == "java":
+            run_command = create_command(JAVA_TA_PATH)
+        elif sdk_name == "rust":
+            run_command = create_command(RUST_TA_PATH)
+
         process = create_subprocess(run_command)
-        if sdk_name in ["python", "java"]:
+        if sdk_name in ["python", "java", "rust"]:
             context.ues.setdefault(sdk_name, []).append(process)
         else:
             raise ValueError("Invalid SDK name")

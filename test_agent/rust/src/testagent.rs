@@ -29,10 +29,8 @@ use up_rust::{Data, UCode, UListener};
 use up_rust::{UMessage, UStatus, UTransport};
 
 use std::io::{Read, Write};
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::Mutex;
 
 use serde::Serialize;
 
@@ -157,7 +155,7 @@ impl SocketTestAgent {
         utransport: &UTransportSocket,
         json_data_value: Value,
     ) -> Result<(), UStatus> {
-        let wrapperu_message: WrapperUMessage = match serde_json::from_value(json_data_value) {
+        let wrapper_umessage: WrapperUMessage = match serde_json::from_value(json_data_value) {
             Ok(message) => message,
             Err(err) => {
                 error!("not able to deserialize send UMessage from Json{}", err);
@@ -167,7 +165,7 @@ impl SocketTestAgent {
                 ));
             }
         };
-        let u_message = wrapperu_message.0;
+        let u_message = wrapper_umessage.0;
         utransport.send(u_message).await
     }
 
@@ -224,13 +222,10 @@ impl SocketTestAgent {
         utransport: UTransportSocket,
         ta_to_tm_socket: TcpStream,
     ) {
-        self.clone().inform_tm_ta_starting();
-        let tmp_socket = self.clientsocket.clone();
+        self.clone().inform_tm_ta_starting().await;
+        let clientsocket = self.clientsocket.clone();
+        let mut socket = clientsocket.lock().await;
 
-        let Ok(mut socket) = tmp_socket.lock() else {
-            error!("Error: Error accessing TM server");
-            return;
-        };
         loop {
             let mut recv_data = [0; 2048];
 
@@ -326,21 +321,17 @@ impl SocketTestAgent {
                 Err(err) => error!("on receive could not send init to TM{}", err),
             }
         }
-        self.close_connection();
+        self.close_connection().await;
     }
 
-    fn inform_tm_ta_starting(self) {
+    async fn inform_tm_ta_starting(self) {
         let sdk_init = SDK_INIT_MESSAGE;
 
         //inform TM that rust TA is running
         dbg!("Sending SDK name to Test Manager!");
         let message = sdk_init.as_bytes();
-        let tmp_socket = self.clientsocket.clone();
-
-        let Ok(mut socket) = tmp_socket.lock() else {
-            error!("Error: Error accessing TM server");
-            return;
-        };
+        let clientsocket = self.clientsocket.clone();
+        let mut socket = clientsocket.lock().await;
 
         let result = socket.write_all(message);
         match result {
@@ -349,15 +340,9 @@ impl SocketTestAgent {
         }
     }
 
-    pub fn close_connection(&self) {
-        let tmp_socket = self.clientsocket.clone();
-        let socket = match tmp_socket.lock() {
-            Ok(socket) => socket,
-            Err(err) => {
-                error!("Error accessing client socket: {}", err);
-                return;
-            }
-        };
+    pub async fn close_connection(&self) {
+        let clientsocket = self.clientsocket.clone();
+        let socket = clientsocket.lock().await;
 
         match socket.shutdown(std::net::Shutdown::Both) {
             Ok(()) => {
