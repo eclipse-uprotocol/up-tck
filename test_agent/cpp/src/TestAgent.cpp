@@ -3,15 +3,12 @@
 
 TestAgent::TestAgent(std::string transportType)
 {
-	// Initialize the transport
-	if (transportType == "socket") {
-		transportPtr_ = std::make_shared<SocketUTransport>();
-	} else if (transportType == "zenoh") {
-		transportPtr_ = uprotocol::client::UpZenohClient::instance();
-	} else {
-		spdlog::error("TestAgent::TestAgent(), Invalid transport type: {}", transportType);
+	transportPtr_ = createTransport(transportType);
+	if (nullptr == transportPtr_) {
+		spdlog::error("TestAgent::TestAgent(), Failed to create transport");
 		exit(1);
 	}
+
 	clientSocket_ = 0;
     actionHandlers_ = {
         {string(Constants::SEND_COMMAND), std::function<UStatus(Document &)>([this](Document &doc) { return this->handleSendCommand(doc); })},
@@ -62,6 +59,19 @@ UStatus TestAgent::onReceive(uprotocol::utransport::UMessage &transportUMessage)
 	}
 
 	return ustatus;
+}
+
+std::shared_ptr<uprotocol::utransport::UTransport> TestAgent::createTransport(const std::string& transportType) {
+	if (transportType == "socket") {
+		return std::make_shared<SocketUTransport>();
+	} else if (transportType == "zenoh") {
+		return uprotocol::client::UpZenohClient::instance(
+			BuildUAuthority().setName("cpp").build(),
+			BuildUEntity().setName("rpc.client").setMajorVersion(1).setId(1).build());
+	} else {
+		spdlog::error("Invalid transport type: {}", transportType);
+		return nullptr;
+	}
 }
 
 void TestAgent::writeDataToTMSocket(Document & responseDoc, string action) const

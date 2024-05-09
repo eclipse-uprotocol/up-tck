@@ -86,6 +86,7 @@ private:
 	std::shared_ptr<uprotocol::utransport::UTransport> transportPtr_;
     std::unordered_map<std::string, FunctionType> actionHandlers_;
 
+    std::shared_ptr<uprotocol::utransport::UTransport> createTransport(const std::string& transportType);
     void writeDataToTMSocket(Document &responseDoc, string action) const;
 };
 
