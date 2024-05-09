@@ -2,7 +2,7 @@
 #include <google/protobuf/any.pb.h>
 
 SocketUTransport *TestAgent::transport = new SocketUTransport();
-const UListener *TestAgent::listener = new SocketUListener(transport);
+const uprotocol::utransport::UListener *TestAgent::listener = new SocketUListener(transport);
 int TestAgent::clientSocket = 0;
 struct sockaddr_in TestAgent::mServerAddress;
 
@@ -91,17 +91,20 @@ UStatus TestAgent::handleSendCommand(Document &jsonData)
 	UMessage umsg(*((UMessage *)ProtoConverter::dictToProto(jsonData["data"], umsg1)));
 	std::cout << "TestAgent::handleSendCommand(), umsg string is : " << umsg.DebugString() << std::endl;
 
-	UUri uri = umsg.attributes().source();
+	
 	uprotocol::v1::UPayload pay = umsg.payload();
 	string str = pay.value();
 	//std::cout << "TestAgent::handleSendCommand(), payload is : " << str << std::endl;
-	uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),UPayloadType::REFERENCE);
+	uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),uprotocol::utransport::UPayloadType::VALUE);
+	payload.setFormat((uprotocol::utransport::UPayloadFormat)pay.format());
+
 	auto id = uprotocol::uuid::Uuidv8Factory::create();
+	auto uAttributesWithId = uprotocol::utransport::UAttributesBuilder(umsg.attributes().source(), id, umsg.attributes().type(),
+			umsg.attributes().priority()).build();
+	//uAttributesWithId.setSink(umsg.attributes().sink());
 
-	uprotocol::utransport::UAttributes attributes(id, (uprotocol::utransport::UMessageType)umsg.attributes().type(),
-			(uprotocol::utransport::UPriority)umsg.attributes().priority());
-
-	return transport->send(uri, payload, attributes);
+	uprotocol::utransport::UMessage transportUMessage(payload, uAttributesWithId);
+	return transport->send(transportUMessage);
 }
 
 UStatus TestAgent::handleRegisterListenerCommand(Document &jsonData)
@@ -128,45 +131,36 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData)
 	ProtoConverter::dictToProto(data["payload"],upPay);
 	string str = upPay.value();
 	//std::cout << "handleInvokeMethodCommand(), payload is : " << str << std::endl;
-	uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),UPayloadType::VALUE);
-	uprotocol::utransport::UAttributes attr;
+	uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),uprotocol::utransport::UPayloadType::VALUE);
+	payload.setFormat((uprotocol::utransport::UPayloadFormat)upPay.format());
+	
+	CallOptions options;
+	options.set_ttl(10000);
 
 	// TODO: get umsg from transport and send to test manager
-	std::future<uprotocol::utransport::UPayload> responseFuture = transport->invokeMethod(uri, payload, attr);
-	// CallOptions.newBuilder().build());
-
+	std::future<uprotocol::rpc::RpcResponse> responseFuture = transport->invokeMethod(uri, payload, options);
 
 	try
 	{
 	//std::cout << "handleInvokeMethodCommand(), waiting for payload from responseFuture " << std::endl;
 	responseFuture.wait();
 	//std::cout << "handleInvokeMethodCommand(), getting payload from responseFuture " << std::endl;
-	uprotocol::utransport::UPayload pay2 = responseFuture.get();
+	uprotocol::rpc::RpcResponse rpcResponse = responseFuture.get();
+	uprotocol::utransport::UPayload pay2 = rpcResponse.message.payload();
 	//std::cout << "handleInvokeMethodCommand(), payload size from responseFuture is : " << pay2.size() << std::endl;
 	string strPayload = std::string(reinterpret_cast<const char*>(pay2.data()), pay2.size());
 	std::cout << "handleInvokeMethodCommand(), payload got from responseFuture is : " << strPayload << std::endl;
 
-
 	std::string strTest_id = jsonData["test_id"].GetString();
 
 	uprotocol::v1::UPayload payV1;
-	payV1.set_format(uprotocol::v1::UPayloadFormat::UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY);
+	payV1.set_format((uprotocol::v1::UPayloadFormat)pay2.format());
 	payV1.set_value(pay2.data(), pay2.size());
-
-	//TODO: Get all details from response message
-	uprotocol::v1::UAttributes attrV1;
-	attrV1.set_priority((uprotocol::v1::UPriority)uprotocol::utransport::UPriority::SIGNALING);
-	attrV1.mutable_source()->CopyFrom(uri); // Assuming topic is of type UUri
-	attrV1.set_type((uprotocol::v1::UMessageType)uprotocol::utransport::UMessageType::RESPONSE);
-	attrV1.mutable_id()->CopyFrom(attr.id());
-	std::optional<uprotocol::v1::UUID> optionalreqid = attr.reqid();
-	if(optionalreqid.has_value())
-		attrV1.mutable_reqid()->CopyFrom(optionalreqid.value());
-	attrV1.mutable_sink()->CopyFrom(transport->RESPONSE_URI);
 
 	UMessage umsg;
 	umsg.mutable_payload()->CopyFrom(payV1);
-	    		umsg.mutable_attributes()->CopyFrom(attrV1);
+	umsg.mutable_attributes()->CopyFrom(rpcResponse.message.attributes());
+
 	sendToTestManager(umsg, Constants::INVOKE_METHOD_COMMAND, strTest_id);
 
 	} catch (const std::exception& e) {

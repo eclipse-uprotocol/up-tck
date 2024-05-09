@@ -74,35 +74,16 @@ void SocketUTransport::listen() {
 	}
 }
 
-UStatus SocketUTransport::send(const UUri& topic, const uprotocol::utransport::UPayload& payload,
-		const uprotocol::utransport::UAttributes& attributes)
+UStatus SocketUTransport::send(const uprotocol::utransport::UMessage &transportUMessage)
 {
 	// TODO: Convert utransport objects to v1 objects
 	uprotocol::v1::UPayload payV1;
-	payV1.set_value(payload.data(), payload.size());
-	payV1.set_format(uprotocol::v1::UPayloadFormat::UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY);
-
-	uprotocol::v1::UAttributes attrV1;
-	attrV1.mutable_source()->CopyFrom(topic); // Assuming topic is of type UUri
-	attrV1.set_type((uprotocol::v1::UMessageType)attributes.type());
-	attrV1.set_priority((uprotocol::v1::UPriority)attributes.priority());
-	attrV1.mutable_id()->CopyFrom(attributes.id());
-	std::optional<uprotocol::v1::UUID> optionalreqid = attributes.reqid();
-	if(optionalreqid.has_value())
-		attrV1.mutable_reqid()->CopyFrom(optionalreqid.value());
-	/*if(!UuidSerializer::serializeToString(attributes.id()).empty())
-	{
-	attrV1.mutable_id()->CopyFrom(attributes.id());
-	// TODO: currently not able to get sink to utransport attr
-	std::optional<uprotocol::v1::UUri> optionalUUri = attributes.sink();
-	if(optionalUUri.has_value())
-		attrV1.mutable_sink()->CopyFrom(optionalUUri.value());
-	attrV1.mutable_sink()->CopyFrom(RESPONSE_URI);
-	}*/
+	payV1.set_value(transportUMessage.payload().data(), transportUMessage.payload().size());
+	payV1.set_format((uprotocol::v1::UPayloadFormat)transportUMessage.payload().format());
 
 	UMessage umsg;
 	umsg.mutable_payload()->CopyFrom(payV1);
-	umsg.mutable_attributes()->CopyFrom(attrV1);
+	umsg.mutable_attributes()->CopyFrom(transportUMessage.attributes());
 
 	std::cout << "SocketUTransport::send(), UMessage in string format is : " << umsg.DebugString() << std::endl;
 
@@ -129,7 +110,7 @@ UStatus SocketUTransport::send(const UUri& topic, const uprotocol::utransport::U
 	return status;
 }
 
-UStatus SocketUTransport::registerListener(const UUri& topic, const UListener& listener) {
+UStatus SocketUTransport::registerListener(const UUri& topic, const uprotocol::utransport::UListener& listener) {
 	UStatus status;
 	status.set_code(UCode::INTERNAL);
 
@@ -141,12 +122,12 @@ UStatus SocketUTransport::registerListener(const UUri& topic, const UListener& l
 		status.set_code(UCode::OK);
 		status.set_message("OK");
 		auto uriHash = std::hash<std::string>{}(LongUriSerializer::serialize(topic));
-		std::vector<const UListener *>& vec = uriToListener[uriHash];
+		std::vector<const uprotocol::utransport::UListener *>& vec = uriToListener[uriHash];
 		if(!vec.empty())
 			vec.push_back(&listener);
 		else
 		{
-			std::vector<const UListener *> vec1;
+			std::vector<const uprotocol::utransport::UListener *> vec1;
 			vec1.push_back(&listener);
 			uriToListener[uriHash]= vec1;
 		}
@@ -159,16 +140,16 @@ UStatus SocketUTransport::registerListener(const UUri& topic, const UListener& l
 	return status;
 }
 
-UStatus SocketUTransport::unregisterListener(const UUri& topic, const UListener& listener) {
+UStatus SocketUTransport::unregisterListener(const UUri& topic, const uprotocol::utransport::UListener& listener) {
 	UStatus status;
 	status.set_code(UCode::INTERNAL);
 
 	if(valid_uri(LongUriSerializer::serialize(topic)))
 	{
 		auto uriHash = std::hash<std::string>{}(LongUriSerializer::serialize(topic));
-		std::vector<const UListener *>& vec = uriToListener[uriHash];
+		std::vector<const uprotocol::utransport::UListener *>& vec = uriToListener[uriHash];
 
-		auto it = std::find_if(vec.begin(), vec.end(), [&](const UListener * item) {
+		auto it = std::find_if(vec.begin(), vec.end(), [&](const uprotocol::utransport::UListener * item) {
 			return item == &listener;
 		});
 		if (it != vec.end()) {
@@ -190,15 +171,8 @@ UStatus SocketUTransport::unregisterListener(const UUri& topic, const UListener&
 	return status;
 }
 
-UStatus SocketUTransport::receive(const UUri &uri, const uprotocol::utransport::UPayload &payload,
-		const uprotocol::utransport::UAttributes &attributes)
-{
-	UStatus status;
-	status.set_code(UCode::UNAVAILABLE);
-	return status;
-}
-
-void SocketUTransport::timeout_counter(UUID &req_id, std::future<uprotocol::utransport::UPayload>& resFuture, std::promise<uprotocol::utransport::UPayload>& promise, int timeout)
+void SocketUTransport::timeout_counter(UUID &req_id, std::future<uprotocol::rpc::RpcResponse>& resFuture, 
+			std::promise<uprotocol::rpc::RpcResponse>& promise, int timeout)
 {
 	try {
 		int timeinsecs = timeout/1000;
@@ -219,27 +193,38 @@ void SocketUTransport::timeout_counter(UUID &req_id, std::future<uprotocol::utra
 	}
 }
 
-std::future<uprotocol::utransport::UPayload> SocketUTransport::invokeMethod(const UUri &topic,
-		const uprotocol::utransport::UPayload &payload,
-		const uprotocol::utransport::UAttributes &attributes)
+std::future<uprotocol::rpc::RpcResponse> SocketUTransport::invokeMethod(const UUri &topic, const uprotocol::utransport::UPayload &payload, 
+                                                          const CallOptions &options)
 {
-	std::promise<uprotocol::utransport::UPayload> promise;
-	std::future<uprotocol::utransport::UPayload> responseFuture = promise.get_future();
+	std::promise<uprotocol::rpc::RpcResponse> promise;
+	std::future<uprotocol::rpc::RpcResponse> responseFuture = promise.get_future();
 
-	auto requestId = uprotocol::uuid::Uuidv8Factory::create();
-	//TODO: RESPONSE is REQUEST in v1, signalling is cs4 in v1, not using input attributes
-	auto attr = uprotocol::utransport::UAttributesBuilder(requestId, uprotocol::utransport::UMessageType::RESPONSE,
-			uprotocol::utransport::UPriority::SIGNALING).withSink(RESPONSE_URI).build();
-
+	int timeout = options.ttl();  
+	auto attr = uprotocol::utransport::UAttributesBuilder::request(RESPONSE_URI, topic,
+			UPriority::UPRIORITY_CS4, timeout).build();
+	auto requestId = attr.id();
 	auto uuidStr = UuidSerializer::serializeToString(requestId);
 	reqidToFutureUMessage[uuidStr] = std::move(promise);
-
-	int timeout = 10000;  // get from call options as input argument
+	
 	std::thread timeoutThread(std::bind(&SocketUTransport::timeout_counter, this, requestId, std::ref(responseFuture) ,
 			std::ref(reqidToFutureUMessage[uuidStr]), timeout));
 	timeoutThread.detach();
-	send(topic, payload, attr);
+
+	auto reqPaylod = payload;
+	uprotocol::utransport::UMessage transportUMessage(reqPaylod, attr);
+	send(transportUMessage);
+
 	return responseFuture;
+}
+
+uprotocol::v1::UStatus SocketUTransport::invokeMethod(const UUri &topic, const uprotocol::utransport::UPayload &payload,
+                                                        const CallOptions &options,
+                                                        const uprotocol::utransport::UListener &callback)
+{
+	UStatus status;
+	status.set_code(UCode::UNIMPLEMENTED);
+	status.set_message("Not Implemented");
+	return status;
 }
 
 void SocketUTransport::handlePublishMessage(UMessage umsg) {
@@ -248,9 +233,8 @@ void SocketUTransport::handlePublishMessage(UMessage umsg) {
 }
 
 void SocketUTransport::handleRequestMessage(UMessage umsg) {
-	//TODO: temporarily directly passing from source manually, later will pass from sink once integtrated sdk
-	//UUri uri = umsg.attributes().sink();
-	notifyListeners(umsg.attributes().source(), umsg);
+	UUri uri = umsg.attributes().sink();
+	notifyListeners(uri, umsg);
 }
 
 void SocketUTransport::handleResponseMessage(UMessage umsg) {
@@ -259,13 +243,19 @@ void SocketUTransport::handleResponseMessage(UMessage umsg) {
 	auto it = reqidToFutureUMessage.find(uuidStr);
 	if (it != reqidToFutureUMessage.end()) {
 		// TODO:get from umsg and convert to utransport objects
-		//const char * chTest = "hello";
 		uprotocol::v1::UPayload pay = umsg.payload();
 		string str = pay.value();
 		std::cout << "SocketUTransport::handleResponseMessage(),  payload : " << str << std::endl;
-		uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(), UPayloadType::VALUE);
-		std::lock_guard<std::mutex> lock(mutex_promise);
-		it->second.set_value(payload);
+		uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(), uprotocol::utransport::UPayloadType::VALUE);
+		
+		std::lock_guard<std::mutex> lock(mutex_promise);		
+		uprotocol::rpc::RpcResponse rpcResponse;
+		rpcResponse.message.setPayload(payload);
+		auto reqAttributes = umsg.attributes();
+       	rpcResponse.message.setAttributes(reqAttributes);
+        rpcResponse.status.set_code(UCode::OK);
+
+		it->second.set_value(rpcResponse);
 		reqidToFutureUMessage.erase(it);
 	}
 	else
@@ -277,20 +267,19 @@ void SocketUTransport::handleResponseMessage(UMessage umsg) {
 void SocketUTransport::notifyListeners(UUri uri, UMessage umsg) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	auto uriHash = std::hash<std::string>{}(LongUriSerializer::serialize(uri));
-	std::vector<const UListener *>& listeners = uriToListener[uriHash];
+	std::vector<const uprotocol::utransport::UListener *>& listeners = uriToListener[uriHash];
 	if (!listeners.empty() ) {
 		for (const auto listener : listeners)
 		{
-			// TODO:get from umsg and convert to utransport objects
+			// TODO:get from v1 umsg and convert to transport umsg
 			uprotocol::v1::UPayload pay = umsg.payload();
 			string str = pay.value();
-			//const char * chTest = "hello";
 			std::cout << "SocketUTransport::notifyListeners(),  payload : " << str << std::endl;
-			uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),UPayloadType::VALUE);
-			//uprotocol::utransport::UPayload payload((const unsigned char *)"hello", 5,UPayloadType::VALUE);
-			uprotocol::utransport::UAttributes attributes(umsg.attributes().id(), (uprotocol::utransport::UMessageType)umsg.attributes().type(),
-					(uprotocol::utransport::UPriority)umsg.attributes().priority());
-			listener->onReceive(uri, payload, attributes);
+			uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),
+							uprotocol::utransport::UPayloadType::VALUE);
+			auto reqAttributes = umsg.attributes();
+			uprotocol::utransport::UMessage transportUMessage(payload, reqAttributes);
+			listener->onReceive(transportUMessage);
 		}
 	} else {
 		std::cerr << "SocketUTransport::notifyListeners(), Uri not found in Listener Map, discarding..."<< std::endl;

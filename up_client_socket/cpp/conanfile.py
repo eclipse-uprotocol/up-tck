@@ -40,7 +40,7 @@ class UpClientSocket(ConanFile):
         
     def requirements(self):
         self.requires("protobuf/3.21.12")
-        self.requires("up-cpp/0.1.5.0-dev")
+        self.requires("up-cpp/0.1.2-dev")
         self.requires("rapidjson/cci.20230929")
         self.requires("spdlog/1.13.0")
         self.requires("fmt/10.2.1")

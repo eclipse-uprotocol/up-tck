@@ -40,8 +40,10 @@
 #include <algorithm>
 
 #include <up-cpp/transport/UTransport.h>
+#include <up-cpp/transport/datamodel/UMessage.h>
 #include <up-cpp/rpc/RpcClient.h>
 #include <up-cpp/uri/builder/BuildUUri.h>
+#include <up-cpp/transport/builder/UAttributesBuilder.h>
 #include <up-cpp/uri/builder/BuildEntity.h>
 #include <up-cpp/uri/builder/BuildUResource.h>
 #include <up-cpp/uri/builder/BuildUAuthority.h>
@@ -57,28 +59,27 @@ using namespace uprotocol::uri;
 using namespace uprotocol::uuid;
 using namespace uprotocol::utils;
 
-class SocketUTransport : public UTransport, public RpcClient {
+class SocketUTransport : public uprotocol::utransport::UTransport, public uprotocol::rpc::RpcClient {
  public:
   SocketUTransport();
   ~SocketUTransport();
   // UTransport API's
-  UStatus send(const UUri& topic, const uprotocol::utransport::UPayload& payload,
-		  const uprotocol::utransport::UAttributes& attributes) override;
-  UStatus registerListener(const UUri& topic, const UListener& listener) override;
-  UStatus unregisterListener(const UUri& topic, const UListener& listener) override;
-  UStatus receive(const UUri &uri, const uprotocol::utransport::UPayload &payload,
-		  const uprotocol::utransport::UAttributes &attributes) override;
+  UStatus send(const uprotocol::utransport::UMessage &transportUMessage) override;
+  UStatus registerListener(const UUri& topic, const uprotocol::utransport::UListener& listener) override;
+  UStatus unregisterListener(const UUri& topic, const uprotocol::utransport::UListener& listener) override;
   // RpcClient API's
-  std::future<uprotocol::utransport::UPayload> invokeMethod(const UUri &topic,
-                                                     const uprotocol::utransport::UPayload &payload,
-                                                     const uprotocol::utransport::UAttributes &attributes) override;
-  //TODO: make private once upgraded sdk
-  static const UUri RESPONSE_URI ;
+  std::future<uprotocol::rpc::RpcResponse> invokeMethod(const UUri &topic, const uprotocol::utransport::UPayload &payload, 
+                                                          const CallOptions &options) override;
+  uprotocol::v1::UStatus invokeMethod(const UUri &topic, const uprotocol::utransport::UPayload &payload,
+                                                        const CallOptions &options,
+                                                        const uprotocol::utransport::UListener &callback) override;
+
  private:
   constexpr static const char * DISPATCHER_IP = "127.0.0.1";
   constexpr static const int DISPATCHER_PORT = 44444;
   constexpr static const int BYTES_MSG_LENGTH = 32767;
-
+  
+  static const UUri RESPONSE_URI ;
 
   //static constexpr auto queueSize_ = size_t(20);
   //static constexpr auto maxNumOfCuncurrentRequests_ = size_t(2);
@@ -91,8 +92,8 @@ class SocketUTransport : public UTransport, public RpcClient {
   using uuriKey = size_t;
   using uuidStr = std::string;
 
-  std::unordered_map<uuriKey, std::vector<const UListener *>> uriToListener;
-  std::unordered_map<uuidStr, std::promise<uprotocol::utransport::UPayload>> reqidToFutureUMessage;
+  std::unordered_map<uuriKey, std::vector<const uprotocol::utransport::UListener *>> uriToListener;
+  std::unordered_map<uuidStr, std::promise<uprotocol::rpc::RpcResponse>> reqidToFutureUMessage;
 
   void listen();
   void handlePublishMessage(UMessage umsg);
@@ -100,8 +101,8 @@ class SocketUTransport : public UTransport, public RpcClient {
   void handleResponseMessage(UMessage umsg);
   void notifyListeners(UUri uri, UMessage umsg);
 
-  void timeout_counter(UUID &req_id, std::future<uprotocol::utransport::UPayload>& resFuture,
-		  std::promise<uprotocol::utransport::UPayload>& promise, int timeout);
+  void timeout_counter(UUID &req_id, std::future<uprotocol::rpc::RpcResponse>& resFuture,
+		  std::promise<uprotocol::rpc::RpcResponse>& promise, int timeout);
 };
 
 
