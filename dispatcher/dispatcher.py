@@ -47,9 +47,6 @@ class Dispatcher:
     """
 
     def __init__(self):
-        """
-        Initialize the Dispatcher class.
-        """
         self.selector = selectors.DefaultSelector()
         self.connected_sockets: Set[socket.socket] = set()
         self.lock = Lock()

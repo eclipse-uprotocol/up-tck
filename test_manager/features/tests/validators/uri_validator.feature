@@ -109,7 +109,7 @@ Feature: URI Validation
         |                                                     | is_long_form_uuri        | False          | none                         |
         |                                                     | is_long_form_uauthority  | False          | none                         |
         | /hartley/23/                                        | is_long_form_uuri        | False          | none                         |
-        | //vcu.veh.gm.com/hartley/23/                        | is_long_form_uuri        | False          | none                         |
+        | //vcu.veh.com/hartley/23/                           | is_long_form_uuri        | False          | none                         |
         | ///hartley/23/                                      | is_long_form_uuri        | False          | none                         |
         | ///hartley/23/                                      | is_long_form_uauthority  | False          | none                         |
         |                                                     | is_micro_form            | False          | none                         |

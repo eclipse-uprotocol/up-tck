@@ -28,8 +28,11 @@ import json
 import logging
 import socket
 import sys
+import git
 from threading import Thread
 from typing import Any, Dict, List, Union
+import time
+from datetime import datetime, timezone
 
 from google.protobuf import any_pb2
 from google.protobuf.message import Message
@@ -39,6 +42,11 @@ from uprotocol.proto.uattributes_pb2 import (
     UPriority,
     UMessageType,
     CallOptions,
+    UAttributes
+)
+from uprotocol.transport.validate import uattributesvalidator
+from uprotocol.transport.validate.uattributesvalidator import (
+    UAttributesValidator,
 )
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
@@ -48,13 +56,19 @@ from uprotocol.proto.uuid_pb2 import UUID
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from uprotocol.uri.serializer.microuriserializer import MicroUriSerializer
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.uri.validator.urivalidator import UriValidator
+from uprotocol.validation.validationresult import ValidationResult
+from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
+from uprotocol.uuid.factory.uuidutils import UUIDUtils
+from uprotocol.proto.ustatus_pb2 import UCode
 
 import constants as CONSTANTS
 
-sys.path.append("../")
+repo = git.Repo(".", search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
 from up_client_socket.python.socket_transport import SocketUTransport
 
 logging.basicConfig(
@@ -107,17 +121,21 @@ def message_to_dict(message: Message) -> Dict[str, Any]:
         if isinstance(value, bytes):
             value: str = value.decode()
 
+        # If a protobuf Message object
         if hasattr(value, "DESCRIPTOR"):
             result[field.name] = message_to_dict(value)
         elif field.label == FieldDescriptor.LABEL_REPEATED:
             repeated = []
             for sub_msg in value:
                 if hasattr(sub_msg, "DESCRIPTOR"):
+                    # Add Message type protobuf
                     repeated.append(message_to_dict(sub_msg))
                 else:
+                    # Add primitive type (str, bool, bytes, int)
                     repeated.append(value)
             result[field.name] = repeated
 
+        # If the field is not a protobuf object (e.g. primitive type)
         elif (
             field.label == FieldDescriptor.LABEL_REQUIRED
             or field.label == FieldDescriptor.LABEL_OPTIONAL
@@ -133,7 +151,7 @@ def send_to_test_manager(
     received_test_id: str = "",
 ):
     if not isinstance(response, (dict, str)):
-        # converts protobuf to dict
+        # Converts protobuf to dict
         response = message_to_dict(response)
 
     # Create response as json/dict
@@ -274,6 +292,151 @@ def handle_uri_validate_command(json_msg):
             received_test_id=json_msg["test_id"],
         )
 
+def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
+    uri: UUri = dict_to_proto(json_msg["data"], UUri())
+    serialized_uuri: bytes = MicroUriSerializer().serialize(uri)
+    # Use "iso-8859-1" to decode bytes -> str, so no UnicodeDecodeError if "utf-8" decode
+    serialized_uuri_json_packed: str = serialized_uuri.decode("iso-8859-1")
+    send_to_test_manager(
+        serialized_uuri_json_packed, 
+        CONSTANTS.MICRO_SERIALIZE_URI, 
+        received_test_id=json_msg["test_id"]
+    )
+
+def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
+    sent_micro_serialized_uuri: str = json_msg["data"]
+    # Incoming micro serialized uuri is sent as an "iso-8859-1" str
+    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("iso-8859-1")
+    uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
+    send_to_test_manager(
+        uuri, 
+        CONSTANTS.MICRO_DESERIALIZE_URI, 
+        received_test_id=json_msg["test_id"]
+    )
+
+def handle_uuid_validate_command(json_msg):
+    uuid_type = json_msg["data"].get("uuid_type")
+    validator_type = json_msg["data"]["validator_type"]
+
+    uuid = {
+        "uprotocol": Factories.UPROTOCOL.create(),
+        "invalid": UUID(msb=0, lsb=0),
+        "uprotocol_time": Factories.UPROTOCOL.create(
+            datetime.utcfromtimestamp(0).replace(tzinfo=timezone.utc)
+        ),
+        "uuidv6": Factories.UUIDV6.create(),
+        "uuidv4": LongUuidSerializer().deserialize(
+            "195f9bd1-526d-4c28-91b1-ff34c8e3632d"
+        ),
+    }.get(uuid_type)
+
+    status = {
+        "get_validator": UuidValidator.get_validator(uuid).validate(uuid),
+        "uprotocol": Validators.UPROTOCOL.validator().validate(uuid),
+        "uuidv6": Validators.UUIDV6.validator().validate(uuid),
+        "get_validator_is_uuidv6": UUIDUtils.is_uuidv6(uuid),
+    }.get(validator_type)
+
+    if isinstance(status, bool):
+        result = str(status)
+        message = ""
+    else:
+        result = "True" if status.code == UCode.OK else "False"
+        message = status.message
+
+    send_to_test_manager(
+        {"result": result, "message": message},
+        CONSTANTS.VALIDATE_UUID,
+        received_test_id=json_msg["test_id"],
+    )
+
+
+def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
+    data = json_msg["data"]
+    val_method = data.get("validation_method")
+    val_type = data.get("validation_type")
+    if data.get("attributes"):
+        attributes = dict_to_proto(data["attributes"], UAttributes())
+        if attributes.sink.authority.name == "default":
+            attributes.sink.CopyFrom(UUri())
+    else:
+        attributes = UAttributes()
+
+    if data.get("id") == "uprotocol":
+        attributes.id.CopyFrom(Factories.UPROTOCOL.create())
+    elif data.get("id") == "uuid":
+        attributes.id.CopyFrom(Factories.UUIDV6.create())
+
+    if data.get("reqid") == "uprotocol":
+        attributes.reqid.CopyFrom(Factories.UPROTOCOL.create())
+    elif data.get("reqid") == "uuid":
+        attributes.reqid.CopyFrom(Factories.UUIDV6.create())
+
+    validator_type = {
+        "get_validator": UAttributesValidator.get_validator,
+    }.get(val_type)
+
+    pub_val = uattributesvalidator.Validators.PUBLISH.validator()
+    req_val = uattributesvalidator.Validators.REQUEST.validator()
+    res_val = uattributesvalidator.Validators.RESPONSE.validator()
+    not_val = uattributesvalidator.Validators.NOTIFICATION.validator()
+
+    validator_method = {
+        "publish_validator": {
+            "is_expired": pub_val.is_expired,
+            "validate_ttl": pub_val.validate_ttl,
+            "validate_sink": pub_val.validate_sink,
+            "validate_req_id": pub_val.validate_req_id,
+            "validate_id": pub_val.validate_id,
+            "validate_permission_level": pub_val.validate_permission_level
+        }.get(val_type, pub_val.validate),
+        "request_validator": {
+            "is_expired": req_val.is_expired,
+            "validate_ttl": req_val.validate_ttl,
+            "validate_sink": req_val.validate_sink,
+            "validate_req_id": req_val.validate_req_id,
+            "validate_id": req_val.validate_id,
+        }.get(val_type, req_val.validate),
+        "response_validator": {
+            "is_expired": res_val.is_expired,
+            "validate_ttl": res_val.validate_ttl,
+            "validate_sink": res_val.validate_sink,
+            "validate_req_id": res_val.validate_req_id,
+            "validate_id": res_val.validate_id,
+        }.get(val_type, res_val.validate),
+        "notification_validator": {
+            "is_expired": not_val.is_expired,
+            "validate_ttl": not_val.validate_ttl,
+            "validate_sink": not_val.validate_sink,
+            "validate_req_id": not_val.validate_req_id,
+            "validate_id": not_val.validate_id,
+            "validate_type": not_val.validate_type
+        }.get(val_type, not_val.validate),
+    }.get(val_method)
+
+    if attributes.ttl == 1:
+        time.sleep(0.8)
+
+    if val_type == "get_validator":
+        status = validator_type(attributes)
+    if validator_method is not None:
+        status = validator_method(attributes)
+
+    if isinstance(status, ValidationResult):
+        result = str(status.is_success())
+        message = status.get_message()
+    elif isinstance(status, bool):
+        result = str(status)
+        message = ""
+    else:
+        result = ""
+        message = str(status)
+
+    send_to_test_manager(
+        {"result": result, "message": message},
+        CONSTANTS.VALIDATE_UATTRIBUTES,
+        received_test_id=json_msg["test_id"],
+    )
 
 action_handlers = {
     CONSTANTS.SEND_COMMAND: handle_send_command,
@@ -285,6 +448,10 @@ action_handlers = {
     CONSTANTS.SERIALIZE_UUID: handle_long_serialize_uuid,
     CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
     CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
+    CONSTANTS.VALIDATE_UATTRIBUTES: handle_uattributes_validate_command,
+    CONSTANTS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
+    CONSTANTS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
+    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command
 }
 
 
