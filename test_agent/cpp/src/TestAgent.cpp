@@ -1,9 +1,17 @@
 #include <TestAgent.h>
 #include <google/protobuf/any.pb.h>
 
-TestAgent::TestAgent()
+TestAgent::TestAgent(std::string transportType)
 {
-	transportPtr_ = std::make_shared<SocketUTransport>();
+	// Initialize the transport
+	if (transportType == "socket") {
+		transportPtr_ = std::make_shared<SocketUTransport>();
+	} else if (transportType == "zenoh") {
+		transportPtr_ = uprotocol::client::UpZenohClient::instance();
+	} else {
+		spdlog::error("TestAgent::TestAgent(), Invalid transport type: {}", transportType);
+		exit(1);
+	}
 	clientSocket_ = 0;
     actionHandlers_ = {
         {string(Constants::SEND_COMMAND), std::function<UStatus(Document &)>([this](Document &doc) { return this->handleSendCommand(doc); })},
@@ -336,10 +344,17 @@ int TestAgent::DisConnect()
 	return 0;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 
 	spdlog::info(" *** Starting CPP Test Agent *** ");
-	TestAgent testAgent = TestAgent();
+    if (argc < 2){
+        spdlog::error("Incorrect input prams: {} ", argv[0]);
+        return 1;
+    }
+
+	std::string transportType = argv[1];
+
+	TestAgent testAgent = TestAgent(transportType);
 	if(testAgent.Connect())
 	{
 		std::thread receiveThread = std::thread(&TestAgent::receiveFromTM, &testAgent);

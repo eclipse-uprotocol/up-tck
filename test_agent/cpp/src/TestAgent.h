@@ -36,6 +36,7 @@
 
 #include <Constants.h>
 #include <spdlog/spdlog.h>
+#include <up-client-zenoh-cpp/client/upZenohClient.h>
 #include <up-cpp/uri/serializer/LongUriSerializer.h>
 #include <up-cpp/uuid/factory/Uuidv8Factory.h>
 #include <up-cpp/transport/UTransport.h>
@@ -63,7 +64,7 @@ using FunctionType = std::variant<std::function<UStatus(Document&)>, std::functi
 
 class TestAgent : public uprotocol::utransport::UListener {
 public:
-	TestAgent();
+	TestAgent(std::string transportType);
 	~TestAgent();
 	UStatus onReceive(uprotocol::utransport::UMessage &transportUMessage) const;
 	bool Connect();

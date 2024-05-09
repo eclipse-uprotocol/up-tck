@@ -47,6 +47,7 @@ add_definitions(-DSPDLOG_FMT_EXTERNAL)
 find_package(fmt REQUIRED CONFIG)
 find_package(RapidJSON CONFIG REQUIRED)
 find_package(libuuid REQUIRED CONFIG)
+find_package(up-client-zenoh-cpp REQUIRED)
 
 set(libs_required
      up-cpp::up-cpp
@@ -70,12 +71,15 @@ string(TOLOWER "${CMAKE_BUILD_TYPE}" lowerbuildtype)
 target_link_directories(${APP_NAME} PUBLIC 
 						${CMAKE_SOURCE_DIR}/build-${CMAKE_SYSTEM_PROCESSOR}-${lowerbuildtype}/lib)
 
-target_link_libraries(${APP_NAME} PUBLIC
-    pthread
-    rt
-    dl
-    ${libs_required}
-    libuuid::libuuid
-    up_client_socket
+target_link_libraries(${APP_NAME} 
+    PUBLIC
+        up-client-zenoh-cpp::up-client-zenoh-cpp
+        ${ZENOH_LIBRARY}
+        pthread
+        rt
+        dl
+        ${libs_required}
+        libuuid::libuuid
+        up_client_socket
 )
 
