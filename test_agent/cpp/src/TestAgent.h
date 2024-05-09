@@ -61,83 +61,31 @@ using namespace rapidjson;
 
 using FunctionType = std::variant<std::function<UStatus(Document&)>, std::function<void(Document&)>>;
 
-class TestAgent {
+class TestAgent : public uprotocol::utransport::UListener {
 public:
 	TestAgent();
 	~TestAgent();
-	static int Connect();
-	static int DisConnect();
-	static void receiveFromTM();
-	static void processMessage(Document &jsonData);
-    static void sendToTestManager(const Message &proto, const string &action, const string& strTest_id="");
-    static void sendToTestManager(Document &doc, Value &jsonVal, string action, const string& strTest_id="");
-    static std::unordered_map<std::string, FunctionType> actionHandlers;
-    static const uprotocol::utransport::UListener *listener;
-
-	static UStatus handleSendCommand(Document &jsonData);
-	static UStatus handleRegisterListenerCommand(Document &jsonData);
-	static UStatus handleUnregisterListenerCommand(Document &jsonData);
-	static void handleInvokeMethodCommand(Document &jsonData);
-	static void handleSerializeUriCommand(Document &jsonData);
-	static void handleDeserializeUriCommand(Document &jsonData);
+	UStatus onReceive(uprotocol::utransport::UMessage &transportUMessage) const;
+	bool Connect();
+	int DisConnect();
+	void receiveFromTM();
+	void processMessage(Document &jsonData);
+    void sendToTestManager(const Message &proto, const string &action, const string& strTest_id="") const;
+    void sendToTestManager(Document &doc, Value &jsonVal, string action, const string& strTest_id="") const;
+	UStatus handleSendCommand(Document &jsonData);
+	UStatus handleRegisterListenerCommand(Document &jsonData);
+	UStatus handleUnregisterListenerCommand(Document &jsonData);
+	void handleInvokeMethodCommand(Document &jsonData);
+	void handleSerializeUriCommand(Document &jsonData);
+	void handleDeserializeUriCommand(Document &jsonData);
 
 private:
-	static int clientSocket;
-	static struct sockaddr_in mServerAddress;
-    static SocketUTransport *transport;
+	int clientSocket_;
+	struct sockaddr_in mServerAddress_;
+	std::shared_ptr<uprotocol::utransport::UTransport> transportPtr_;
+    std::unordered_map<std::string, FunctionType> actionHandlers_;
 
-    static void writeDataToTMSocket(Document &responseDoc, string action) ;
-};
-
-class SocketUListener : public uprotocol::utransport::UListener
-{
-public:
-	SocketUListener(SocketUTransport *transport)
-	{
-		m_transport = transport;
-	}
-
-	UStatus onReceive(uprotocol::utransport::UMessage &transportUMessage) const
-	{
-		std::cout << "SocketUListener::onReceive(), received." << std::endl;
-		uprotocol::v1::UPayload payV1;
-    		payV1.set_format((uprotocol::v1::UPayloadFormat)transportUMessage.payload().format());
-
-		UMessage umsg;
-		UStatus ustatus;
-
-        if (transportUMessage.attributes().type() == uprotocol::v1::UMessageType::UMESSAGE_TYPE_REQUEST)
-        {
-        	google::protobuf::StringValue string_value;
-        	string_value.set_value("SuccessRPCResponse");
-        	Any any_message;
-        	any_message.PackFrom(string_value);
-        	string serialized_message;
-        	any_message.SerializeToString(&serialized_message);
-        	uprotocol::utransport::UPayload payload1((const unsigned char *)serialized_message.c_str(), serialized_message.length(), uprotocol::utransport::UPayloadType::VALUE);
-        	payload1.setFormat(uprotocol::utransport::UPayloadFormat::PROTOBUF_WRAPPED_IN_ANY);
-
-        	auto attr  = uprotocol::utransport::UAttributesBuilder::response(transportUMessage.attributes().sink(), 
-					transportUMessage.attributes().source(),
-					UPriority::UPRIORITY_CS4, transportUMessage.attributes().id()).build();
-		uprotocol::utransport::UMessage respTransportUMessage(payload1,attr);
-        	ustatus = m_transport->send(respTransportUMessage);
-        }
-        else
-        {
-    		payV1.set_value(transportUMessage.payload().data(), transportUMessage.payload().size());    		
-
-    		umsg.mutable_payload()->CopyFrom(payV1);
-    		umsg.mutable_attributes()->CopyFrom(transportUMessage.attributes());
-
-        	TestAgent::sendToTestManager(umsg, (const string)string(Constants::RESPONSE_ON_RECEIVE));
-        }
-
-        return ustatus;
-	}
-
-private:
-	SocketUTransport *m_transport;
+    void writeDataToTMSocket(Document &responseDoc, string action) const;
 };
 
 #endif /*_TEST_AGENT_H_*/

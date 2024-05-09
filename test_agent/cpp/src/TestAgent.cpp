@@ -1,23 +1,18 @@
 #include <TestAgent.h>
 #include <google/protobuf/any.pb.h>
 
-SocketUTransport *TestAgent::transport = new SocketUTransport();
-const uprotocol::utransport::UListener *TestAgent::listener = new SocketUListener(transport);
-int TestAgent::clientSocket = 0;
-struct sockaddr_in TestAgent::mServerAddress;
-
-std::unordered_map<std::string, FunctionType> TestAgent::actionHandlers = {
-		{string(Constants::SEND_COMMAND), std::function<UStatus(Document &)>(TestAgent::handleSendCommand)},
-		{string(Constants::REGISTER_LISTENER_COMMAND), std::function<UStatus(Document &)>(TestAgent::handleRegisterListenerCommand)},
-		{string(Constants::UNREGISTER_LISTENER_COMMAND), std::function<UStatus(Document &)>(TestAgent::handleUnregisterListenerCommand)},
-		{string(Constants::INVOKE_METHOD_COMMAND), std::function<void(Document &)>(TestAgent::handleInvokeMethodCommand)},
-		{string(Constants::SERIALIZE_URI), std::function<void(Document &)>(TestAgent::handleSerializeUriCommand)},
-		{string(Constants::DESERIALIZE_URI), std::function<void(Document &)>(TestAgent::handleDeserializeUriCommand)}
-};
-
 TestAgent::TestAgent()
 {
-
+	transportPtr_ = std::make_shared<SocketUTransport>();
+	clientSocket_ = 0;
+    actionHandlers_ = {
+        {string(Constants::SEND_COMMAND), std::function<UStatus(Document &)>([this](Document &doc) { return this->handleSendCommand(doc); })},
+        {string(Constants::REGISTER_LISTENER_COMMAND), std::function<UStatus(Document &)>([this](Document &doc) { return this->handleRegisterListenerCommand(doc); })},
+        {string(Constants::UNREGISTER_LISTENER_COMMAND), std::function<UStatus(Document &)>([this](Document &doc) { return this->handleUnregisterListenerCommand(doc); })},
+        {string(Constants::INVOKE_METHOD_COMMAND), std::function<void(Document &)>([this](Document &doc) { this->handleInvokeMethodCommand(doc); })},
+        {string(Constants::SERIALIZE_URI), std::function<void(Document &)>([this](Document &doc) { this->handleSerializeUriCommand(doc); })},
+        {string(Constants::DESERIALIZE_URI), std::function<void(Document &)>([this](Document &doc) { this->handleDeserializeUriCommand(doc); })}
+    };
 }
 
 TestAgent::~TestAgent()
@@ -25,7 +20,43 @@ TestAgent::~TestAgent()
 
 }
 
-void TestAgent::writeDataToTMSocket(Document & responseDoc, string action)
+UStatus TestAgent::onReceive(uprotocol::utransport::UMessage &transportUMessage) const
+{
+	std::cout << "SocketUListener::onReceive(), received." << std::endl;
+	uprotocol::v1::UPayload payV1;
+		payV1.set_format((uprotocol::v1::UPayloadFormat)transportUMessage.payload().format());
+
+	UMessage umsg;
+	UStatus ustatus;
+
+	if (transportUMessage.attributes().type() == uprotocol::v1::UMessageType::UMESSAGE_TYPE_REQUEST) {
+		google::protobuf::StringValue string_value;
+		string_value.set_value("SuccessRPCResponse");
+		Any any_message;
+		any_message.PackFrom(string_value);
+		string serialized_message;
+		any_message.SerializeToString(&serialized_message);
+		uprotocol::utransport::UPayload payload1((const unsigned char *)serialized_message.c_str(), serialized_message.length(), uprotocol::utransport::UPayloadType::VALUE);
+		payload1.setFormat(uprotocol::utransport::UPayloadFormat::PROTOBUF_WRAPPED_IN_ANY);
+
+		auto attr  = uprotocol::utransport::UAttributesBuilder::response(transportUMessage.attributes().sink(), 
+				transportUMessage.attributes().source(),
+				UPriority::UPRIORITY_CS4, transportUMessage.attributes().id()).build();
+		uprotocol::utransport::UMessage respTransportUMessage(payload1,attr);
+		ustatus = transportPtr_->send(respTransportUMessage);
+	} else {
+		payV1.set_value(transportUMessage.payload().data(), transportUMessage.payload().size());    		
+
+		umsg.mutable_payload()->CopyFrom(payV1);
+		umsg.mutable_attributes()->CopyFrom(transportUMessage.attributes());
+
+		sendToTestManager(umsg, (const string)string(Constants::RESPONSE_ON_RECEIVE));
+	}
+
+	return ustatus;
+}
+
+void TestAgent::writeDataToTMSocket(Document & responseDoc, string action) const
 {
 	Value valAction(action.c_str(), responseDoc.GetAllocator());
 	responseDoc.AddMember("action", valAction, responseDoc.GetAllocator());
@@ -39,14 +70,14 @@ void TestAgent::writeDataToTMSocket(Document & responseDoc, string action)
 
 	// Get the JSON data as a C++ string
 	string json = buffer.GetString();
-	cout << "TestAgent::writeDataToTMSocket(), Sent to TM : " << json << endl;
+	spdlog::info("TestAgent::writeDataToTMSocket(), Sent to TM : {}", json);
 
-	if (send(clientSocket, json.c_str(), strlen(json.c_str()), 0) == -1) {
+	if (send(clientSocket_, json.c_str(), strlen(json.c_str()), 0) == -1) {
 		perror("TestAgent::writeDataToTMSocket(), Error sending data to TM ");
 	}
 }
 
-void TestAgent::sendToTestManager(const Message& proto, const string& action, const string& strTest_id)
+void TestAgent::sendToTestManager(const Message& proto, const string& action, const string& strTest_id) const
 {
 	Document responseDict;
 	responseDict.SetObject();
@@ -68,7 +99,7 @@ void TestAgent::sendToTestManager(const Message& proto, const string& action, co
 	writeDataToTMSocket(responseDict, action);
 }
 
-void TestAgent::sendToTestManager(Document &document, Value &jsonData, string action, const string& strTest_id)
+void TestAgent::sendToTestManager(Document &document, Value &jsonData, string action, const string& strTest_id) const
 {
 	document.AddMember("data", jsonData, document.GetAllocator());
 	if(!strTest_id.empty())
@@ -89,7 +120,7 @@ UStatus TestAgent::handleSendCommand(Document &jsonData)
 {
 	UMessage umsg1 = UMessage::default_instance();
 	UMessage umsg(*((UMessage *)ProtoConverter::dictToProto(jsonData["data"], umsg1)));
-	std::cout << "TestAgent::handleSendCommand(), umsg string is : " << umsg.DebugString() << std::endl;
+	spdlog::info("TestAgent::handleSendCommand(), umsg string is : {}", umsg.DebugString());
 
 	
 	uprotocol::v1::UPayload pay = umsg.payload();
@@ -104,21 +135,21 @@ UStatus TestAgent::handleSendCommand(Document &jsonData)
 	//uAttributesWithId.setSink(umsg.attributes().sink());
 
 	uprotocol::utransport::UMessage transportUMessage(payload, uAttributesWithId);
-	return transport->send(transportUMessage);
+	return transportPtr_->send(transportUMessage);
 }
 
 UStatus TestAgent::handleRegisterListenerCommand(Document &jsonData)
 {
 	UUri uri = BuildUUri().build();
 	ProtoConverter::dictToProto(jsonData["data"], uri);
-	return transport->registerListener(uri, *listener);
+	return transportPtr_->registerListener(uri, *this);
 }
 
 UStatus TestAgent::handleUnregisterListenerCommand(Document &jsonData)
 {
 	UUri uri = BuildUUri().build();
 	ProtoConverter::dictToProto(jsonData["data"], uri);
-	return transport->unregisterListener(uri, *listener);
+	return transportPtr_->unregisterListener(uri, *this);
 }
 
 void TestAgent::handleInvokeMethodCommand(Document &jsonData)
@@ -138,7 +169,8 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData)
 	options.set_ttl(10000);
 
 	// TODO: get umsg from transport and send to test manager
-	std::future<uprotocol::rpc::RpcResponse> responseFuture = transport->invokeMethod(uri, payload, options);
+	auto rpc_ptr = dynamic_cast<uprotocol::rpc::RpcClient*>(transportPtr_.get());
+	std::future<uprotocol::rpc::RpcResponse> responseFuture = rpc_ptr->invokeMethod(uri, payload, options);
 
 	try
 	{
@@ -149,7 +181,7 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData)
 	uprotocol::utransport::UPayload pay2 = rpcResponse.message.payload();
 	//std::cout << "handleInvokeMethodCommand(), payload size from responseFuture is : " << pay2.size() << std::endl;
 	string strPayload = std::string(reinterpret_cast<const char*>(pay2.data()), pay2.size());
-	std::cout << "handleInvokeMethodCommand(), payload got from responseFuture is : " << strPayload << std::endl;
+	spdlog::info("TestAgent::handleInvokeMethodCommand(), payload got from responseFuture is : {}", strPayload);
 
 	std::string strTest_id = jsonData["test_id"].GetString();
 
@@ -208,16 +240,16 @@ void TestAgent::processMessage(Document &json_msg)
 	std::string action = json_msg["action"].GetString();
 	std::string strTest_id = json_msg["test_id"].GetString();
 
-	std::cout << "TestAgent::processMessage(), Received action : " << action << std::endl;
+	spdlog::info("TestAgent::processMessage(), Received action : {}", action);
 
-	auto it = actionHandlers.find(action);
-	if (it != actionHandlers.end())
+	auto it = actionHandlers_.find(action);
+	if (it != actionHandlers_.end())
 	{
 		const auto& function = it->second;
 		//std::cout << "TestAgent::processMessage(), Found respective function and calling the same. " << std::endl;
 		if (std::holds_alternative<std::function<UStatus(Document &)>>(function)) {
 			auto result = std::get<std::function<UStatus(Document &)>>(function)(json_msg);
-			std::cout << "TestAgent::processMessage(), received result is : " << result.message() <<  std::endl;
+			spdlog::info("TestAgent::processMessage(), received result is : {}", result.message());
 			Document document;
 			document.SetObject();
 
@@ -237,11 +269,11 @@ void TestAgent::processMessage(Document &json_msg)
 			sendToTestManager(document, statusObj, action, strTest_id);
 		} else {
 			std::get<std::function<void(Document &)>>(function)(json_msg);
-			std::cout << "TestAgent::processMessage(), Received no result" << std::endl;
+			spdlog::warn("TestAgent::processMessage(), Received no result");
 		}
 	}
 	else {
-		std::cout << "TestAgent::processMessage(), action '" << action << "' not found." << std::endl;
+		spdlog::warn("TestAgent::processMessage(), action '{}' not found.", action);
 	}
 }
 
@@ -251,7 +283,7 @@ void TestAgent::receiveFromTM()
 	try
 	{
 		while (true) {
-			ssize_t bytes_received = recv(clientSocket, recv_data, Constants::BYTES_MSG_LENGTH, 0);
+			ssize_t bytes_received = recv(clientSocket_, recv_data, Constants::BYTES_MSG_LENGTH, 0);
 			if (bytes_received < 1) {
 				std::cerr << "TestAgent::receiveFromTM(), no data received, exiting the CPP Test Agent ... " << std::endl;
 				DisConnect();
@@ -260,13 +292,13 @@ void TestAgent::receiveFromTM()
 
 			recv_data[bytes_received] = '\0';
 			std::string json_str(recv_data);
-			cout << "TestAgent::receiveFromTM(), Received data from test manager: " << json_str << endl;
+			spdlog::info("TestAgent::receiveFromTM(), Received data from test manager: {}", json_str);
 
 			Document json_msg;
 			json_msg.Parse(json_str.c_str());
 			if (json_msg.HasParseError()) {
 				// Handle parsing error
-				cout << "TestAgent::receiveFromTM(), Failed to parse JSON data: " <<  json_str << endl;
+				spdlog::error("TestAgent::receiveFromTM(), Failed to parse JSON data: {}", json_str);
 				continue;
 			}
 
@@ -274,42 +306,43 @@ void TestAgent::receiveFromTM()
 		}
 	}
 	catch (std::exception & e) {
-		cout << "TestAgent::receiveFromTM(), Exception occurred due to " << e.what() << endl;
+		spdlog::error("TestAgent::receiveFromTM(), Exception occurred due to {}", e.what());
 	}
 }
 
-int TestAgent::Connect()
+bool TestAgent::Connect()
 {
-	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-	if (clientSocket == -1) {
-		cout <<"TestAgent::Connect(), Error creating socket" << endl;
+	clientSocket_ = socket(AF_INET, SOCK_STREAM, 0);
+	if (clientSocket_ == -1) {
+		spdlog::error("TestAgent::Connect(), Error creating socket");
 		return 1;
 	}
 
-	mServerAddress.sin_family = AF_INET;
-	mServerAddress.sin_port = htons(Constants::TEST_MANAGER_PORT);
-	inet_pton(AF_INET, Constants::TEST_MANAGER_IP, &(mServerAddress.sin_addr));
+	mServerAddress_.sin_family = AF_INET;
+	mServerAddress_.sin_port = htons(Constants::TEST_MANAGER_PORT);
+	inet_pton(AF_INET, Constants::TEST_MANAGER_IP, &(mServerAddress_.sin_addr));
 
-	if (connect(clientSocket, (struct sockaddr*)&mServerAddress, sizeof(mServerAddress)) == -1) {
-		cout << "TestAgent::Connect(), Error connecting to server" <<  endl;
-		return 1;
+	if (connect(clientSocket_, (struct sockaddr*)&mServerAddress_, sizeof(mServerAddress_)) == -1) {
+		spdlog::error("TestAgent::Connect(), Error connecting to server");
+		return false;
 	}
 
-	return 0;
+	return true;
 }
 
 int TestAgent::DisConnect()
 {
-	close(clientSocket);
+	close(clientSocket_);
 	return 0;
 }
 
 int main() {
 
-	cout << " *** Starting CPP Test Agent *** " <<  endl;
-	if(!TestAgent::Connect())
+	spdlog::info(" *** Starting CPP Test Agent *** ");
+	TestAgent testAgent = TestAgent();
+	if(testAgent.Connect())
 	{
-		std::thread receiveThread = std::thread(&TestAgent::receiveFromTM);
+		std::thread receiveThread = std::thread(&TestAgent::receiveFromTM, &testAgent);
 
 		Document document;
 		document.SetObject();
@@ -317,7 +350,7 @@ int main() {
 		Value sdkName(kObjectType); // Create an empty object
 		sdkName.AddMember("SDK_name", "cpp", document.GetAllocator());
 
-		TestAgent::sendToTestManager(document, sdkName, "initialize");
+		testAgent.sendToTestManager(document, sdkName, "initialize");
 		receiveThread.join();
 	}
 
