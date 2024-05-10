@@ -191,11 +191,7 @@ public class TestAgent {
         String valType = (String) data.get("validation_type");
         Map<String, Object> uriValue = (Map<String, Object>) data.get("uuri");
 
-        System.out.println("uri dict:");
-        System.out.println(uriValue);
-
         UUri uri = (UUri) ProtoConverter.dictToProto(uriValue, UUri.newBuilder());
-        // UUri uri = LongUriSerializer.instance().deserialize(uriValue);
 
         Function<UUri, ValidationResult> validatorFunc = null;
         Function<UUri, Boolean> validatorFuncBool = null;
