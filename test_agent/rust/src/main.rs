@@ -32,7 +32,7 @@ use crate::constants::TEST_MANAGER_ADDR;
 use testagent::{ListenerHandlers, SocketTestAgent};
 use utransport_socket::UTransportSocket;
 mod testagent;
-use log::error;
+use log::{debug, error};
 use std::net::TcpStream;
 use tokio::runtime::Runtime;
 
@@ -53,7 +53,7 @@ async fn connect_and_receive() -> Result<(), Box<dyn std::error::Error>> {
     let foo_listener_socket_to_tm = connect_to_socket(TEST_MANAGER_ADDR.0, TEST_MANAGER_ADDR.1)?;
 
     let u_transport = UTransportSocket::new()?;
-    dbg!("Socket transport created successfully");
+    debug!("Socket transport created successfully");
 
     let foo_listener = Arc::new(ListenerHandlers::new(foo_listener_socket_to_tm));
     let agent = SocketTestAgent::new(test_agent, foo_listener);
@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("Error joining thread: {err:?}");
         std::process::exit(1);
     } else {
-        dbg!("Successfully joined thread");
+        debug!("Successfully joined thread");
     }
     Ok(())
 }

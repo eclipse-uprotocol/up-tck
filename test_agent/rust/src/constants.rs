@@ -34,12 +34,12 @@ pub const TEST_MANAGER_ADDR: (&str, u16) = ("127.0.0.5", 12345);
 
 #[test]
 pub fn test_constants() {
-    dbg!("SEND_COMMAND: {}", SEND_COMMAND);
-    dbg!("REGISTER_LISTENER_COMMAND: {}", REGISTER_LISTENER_COMMAND);
-    dbg!(
+    debug!("SEND_COMMAND: {}", SEND_COMMAND);
+    debug!("REGISTER_LISTENER_COMMAND: {}", REGISTER_LISTENER_COMMAND);
+    debug!(
         "UNREGISTER_LISTENER_COMMAND: {}",
         UNREGISTER_LISTENER_COMMAND
     );
 
-    dbg!("TEST_MANAGER_ADDR: {:?}", TEST_MANAGER_ADDR);
+    debug!("TEST_MANAGER_ADDR: {:?}", TEST_MANAGER_ADDR);
 }

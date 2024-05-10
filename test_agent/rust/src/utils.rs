@@ -22,7 +22,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-use log::error;
+use log::{debug, error};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use up_rust::{
@@ -90,7 +90,7 @@ impl<'de> Deserialize<'de> for WrapperUUri {
                 ..Default::default() // If authority is default, fill in the rest with default values
             }
         } else {
-            dbg!(" authority is not default");
+            debug!(" authority is not default");
             UUri {
                 authority: MessageField(Some(Box::new(authority))),
                 entity: MessageField(Some(Box::new(entity))),
@@ -281,7 +281,7 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
             error!("Error:pririty value is not string!");
         }
 
-        dbg!("uattributes.priority: {:?}", uattributes.priority);
+        debug!("uattributes.priority: {:?}", uattributes.priority);
 
         if let Some(type_value) = value.get("type").and_then(|v| v.as_str()) {
             uattributes.type_ = UMessageType::from_str(type_value)
@@ -295,7 +295,7 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
             error!("Error: type value is not string!");
         }
 
-        dbg!("uattributes.type_: {:?}", uattributes.type_);
+        debug!("uattributes.type_: {:?}", uattributes.type_);
 
         if let Some(source_value) = value.get("source") {
             if let Ok(wrapper_uri) = serde_json::from_value::<WrapperUUri>(source_value.clone()) {
@@ -336,15 +336,15 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
 
         if let Some(commstatus_str) = value.get("commstatus").and_then(|v| v.as_str()) {
             if let Some(code) = UCode::from_str(commstatus_str) {
-              uattributes.commstatus = Some(code.into());
+                uattributes.commstatus = Some(code.into());
             } else {
-              error!("Failed to parse commstatus string into UCode.");
+                error!("Failed to parse commstatus string into UCode.");
             }
         } else {
             error!("Failed to extract commstatus as a string.");
         }
 
-        dbg!(" uattributes.commstatus: {:?}", uattributes.commstatus);
+        debug!(" uattributes.commstatus: {:?}", uattributes.commstatus);
 
         if let Ok(reqid) = parse_uuid(&value, "reqid") {
             uattributes.reqid = MessageField(Some(Box::new(reqid)));
@@ -426,16 +426,22 @@ impl<'de> Deserialize<'de> for WrapperUPayload {
     }
 }
 
+#[allow(clippy::map_unwrap_or)]
 fn parse_upayload(value: &Value) -> Result<UPayload, serde_json::Error> {
-    let format = if let Some(format_value) = value
+
+    let format = value
         .get("format")
         .and_then(|format_value| format_value.as_str())
-    {
-        UPayloadFormat::from_str(format_value).unwrap().into()
-    } else {
-        error!("Error: value of format is not a string");
-        UPayloadFormat::UPAYLOAD_FORMAT_UNSPECIFIED.into()
-    };
+        .map(|format_str| {
+            UPayloadFormat::from_str(format_str).unwrap_or_else(|| {
+                error!("Error: Unable to parse string to UPayloadFormat");
+                UPayloadFormat::UPAYLOAD_FORMAT_UNSPECIFIED
+            })
+        })
+        .unwrap_or_else(|| {
+            error!("Error: value of format is not a string");
+            UPayloadFormat::UPAYLOAD_FORMAT_UNSPECIFIED
+        });
 
     let length = value
         .get("length")
@@ -453,7 +459,7 @@ fn parse_upayload(value: &Value) -> Result<UPayload, serde_json::Error> {
     };
 
     Ok(UPayload {
-        format,
+        format: format.into(),
         length,
         data,
         special_fields: SpecialFields::default(),

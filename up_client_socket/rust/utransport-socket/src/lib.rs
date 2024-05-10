@@ -36,15 +36,15 @@
  use std::collections::hash_map::Entry;
  use std::collections::HashSet;
  use std::io::{Read, Write};
- use std::net::TcpStream;// as TcpStreamSync;
+ use std::net::TcpStream;
  use std::{
      collections::HashMap,
      sync::{Arc, Mutex},
  };
  use tokio::task;
  use up_rust::ComparableListener;
- use log::error;
- //#[derive(Clone)]
+ use log::{error, debug};
+
  pub struct UTransportSocket {
      socket_sync: TcpStream,
      listener_map: Arc<Mutex<HashMap<UUri, HashSet<ComparableListener>>>>,
@@ -80,7 +80,7 @@
         match transport_socket.socket_init(){
             Ok(_) => {
                 // The function call succeeded
-                dbg!("socket trasport initilized successfully");
+                debug!("socket trasport initilized successfully");
             }
             Err(err) => {
                 // The function call failed with an error
@@ -88,7 +88,7 @@
                 return Err(UStatus::fail_with_code(UCode::INTERNAL, "Issue in cloning socket_sync"));
             }
         }
-        dbg!("UTransportSocket initilization successful");
+        debug!("UTransportSocket initilization successful");
        
         Ok( UTransportSocket {
              socket_sync,
@@ -121,14 +121,14 @@
     Ok(())
 }
     async  fn dispatcher_listener(&mut self) {
-        dbg!("started listener for dispatcher");
+        debug!("started listener for dispatcher");
          loop {
              // Receive data from the socket
              let mut buffer: [u8; BYTES_MSG_LENGTH] = [0; BYTES_MSG_LENGTH];
              let bytes_read = match self.socket_sync.read(&mut buffer) {
                  Ok(bytes_read) => bytes_read,
                  Err(e) => {
-                     dbg!("Socket error: {}", e);
+                     debug!("Socket error: {}", e);
                      break;
                  }
              };
@@ -153,15 +153,25 @@
                  .enum_value_or(UMessageType::UMESSAGE_TYPE_UNSPECIFIED)
              {
                  UMessageType::UMESSAGE_TYPE_PUBLISH => {
-                     dbg!("calling handle publish....");
-                     let _ = self.check_all_listeners(&umessage.attributes.source.clone(), umessage);
+                     debug!("calling handle publish....");
+                     match self.check_all_listeners(&umessage.attributes.source.clone(), umessage){
+                        Ok(_) => {
+                            // The function call succeeded
+                            debug!("All listeners checked successfully");
+                        }
+                        Err(err) => {
+                            // The function call failed with an error
+                            error!("Error checking listeners: {}", err);
+                           continue;
+                        }
+                    }
                  }
                  UMessageType::UMESSAGE_TYPE_NOTIFICATION | UMessageType::UMESSAGE_TYPE_UNSPECIFIED | UMessageType::UMESSAGE_TYPE_RESPONSE => (),
                  UMessageType::UMESSAGE_TYPE_REQUEST => {
                     match self.check_all_listeners(&umessage.attributes.sink.clone(), umessage){
                         Ok(_) => {
                             // The function call succeeded
-                            dbg!("All listeners checked successfully");
+                            debug!("All listeners checked successfully");
                         }
                         Err(err) => {
                             // The function call failed with an error
@@ -198,7 +208,7 @@
       
          match listeners {
              Entry::Vacant(_) => {
-                dbg!("......vacant");                 
+                debug!("......vacant");                 
                  return Err(UStatus::fail_with_code(
                      UCode::NOT_FOUND,
                      format!("No listeners registered for topic: {:?}", &uuri),
@@ -206,23 +216,23 @@
              }
              Entry::Occupied(mut e) => {
                  let occupied = e.get_mut();
-                 dbg!("......occupied");  
+                 debug!("......occupied");  
                  if occupied.is_empty() {
                      return Err(UStatus::fail_with_code(
                          UCode::NOT_FOUND,
                          format!("No listeners registered for topic: {:?}", &uuri),
                      ));
                  }
-                 dbg!("invoking listner on receive..\n");
+                 debug!("invoking listner on receive..\n");
                  for listener in occupied.iter() {
                      let task_listener = listener.clone();
                      let task_listener_error = listener.clone();
                      let task_umessage = umessage.clone();
                  
-                     dbg!("invoking listner on receive\n");
+                     debug!("invoking listner on receive\n");
                      task::spawn(async move { task_listener.on_receive(task_umessage).await });
                    
-                     dbg!("invoking listner on error\n");
+                     debug!("invoking listner on error\n");
                      task::spawn(async move { task_listener_error.on_error(UStatus::ok()).await });
                
                  }
@@ -396,7 +406,7 @@
          topic: UUri,
          listener: Arc<dyn UListener>,
      ) -> Result<(), UStatus> {
-         dbg!("register listner called !");
+         debug!("register listner called !");
          if topic.authority.is_some() && topic.entity.is_none() && topic.resource.is_none() {
              // This is special UUri which means we need to register for all of Publish, Request, and Response
              // RPC response
@@ -406,19 +416,19 @@
              ))
          } else {
              // Do the validation
-             dbg!(topic.authority.is_some());
-             dbg!(UriValidator::is_remote(&topic));
+             debug!("{}", topic.authority.is_some());
+             debug!("{}", UriValidator::is_remote(&topic));
              UriValidator::validate(&topic)
                  .map_err(|err| UStatus::fail_with_code(UCode::INVALID_ARGUMENT, err.to_string()))?;
                 if UriValidator::is_rpc_response(&topic) {
-                    dbg!("register listner called for rpc response !");
+                    debug!("register listner called for rpc response !");
                     
                  } else if UriValidator::is_rpc_method(&topic) {
                     
-                      dbg!("register listner called for rpc !");
+                      debug!("register listner called for rpc !");
                     
                  }else{
-                    dbg!("register listner called for topic !");
+                    debug!("register listner called for topic !");
     
                  }
     
@@ -437,7 +447,7 @@
                  let listeners = topics_listeners.entry(topic).or_default();
                  let identified_listener = ComparableListener::new(listener);
                  let inserted = listeners.insert(identified_listener); 
-                 dbg!(inserted);
+                 debug!("{inserted}");
                  return if inserted {
                   
                     Ok(())
@@ -491,8 +501,8 @@
                  let occupied = e.get_mut();
                  let identified_listener = ComparableListener::new(listener);
                  let removed = occupied.remove(&identified_listener);
-                 dbg!("topic found Occupied");
-                 dbg!(removed);
+                 debug!("topic found Occupied");
+                 debug!("{}", removed);
                  if removed {
                     
                      Ok(())
