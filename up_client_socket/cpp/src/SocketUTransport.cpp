@@ -4,8 +4,7 @@
 
 const UUri SocketUTransport::RESPONSE_URI = BuildUUri().
 setEntity(BuildUEntity().setName("test_agent_cpp").setMajorVersion(1).build()).
-setResource(BuildUResource().setRpcResponse().build()).
-build();
+setResource(BuildUResource().setRpcResponse().build()).build();
 
 SocketUTransport::SocketUTransport()
 {
@@ -110,7 +109,7 @@ UStatus SocketUTransport::send(const uprotocol::utransport::UMessage &transportU
 	return status;
 }
 
-UStatus SocketUTransport::registerListener(const UUri& topic, const uprotocol::utransport::UListener& listener) {
+UStatus SocketUTransport::registerListener(const UUri &topic, const uprotocol::utransport::UListener &listener) {
 	UStatus status;
 	status.set_code(UCode::INTERNAL);
 
@@ -140,7 +139,7 @@ UStatus SocketUTransport::registerListener(const UUri& topic, const uprotocol::u
 	return status;
 }
 
-UStatus SocketUTransport::unregisterListener(const UUri& topic, const uprotocol::utransport::UListener& listener) {
+UStatus SocketUTransport::unregisterListener(const UUri &topic, const uprotocol::utransport::UListener &listener) {
 	UStatus status;
 	status.set_code(UCode::INTERNAL);
 
@@ -182,7 +181,7 @@ void SocketUTransport::timeout_counter(UUID &req_id, std::future<uprotocol::rpc:
 		std::lock_guard<std::mutex> lock(mutex_promise);
 		if (!resFuture.valid()) {
 			auto uuidStr = UuidSerializer::serializeToString(req_id);
-			promise.set_exception( std::make_exception_ptr(std::runtime_error("Not received response for request " +
+			promise.set_exception(std::make_exception_ptr(std::runtime_error("Not received response for request " +
 					uuidStr + " within " + std::to_string(timeout) + " ms")));
 		}
 		else{
@@ -193,8 +192,8 @@ void SocketUTransport::timeout_counter(UUID &req_id, std::future<uprotocol::rpc:
 	}
 }
 
-std::future<uprotocol::rpc::RpcResponse> SocketUTransport::invokeMethod(const UUri &topic, const uprotocol::utransport::UPayload &payload, 
-                                                          const CallOptions &options)
+std::future<uprotocol::rpc::RpcResponse> SocketUTransport::invokeMethod(const UUri &topic,
+		const uprotocol::utransport::UPayload &payload, const CallOptions &options)
 {
 	std::promise<uprotocol::rpc::RpcResponse> promise;
 	std::future<uprotocol::rpc::RpcResponse> responseFuture = promise.get_future();
@@ -224,6 +223,7 @@ uprotocol::v1::UStatus SocketUTransport::invokeMethod(const UUri &topic, const u
 	UStatus status;
 	status.set_code(UCode::UNIMPLEMENTED);
 	status.set_message("Not Implemented");
+
 	return status;
 }
 
@@ -247,6 +247,7 @@ void SocketUTransport::handleResponseMessage(UMessage umsg) {
 		string str = pay.value();
 		std::cout << "SocketUTransport::handleResponseMessage(),  payload : " << str << std::endl;
 		uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(), uprotocol::utransport::UPayloadType::VALUE);
+		payload.setFormat((uprotocol::utransport::UPayloadFormat)pay.format());
 		
 		std::lock_guard<std::mutex> lock(mutex_promise);		
 		uprotocol::rpc::RpcResponse rpcResponse;
@@ -277,6 +278,8 @@ void SocketUTransport::notifyListeners(UUri uri, UMessage umsg) {
 			std::cout << "SocketUTransport::notifyListeners(),  payload : " << str << std::endl;
 			uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),
 							uprotocol::utransport::UPayloadType::VALUE);
+			payload.setFormat((uprotocol::utransport::UPayloadFormat)pay.format());
+
 			auto reqAttributes = umsg.attributes();
 			uprotocol::utransport::UMessage transportUMessage(payload, reqAttributes);
 			listener->onReceive(transportUMessage);
@@ -285,4 +288,3 @@ void SocketUTransport::notifyListeners(UUri uri, UMessage umsg) {
 		std::cerr << "SocketUTransport::notifyListeners(), Uri not found in Listener Map, discarding..."<< std::endl;
 	}
 }
-
