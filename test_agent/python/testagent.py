@@ -57,6 +57,7 @@ from uprotocol.uri.validator.urivalidator import UriValidator
 from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
 from uprotocol.uuid.factory.uuidutils import UUIDUtils
 from uprotocol.proto.ustatus_pb2 import UCode
+from uprotocol.validation.validationresult import ValidationResult
 
 import constants as CONSTANTS
 
@@ -159,12 +160,14 @@ def send_to_test_manager(
     logger.info(f"Sent to TM {response_dict}")
 
 
-def dict_to_proto(parent_json_obj, parent_proto_obj):
-    def populate_fields(json_obj, proto_obj):
+def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
+    def populate_fields(json_obj: Dict[str, Any], proto_obj):
         for field_name, value in json_obj.items():
-            if "BYTES:" in value:
+            # check if incoming json request is a "bytes" type with prepended prefix
+            if isinstance(value, str) and 'BYTES:' in value:
                 value = value.replace("BYTES:", "")
                 value = value.encode("utf-8")
+                
             if hasattr(proto_obj, field_name):
                 if isinstance(value, dict):
                     # Recursively update the nested message object
@@ -176,13 +179,21 @@ def dict_to_proto(parent_json_obj, parent_proto_obj):
                             value = int(value)
                         elif field_type == float:
                             value = float(value)
+                        elif field_type == bytes:
+                            if isinstance(value, str):
+                                value = value.encode("utf-8")
+                            
                     except Exception:
                         pass
+                    
                     setattr(proto_obj, field_name, value)
         return proto_obj
 
-    populate_fields(parent_json_obj, parent_proto_obj)
-
+    if isinstance(parent_json_obj, dict):
+        populate_fields(parent_json_obj, parent_proto_obj)
+    else:
+        raise TypeError("variable parent_json_obj is not a Dict type")
+    
     return parent_proto_obj
 
 
@@ -236,6 +247,9 @@ def handle_long_deserialize_uri(json_msg: Dict[str, Any]):
     send_to_test_manager(
         uuri, CONSTANTS.DESERIALIZE_URI, received_test_id=json_msg["test_id"]
     )
+    
+    logger.info("handle_long_deserialize_uri:")
+    logger.info(uuri)
 
 
 def handle_long_deserialize_uuid(json_msg: Dict[str, Any]):
@@ -255,9 +269,12 @@ def handle_long_serialize_uuid(json_msg: Dict[str, Any]):
     )
 
 
-def handle_uri_validate_command(json_msg):
-    val_type = json_msg["data"]["type"]
-    uri = LongUriSerializer().deserialize(json_msg["data"].get("uri"))
+def handle_uri_validate_command(json_msg: Dict[str, Any]):
+    val_type: str = json_msg["data"]["validation_type"]
+    # uri: UUri = LongUriSerializer().deserialize(json_msg["data"].get("serialized_uri"))
+    uuri_data: Dict[str, Any] = json_msg["data"]["uuri"]
+    
+    uuri: UUri = dict_to_proto(uuri_data, UUri())
 
     validator_func = {
         "uri": UriValidator.validate,
@@ -266,13 +283,11 @@ def handle_uri_validate_command(json_msg):
         "is_empty": UriValidator.is_empty,
         "is_resolved": UriValidator.is_resolved,
         "is_micro_form": UriValidator.is_micro_form,
-        "is_long_form_uuri": UriValidator.is_long_form,
-        "is_long_form_uauthority": UriValidator.is_long_form,
-        "is_local": UriValidator.is_local,
+        "is_long_form": UriValidator.is_long_form,
     }.get(val_type)
 
     if validator_func:
-        status = validator_func(uri)
+        status: Union[bool, ValidationResult] = validator_func(uuri)
         if isinstance(status, bool):
             result = str(status)
             message = ""
@@ -281,6 +296,12 @@ def handle_uri_validate_command(json_msg):
             message = status.get_message()
         send_to_test_manager(
             {"result": result, "message": message},
+            CONSTANTS.VALIDATE_URI,
+            received_test_id=json_msg["test_id"],
+        )
+    else:
+         send_to_test_manager(
+            {"result": "False", "message": "Nonexistent UriValidator function"},
             CONSTANTS.VALIDATE_URI,
             received_test_id=json_msg["test_id"],
         )

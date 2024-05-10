@@ -188,10 +188,14 @@ public class TestAgent {
 
     private static Object handleValidateUriCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
-        String valType = (String) data.get("type");
-        String uriValue = (String) data.get("uri");
+        String valType = (String) data.get("validation_type");
+        Map<String, Object> uriValue = (Map<String, Object>) data.get("uuri");
 
-        UUri uri = LongUriSerializer.instance().deserialize(uriValue);
+        System.out.println("uri dict:");
+        System.out.println(uriValue);
+
+        UUri uri = (UUri) ProtoConverter.dictToProto(uriValue, UUri.newBuilder());
+        // UUri uri = LongUriSerializer.instance().deserialize(uriValue);
 
         Function<UUri, ValidationResult> validatorFunc = null;
         Function<UUri, Boolean> validatorFuncBool = null;
@@ -215,24 +219,20 @@ public class TestAgent {
             case "is_micro_form":
                 validatorFuncBool = UriValidator::isMicroForm;
                 break;
-            case "is_long_form_uuri":
-                validatorFuncBool = UriValidator::isLongForm;
-                break;
-            case "is_long_form_uauthority":
+            case "is_long_form":
                 validatorFuncBool = UriValidator::isLongForm;
                 break;
         }
 
+        String testID = (String) jsonData.get("test_id");
         if (validatorFunc != null) {
             ValidationResult status = validatorFunc.apply(uri);
             String result = status.isSuccess() ? "True" : "False";
             String message = status.getMessage();
-            String testID = (String) jsonData.get("test_id");
             sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_URI, testID);
         } else if (validatorFuncBool != null) {
             Boolean status = validatorFuncBool.apply(uri);
             String result = status ? "True" : "False";
-            String testID = (String) jsonData.get("test_id");
             sendToTestManager(Map.of("result", result, "message", ""), Constant.VALIDATE_URI, testID);
         }
 

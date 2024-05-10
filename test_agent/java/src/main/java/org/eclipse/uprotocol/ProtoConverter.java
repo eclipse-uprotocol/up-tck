@@ -54,54 +54,70 @@ public class ProtoConverter {
             Descriptors.FieldDescriptor fieldDescriptor = protoObj.getDescriptorForType().findFieldByName(key);
 
             if (fieldDescriptor != null) {
-                if (value instanceof String && ((String) value).startsWith("BYTES:")) {
-                    String byteString = ((String) value).substring(6); // Remove 'BYTES:' prefix
-                    ByteString byteValue = ByteString.copyFromUtf8(byteString);
-                    protoObj.setField(fieldDescriptor, byteValue);
-                } else {
-                    setFieldValue(protoObj, fieldDescriptor, value);
-                }
+                setFieldValue(protoObj, fieldDescriptor, value);
             }
         }
     }
 
     private static void setFieldValue(Message.Builder protoObj, Descriptors.FieldDescriptor fieldDescriptor,
-                                      Object value) {
-        switch (fieldDescriptor.getJavaType()) {
-            case INT:
-                protoObj.setField(fieldDescriptor, Integer.parseInt(value.toString()));
-                break;
-            case LONG:
-                try {
-                    protoObj.setField(fieldDescriptor, Long.parseLong(value.toString()));
-                } catch (NumberFormatException ex) {
-                    protoObj.setField(fieldDescriptor, Long.parseUnsignedLong(value.toString()));
-                }
-                break;
-            case FLOAT:
-                protoObj.setField(fieldDescriptor, Float.parseFloat(value.toString()));
-                break;
-            case DOUBLE:
-                protoObj.setField(fieldDescriptor, Double.parseDouble(value.toString()));
-                break;
-            case BOOLEAN:
-                protoObj.setField(fieldDescriptor, Boolean.parseBoolean(value.toString()));
-                break;
-            case STRING:
-                protoObj.setField(fieldDescriptor, value.toString());
-                break;
-            case ENUM:
-                protoObj.setField(fieldDescriptor, fieldDescriptor.getEnumType().findValueByName(value.toString()));
-                break;
-            case MESSAGE:
-                if (value instanceof Map) {
-                    Message.Builder nestedBuilder = protoObj.newBuilderForField(fieldDescriptor);
-                    populateFields((Map<String, Object>) value, nestedBuilder);
-                    protoObj.setField(fieldDescriptor, nestedBuilder.build());
-                }
-                break;
-            default:
-                break;
+                                      Object value) {        
+        
+        try {
+            switch (fieldDescriptor.getJavaType()) {
+                case INT:
+                    int integer = Caster.toInt(value);
+                    if (fieldDescriptor.getType() == Descriptors.FieldDescriptor.Type.UINT32 && integer < 0) {
+                        throw new IllegalArgumentException("Field type is an unsigned int");
+                    }
+                    protoObj.setField(fieldDescriptor, integer);
+                    break;
+                case LONG:
+                    long longVal = Caster.toLong(value);
+                    protoObj.setField(fieldDescriptor, longVal);     
+                    break;
+                case FLOAT:
+                    float f = Caster.toFloat(value); 
+                    protoObj.setField(fieldDescriptor, f);
+                    break;
+                case DOUBLE:
+                    double d = Caster.toDouble(value);
+                    protoObj.setField(fieldDescriptor, d);
+                    break;
+                case BOOLEAN:
+                    protoObj.setField(fieldDescriptor, Boolean.parseBoolean(value.toString()));
+                    break;
+                case STRING:
+                    // by default, the value's data type should be a string
+                    protoObj.setField(fieldDescriptor, value);
+                    break;
+                case BYTE_STRING:
+                    if (value instanceof String && ((String) value).startsWith("BYTES:")) {
+                        String byteString = ((String) value).substring(6); // Remove 'BYTES:' prefix
+                        value = ByteString.copyFromUtf8(byteString);
+                    }
+                    else if (value instanceof String){
+                        value = ByteString.copyFromUtf8((String) value);
+                    }
+                    protoObj.setField(fieldDescriptor, value);
+                    break;
+                case ENUM:
+                    protoObj.setField(fieldDescriptor, fieldDescriptor.getEnumType().findValueByName(value.toString()));
+                    break;
+                case MESSAGE:
+                    if (value instanceof Map) {
+                        Message.Builder nestedBuilder = protoObj.newBuilderForField(fieldDescriptor);
+                        populateFields((Map<String, Object>) value, nestedBuilder);
+                        protoObj.setField(fieldDescriptor, nestedBuilder.build());
+                    }
+                    else {
+                        throw new IllegalArgumentException("If given a protobuf key, should be expecting a map/json typed value");
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }catch (NumberFormatException e) {
+            throw new IllegalArgumentException("incorrect value type to field type");
         }
     }
 
