@@ -55,7 +55,7 @@ virtual std::future<uprotocol::utransport::UPayload> invokeMethod(const UUri &to
 cd build-x86_64-release/bin
 
 #### run the below executable for standalone launch of cpp testagent
-./test_agent_cpp
+./test_agent_cpp flag {zenoh/socket}
 
 # 5. Steps to run with TCK
 #### create target folder and copy the contents of build-x86_64-release to up-tck/test_agent/cpp/target folder
