@@ -137,7 +137,7 @@ void TestAgent::sendToTestManager(Document &document, Value &jsonData, string ac
 UStatus TestAgent::handleSendCommand(Document &jsonData)
 {
 	UMessage umsg1 = UMessage::default_instance();
-	UMessage umsg(*((UMessage *)ProtoConverter::dictToProto(jsonData["data"], umsg1)));
+	UMessage umsg(*((UMessage *)ProtoConverter::dictToProto(jsonData["data"], umsg1, jsonData.GetAllocator())));
 	spdlog::info("TestAgent::handleSendCommand(), umsg string is : {}", umsg.DebugString());
 
 	
@@ -159,14 +159,14 @@ UStatus TestAgent::handleSendCommand(Document &jsonData)
 UStatus TestAgent::handleRegisterListenerCommand(Document &jsonData)
 {
 	UUri uri = BuildUUri().build();
-	ProtoConverter::dictToProto(jsonData["data"], uri);
+	ProtoConverter::dictToProto(jsonData["data"], uri, jsonData.GetAllocator());
 	return transportPtr_->registerListener(uri, *this);
 }
 
 UStatus TestAgent::handleUnregisterListenerCommand(Document &jsonData)
 {
 	UUri uri = BuildUUri().build();
-	ProtoConverter::dictToProto(jsonData["data"], uri);
+	ProtoConverter::dictToProto(jsonData["data"], uri, jsonData.GetAllocator());
 	return transportPtr_->unregisterListener(uri, *this);
 }
 
@@ -175,9 +175,9 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData)
 	Value& data = jsonData["data"];
 	// Convert data and payload to protocol buffers
 	UUri uri = BuildUUri().build();
-	ProtoConverter::dictToProto(data, uri);
+	ProtoConverter::dictToProto(data, uri, jsonData.GetAllocator());
 	uprotocol::v1::UPayload upPay;
-	ProtoConverter::dictToProto(data["payload"],upPay);
+	ProtoConverter::dictToProto(data["payload"],upPay, jsonData.GetAllocator());
 	string str = upPay.value();
 	//std::cout << "handleInvokeMethodCommand(), payload is : " << str << std::endl;
 	uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),uprotocol::utransport::UPayloadType::VALUE);
@@ -222,7 +222,7 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData)
 void TestAgent::handleSerializeUriCommand(Document &jsonData)
 {
 	UUri uri = BuildUUri().build();
-	ProtoConverter::dictToProto(jsonData["data"], uri);
+	ProtoConverter::dictToProto(jsonData["data"], uri, jsonData.GetAllocator());
 
 	Document document;
 	document.SetObject();

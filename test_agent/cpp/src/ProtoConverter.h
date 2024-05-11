@@ -43,7 +43,7 @@ using namespace rapidjson;
 class ProtoConverter {
 public:
     //static bool dictToProto(const Value& parentJsonObj, Message& parentProtoObj);
-    static Message* dictToProto(const Value& parentJsonObj, Message& parentProtoObj);
+    static Message* dictToProto(Value& parentJsonObj, Message& parentProtoObj, Document::AllocatorType& allocator);
     static Value convertMessageToJson(const Message& message, Document& doc);
     static Value convertMessageToDocument(const Message& message, Document& doc);
 
