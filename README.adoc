@@ -29,7 +29,8 @@ Set up upclient-socket-python local repository and install
 [source]
 ----
 $ git clone https://github.com/eclipse-uprotocol/up-tck.git
-$ pip install -r requirements.txt
+$ cd scripts
+$ python install_dependencies.py
 ----
 *This will install the up-tck dependencies, making its classes and modules available for import in your python code.*
 

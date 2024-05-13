@@ -1,38 +1,88 @@
-# -------------------------------------------------------------------------
-#
-# Copyright (c) 2024 General Motors GTO LLC
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-# SPDX-FileType: SOURCE
-# SPDX-FileCopyrightText: 2024 General Motors GTO LLC
-# SPDX-License-Identifier: Apache-2.0
-#
-# -------------------------------------------------------------------------
+"""
+SPDX-FileCopyrightText: Copyright (c) 2024 Contributors to the Eclipse Foundation
+See the NOTICE file(s) distributed with this work for additional
+information regarding copyright ownership.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+SPDX-FileType: SOURCE
+SPDX-License-Identifier: Apache-2.0
+"""
+
 import base64
 import codecs
+import time
+import sys
+import os
+import subprocess
 import parse
 from typing import Any, Dict, Union
 from uprotocol.proto.ustatus_pb2 import UCode
+from threading import Thread
+from typing import List
 from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
 
 from behave import when, then, given, register_type
 from behave.runner import Context
 from hamcrest import assert_that, equal_to
+import git
+
+PYTHON_TA_PATH = "/test_agent/python/testagent.py"
+JAVA_TA_PATH = (
+    "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
+)
+DISPATCHER_PATH = "/dispatcher/dispatcher.py"
+
+repo = git.Repo(".", search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
+
+from dispatcher.dispatcher import Dispatcher
+
+
+def create_command(filepath_from_root_repo: str) -> List[str]:
+    command: List[str] = []
+
+    if filepath_from_root_repo.endswith(".jar"):
+        command.append("java")
+        command.append("-jar")
+    elif filepath_from_root_repo.endswith(".py"):
+        if sys.platform == "win32":
+            command.append("python")
+        elif (
+            sys.platform == "linux"
+            or sys.platform == "linux2"
+            or sys.platform == "darwin"
+        ):
+            command.append("python3")
+    else:
+        raise Exception("only accept .jar and .py files")
+    command.append(
+        os.path.abspath(
+            os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo
+        )
+    )
+    return command
+
+
+def create_subprocess(command: List[str]) -> subprocess.Popen:
+    if sys.platform == "win32":
+        process = subprocess.Popen(command, shell=True)
+    elif (
+        sys.platform == "linux"
+        or sys.platform == "linux2"
+        or sys.platform == "darwin"
+    ):
+        process = subprocess.Popen(command)
+    else:
+        print(sys.platform)
+        raise Exception("only handle Windows and Linux commands for now")
+    return process
 
 
 def cast_data_to_jsonable_bytes(value: str):
@@ -92,9 +142,30 @@ def create_sdk_data(context, sdk_name: str, command: str):
     context.json_dict = {}
 
     if sdk_name == "uE1":
-        sdk_name = context.config.userdata['uE1']
+        sdk_name = context.config.userdata["uE1"]
     elif sdk_name == "uE2":
         sdk_name = context.config.userdata['uE2']
+        
+    if context.transport == {}:
+        context.transport["transport"] = context.config.userdata["transport"]
+        if context.transport["transport"] == "socket":
+            dispatcher = Dispatcher()
+            thread = Thread(target=dispatcher.listen_for_client_connections)
+            thread.start()
+            context.dispatcher[context.transport["transport"]] = dispatcher
+            time.sleep(5)
+        else:
+            raise ValueError("Invalid transport")
+
+    if sdk_name not in context.ues:
+        context.logger.info(f"Creating {sdk_name} process...")
+        run_command = create_command(PYTHON_TA_PATH if sdk_name == "python" else JAVA_TA_PATH)
+        process = create_subprocess(run_command)
+        if sdk_name in ["python", "java"]:
+            context.ues.setdefault(sdk_name, []).append(process)
+        else:
+            raise ValueError("Invalid SDK name")
+    
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
@@ -152,6 +223,8 @@ def serialized_uuid_received(context, expected_uuid: str):
 
 @then('receives validation result as "{expected_result}"')
 def receive_validation_result(context, expected_result):
+    if expected_result == "none":
+        return
     try:
         expected_result = expected_result.strip()
         actual_val_res = context.response_data["result"]
@@ -433,6 +506,7 @@ def send_micro_serialized_command(
 
     context.logger.info(f"Response Json {command} -> {response_json}")
     context.response_data = response_json["data"]
+
 
 def access_nested_dict(dictionary, keys):
     keys = keys.split(".")
