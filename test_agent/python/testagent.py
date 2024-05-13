@@ -269,7 +269,6 @@ def handle_long_serialize_uuid(json_msg: Dict[str, Any]):
 
 def handle_uri_validate_command(json_msg: Dict[str, Any]):
     val_type: str = json_msg["data"]["validation_type"]
-    # uri: UUri = LongUriSerializer().deserialize(json_msg["data"].get("serialized_uri"))
     uuri_data: Dict[str, Any] = json_msg["data"]["uuri"]
     
     uuri: UUri = dict_to_proto(uuri_data, UUri())
