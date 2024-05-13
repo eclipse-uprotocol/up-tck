@@ -221,7 +221,7 @@ def serialized_uuid_received(context, expected_uuid: str):
         raise ValueError(f"Exception occurred. {ae}")
 
 
-@then('receives validation result as "{expected_result}"')
+@then('receives validation result as "{expected_result: NullableString}"')
 def receive_validation_result(context, expected_result):
     if expected_result == "none":
         return
