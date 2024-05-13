@@ -1,33 +1,30 @@
 /*
- * Copyright (c) 2024 General Motors GTO LLC
+ * SPDX-FileCopyrightText: Copyright (c) 2024 Contributors to the Eclipse Foundation
  *
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *     http: *www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  * SPDX-FileType: SOURCE
- * SPDX-FileCopyrightText: 2023 General Motors GTO LLC
  * SPDX-License-Identifier: Apache-2.0
  */
 
-use log::{debug, error};
+use log::{debug, error, info};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use up_rust::{
     Data, UAttributes, UAuthority, UCode, UEntity, UMessage, UMessageType, UPayload,
-    UPayloadFormat, UPriority, UResource, UStatus, UUri, UUID,
+    UPayloadFormat, UPriority, UResource, UUri, UUID,
 };
 
 use protobuf::{Enum, MessageField, SpecialFields};
@@ -42,28 +39,6 @@ pub fn convert_json_to_jsonstring<T: serde::Serialize>(value: &T) -> String {
     }
 }
 
-pub fn get_ustatus_code(u_status: &UStatus) -> u32 {
-    match u_status.get_code() {
-        UCode::OK => 0,
-        UCode::INTERNAL => 13,
-        UCode::ABORTED => 10,
-        UCode::ALREADY_EXISTS => 6,
-        UCode::CANCELLED => 1,
-        UCode::DATA_LOSS => 15,
-        UCode::DEADLINE_EXCEEDED => 4,
-        UCode::FAILED_PRECONDITION => 9,
-        UCode::INVALID_ARGUMENT => 3,
-        UCode::NOT_FOUND => 5,
-        UCode::OUT_OF_RANGE => 11,
-        UCode::PERMISSION_DENIED => 7,
-        UCode::RESOURCE_EXHAUSTED => 8,
-        UCode::UNAUTHENTICATED => 16,
-        UCode::UNAVAILABLE => 14,
-        UCode::UNIMPLEMENTED => 12,
-        UCode::UNKNOWN => 2,
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct WrapperUUri(pub UUri);
 impl<'de> Deserialize<'de> for WrapperUUri {
@@ -72,31 +47,29 @@ impl<'de> Deserialize<'de> for WrapperUUri {
         D: Deserializer<'de>,
     {
         let value: Value = Deserialize::deserialize(deserializer)?;
-        let authority = if let Ok(authority) = parse_uauthority(&value) {
-            authority
-        } else {
-            let err_msg = "Error parsing authority: ".to_string();
-            error!("{}", err_msg);
-            UAuthority::default()
-        };
+        let authority = parse_uauthority(&value);
+        if authority.is_none() {
+            info!("No UAuthority parsed");
+        }
 
         let resource = parse_uresource(&value);
         let entity = parse_uentity(&value);
 
-        let uuri = if authority.get_name().is_none() && authority.number.is_none() {
-            UUri {
-                entity: MessageField(Some(Box::new(entity))),
-                resource: MessageField(Some(Box::new(resource))),
-                ..Default::default() // If authority is default, fill in the rest with default values
+        let uuri = match authority {
+            Some(authority) => {
+                debug!("Authority is not default");
+                UUri {
+                    authority: Some(authority).into(),
+                    entity: Some(entity).into(),
+                    resource: Some(resource).into(),
+                    ..Default::default()
+                }
             }
-        } else {
-            debug!(" authority is not default");
-            UUri {
-                authority: MessageField(Some(Box::new(authority))),
-                entity: MessageField(Some(Box::new(entity))),
-                resource: MessageField(Some(Box::new(resource))),
+            None => UUri {
+                entity: Some(entity).into(),
+                resource: Some(resource).into(),
                 ..Default::default()
-            }
+            },
         };
 
         Ok(WrapperUUri(uuri))
@@ -123,7 +96,6 @@ fn parse_uresource(value: &Value) -> UResource {
         uresource.instance = Some(resource_value.to_owned());
     } else {
         error!("Error: instance field is not a string in resource");
-        //Some("None".to_owned())
     };
 
     if let Some(resource_value) = value
@@ -134,7 +106,6 @@ fn parse_uresource(value: &Value) -> UResource {
         uresource.message = Some(resource_value.to_owned());
     } else {
         error!("Error: message field is not a string in resource_value");
-        //Some("None".to_owned())
     };
 
     if let Some(resource_value) = value
@@ -146,72 +117,66 @@ fn parse_uresource(value: &Value) -> UResource {
             uresource.id = Some(parsed_id);
         } else {
             error!("Error: id field parsing to u32");
-            // Some(0)
         }
     } else {
         error!("Error: id field is not string");
-        //Some(0)
     };
     uresource
 }
 
-fn parse_string_field(value: &Value, field: &str) -> Result<String, serde_json::Error> {
-    if let Some(entity_value) = value
-        .get("entity")
-        .and_then(|entity_value| entity_value.get(field))
+fn parse_string_field(
+    message: &str,
+    value: &Value,
+    field: &str,
+) -> Result<String, serde_json::Error> {
+    if let Some(msg_value) = value
+        .get(message)
+        .and_then(|msg_value| msg_value.get(field))
         .and_then(|field_value| field_value.as_str())
     {
-        Ok(entity_value.to_owned())
+        Ok(msg_value.to_owned())
     } else {
-        error!("Error: {field} field is not a string");
-        Err(serde::de::Error::custom(format!(
-            "Error: {field} field is not a string"
-        )))
+        let err_str = format!("Error: {field} field is not a string");
+        error!("{err_str}");
+        Err(serde::de::Error::custom(err_str))
     }
 }
 
-fn parse_u32_field(value: &Value, field: &str) -> Result<Option<u32>, serde_json::Error> {
-    if let Some(entity_value) = value
-        .get("entity")
-        .and_then(|entity_value| entity_value.get(field))
+fn parse_u32_field(
+    message: &str,
+    value: &Value,
+    field: &str,
+) -> Result<Option<u32>, serde_json::Error> {
+    if let Some(msg_value) = value
+        .get(message)
+        .and_then(|msg_value| msg_value.get(field))
         .and_then(|field_value| field_value.as_str())
     {
-        if let Ok(parsed_value) = entity_value.parse::<u32>() {
+        if let Ok(parsed_value) = msg_value.parse::<u32>() {
             Ok(Some(parsed_value))
         } else {
-            error!("Error: {field} is not a number");
-            Err(serde::de::Error::custom(format!(
-                "Error: {field} is not a number"
-            )))
+            let err_str = format!("Error: {field} field is not a number");
+            error!("{err_str}");
+            Err(serde::de::Error::custom(err_str))
         }
     } else {
-        error!("Error: {} field is not a string", field);
-        Err(serde::de::Error::custom(format!(
-            "Error: {field} field is not a string"
-        )))
+        let err_str = format!("Error: {field} field is not a string");
+        error!("{err_str}");
+        Err(serde::de::Error::custom(err_str))
     }
 }
 
 fn parse_uentity(value: &Value) -> UEntity {
-    let name = match parse_string_field(value, "name") {
-        Ok(value) => value,
-        Err(_) => "None".to_owned(),
-    };
-
-    let id = match parse_u32_field(value, "id") {
-        Ok(value) => value,
-        Err(_) => None,
-    };
-
-    let version_major = match parse_u32_field(value, "version_major") {
-        Ok(value) => value,
-        Err(_) => None,
-    };
-
-    let version_minor = match parse_u32_field(value, "version_minor") {
-        Ok(value) => value,
-        Err(_) => None,
-    };
+    let name = parse_string_field("entity", value, "name")
+        .ok()
+        .unwrap_or_else(|| "None".to_owned());
+    let id = parse_u32_field("entity", value, "id").ok().flatten();
+    let version_major = parse_u32_field("entity", value, "version_major")
+        .ok()
+        .flatten();
+    let version_minor = parse_u32_field("entity", value, "version_minor")
+        .ok()
+        .flatten();
 
     UEntity {
         name,
@@ -222,7 +187,7 @@ fn parse_uentity(value: &Value) -> UEntity {
     }
 }
 
-fn parse_uauthority(value: &Value) -> Result<UAuthority, serde_json::Error> {
+fn parse_uauthority(value: &Value) -> Option<UAuthority> {
     let name = if let Some(authority_value) = value
         .get("authority")
         .and_then(|authority_value| authority_value.get("name"))
@@ -230,7 +195,8 @@ fn parse_uauthority(value: &Value) -> Result<UAuthority, serde_json::Error> {
     {
         Some(authority_value.to_owned())
     } else {
-        return Err(serde::de::Error::custom("Missing value authority name"));
+        error!("Error: Missing value authority name");
+        return None;
     };
 
     let number = if let Some(authority_number_ip) = value
@@ -250,10 +216,11 @@ fn parse_uauthority(value: &Value) -> Result<UAuthority, serde_json::Error> {
             authority_number_id.to_string().as_bytes().to_vec(),
         ))
     } else {
-        return Err(serde::de::Error::custom("Missing value number"));
+        error!("Error: Missing value number");
+        return None;
     };
 
-    Ok(UAuthority {
+    Some(UAuthority {
         name,
         number,
         special_fields: SpecialFields::default(),
@@ -267,7 +234,7 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
         D: Deserializer<'de>,
     {
         let value: Value = Deserialize::deserialize(deserializer)?;
-        let mut uattributes = UAttributes::new();
+        let mut uattributes = UAttributes::default();
 
         if let Some(priority_value) = value.get("priority").and_then(|v| v.as_str()) {
             uattributes.priority = UPriority::from_str(priority_value)
@@ -299,12 +266,12 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
 
         if let Some(source_value) = value.get("source") {
             if let Ok(wrapper_uri) = serde_json::from_value::<WrapperUUri>(source_value.clone()) {
-                uattributes.source = MessageField(Some(Box::new(wrapper_uri.0)));
+                uattributes.source = Some(wrapper_uri.0).into();
             }
         };
         if let Some(sink_value) = value.get("sink") {
             if let Ok(wrapper_uri) = serde_json::from_value::<WrapperUUri>(sink_value.clone()) {
-                uattributes.sink = MessageField(Some(Box::new(wrapper_uri.0)));
+                uattributes.sink = Some(wrapper_uri.0).into();
             }
         };
 
@@ -315,33 +282,39 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
 
         uattributes.id = MessageField(Some(Box::new(id)));
 
-        if let Some(ttl) = value.get("ttl").and_then(|ttl| ttl.as_str()) {
-            if let Ok(parsed_ttl) = ttl.parse::<u32>() {
+        if value.get("ttl").and_then(|ttl| ttl.as_str()).is_some() {
+            if let Ok(Some(parsed_ttl)) = parse_u32_field("entity", &value, "ttl") {
                 uattributes.ttl = parsed_ttl.into();
             } else {
-                error!("Error: Failed to parse _ttl as u32");
+                error!("Error: Failed to parse ttl as u32");
             }
-        };
+        }
 
-        if let Some(permission_level) = value
+        if value
             .get("permission_level")
             .and_then(|permission_level| permission_level.as_str())
+            .is_some()
         {
-            if let Ok(parsed_permission_level) = permission_level.parse::<u32>() {
+            if let Ok(Some(parsed_permission_level)) =
+                parse_u32_field("entity", &value, "permission_level")
+            {
                 uattributes.permission_level = Some(parsed_permission_level);
             } else {
                 error!("Error: Failed to parse permission_level as u32");
             }
         };
 
-        if let Some(commstatus_str) = value.get("commstatus").and_then(|v| v.as_str()) {
-            if let Some(code) = UCode::from_str(commstatus_str) {
-                uattributes.commstatus = Some(code.into());
-            } else {
-                error!("Failed to parse commstatus string into UCode.");
+        match parse_string_field("entity", &value, "commstatus") {
+            Ok(commstatus_str) => {
+                if let Some(code) = UCode::from_str(&commstatus_str) {
+                    uattributes.commstatus = Some(code.into());
+                } else {
+                    error!("Failed to parse commstatus string into UCode.");
+                }
             }
-        } else {
-            error!("Failed to extract commstatus as a string.");
+            Err(err) => {
+                error!("Error parsing commstatus field: {}", err);
+            }
         }
 
         debug!(" uattributes.commstatus: {:?}", uattributes.commstatus);
@@ -369,12 +342,7 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
             error!("Error: traceparent is not a string");
         };
 
-        // special field
-        let special_fields = SpecialFields::default();
-
-        if special_fields.ne(&SpecialFields::default()) {
-            uattributes.special_fields = special_fields;
-        }
+        uattributes.special_fields = SpecialFields::default();
 
         Ok(WrapperUAttribute(uattributes))
     }
@@ -428,7 +396,6 @@ impl<'de> Deserialize<'de> for WrapperUPayload {
 
 #[allow(clippy::map_unwrap_or)]
 fn parse_upayload(value: &Value) -> Result<UPayload, serde_json::Error> {
-
     let format = value
         .get("format")
         .and_then(|format_value| format_value.as_str())
@@ -467,7 +434,6 @@ fn parse_upayload(value: &Value) -> Result<UPayload, serde_json::Error> {
 }
 
 #[derive(Debug, Default)]
-
 pub struct WrapperUMessage(pub UMessage);
 
 impl<'de> Deserialize<'de> for WrapperUMessage {
@@ -477,31 +443,28 @@ impl<'de> Deserialize<'de> for WrapperUMessage {
     {
         let value: Value = Deserialize::deserialize(deserializer)?;
 
-        let wattributes = match value.get("attributes") {
-            Some(attributes) => {
-                serde_json::from_value::<WrapperUAttribute>(attributes.clone()).unwrap_or_default()
-            }
-            None => WrapperUAttribute(UAttributes::default()),
-        };
+        let wattributes = value
+            .get("attributes")
+            .and_then(|attributes| {
+                serde_json::from_value::<WrapperUAttribute>(attributes.clone()).ok()
+            })
+            .map(|wrapper_attr| wrapper_attr.0);
 
-        let wpayload = match value.get("payload") {
-            Some(payload) => {
-                serde_json::from_value::<WrapperUPayload>(payload.clone()).unwrap_or_default()
-            }
-            None => WrapperUPayload(UPayload::default()),
-        };
+        let wpayload = value
+            .get("payload")
+            .and_then(|payload| serde_json::from_value::<WrapperUPayload>(payload.clone()).ok())
+            .map(|wrapper_payload| wrapper_payload.0);
 
         Ok(WrapperUMessage(UMessage {
-            attributes: Some(wattributes.0).into(),
-            payload: Some(wpayload.0).into(),
+            attributes: wattributes.into(),
+            payload: wpayload.into(),
             special_fields: SpecialFields::default(),
         }))
     }
 }
 
 pub fn escape_control_character(c: char) -> String {
-    let escaped = format!("\\u{:04x}", c as u32);
-    escaped
+    format!("\\u{:04x}", c as u32)
 }
 
 pub fn sanitize_input_string(input: &str) -> String {

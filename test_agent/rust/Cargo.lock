@@ -2089,7 +2089,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anystruct",
- "async-std",
  "async-trait",
  "base64",
  "chrono",

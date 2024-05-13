@@ -1,24 +1,21 @@
 /*
- * Copyright (c) 2024 General Motors GTO LLC
+ * SPDX-FileCopyrightText: Copyright (c) 2024 Contributors to the Eclipse Foundation
  *
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *     http: *www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  * SPDX-FileType: SOURCE
- * SPDX-FileCopyrightText: 2023 General Motors GTO LLC
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -35,7 +32,7 @@ use tokio::sync::Mutex;
 use serde::Serialize;
 
 use crate::constants::SDK_INIT_MESSAGE;
-use crate::utils::{convert_json_to_jsonstring, get_ustatus_code, WrapperUMessage, WrapperUUri};
+use crate::utils::{convert_json_to_jsonstring, WrapperUMessage, WrapperUUri};
 use crate::{constants, utils, UTransportSocket};
 use std::net::TcpStream;
 
@@ -131,7 +128,7 @@ impl UListener for ListenerHandlers {
         let result = socket.write_all(message);
         match result {
             Ok(()) => println!("on receive could send data to TM"),
-            Err(err) => error!("on receive could not send data to TM{}", err),
+            Err(err) => error!("on receive could not send data to TM: {err}"),
         }
     }
 
@@ -158,11 +155,9 @@ impl SocketTestAgent {
         let wrapper_umessage: WrapperUMessage = match serde_json::from_value(json_data_value) {
             Ok(message) => message,
             Err(err) => {
-                error!("not able to deserialize send UMessage from Json{}", err);
-                return Err(UStatus::fail_with_code(
-                    UCode::INTERNAL,
-                    "Failed to Deserialize",
-                ));
+                let err_string = format!("Failed to Deserialize: {err}");
+                error!("{err_string}");
+                return Err(UStatus::fail_with_code(UCode::INTERNAL, err_string));
             }
         };
         let u_message = wrapper_umessage.0;
@@ -177,14 +172,9 @@ impl SocketTestAgent {
         let wrapper_uuri: WrapperUUri = match serde_json::from_value(json_data_value) {
             Ok(message) => message,
             Err(err) => {
-                error!(
-                    "not able to deserialize register listener UUri from Json{}",
-                    err
-                );
-                return Err(UStatus::fail_with_code(
-                    UCode::INTERNAL,
-                    "Failed to Deserialize",
-                ));
+                let err_string = format!("Failed to Deserialize: {err}");
+                error!("{err_string}");
+                return Err(UStatus::fail_with_code(UCode::INTERNAL, err_string));
             }
         };
         let u_uuri = wrapper_uuri.0;
@@ -201,14 +191,9 @@ impl SocketTestAgent {
         let wrapper_uuri: WrapperUUri = match serde_json::from_value(json_data_value) {
             Ok(message) => message,
             Err(err) => {
-                error!(
-                    "not able to deserialize unregister listener UUri from Json{}",
-                    err
-                );
-                return Err(UStatus::fail_with_code(
-                    UCode::INTERNAL,
-                    "Failed to Deserialize",
-                ));
+                let err_string = format!("Failed to Unregister Listener: {err}");
+                error!("{err_string}");
+                return Err(UStatus::fail_with_code(UCode::INTERNAL, err_string));
             }
         };
         let u_uuri = wrapper_uuri.0;
@@ -287,7 +272,7 @@ impl SocketTestAgent {
                         "message".to_string(),
                         u_status.message.clone().unwrap_or_default(),
                     );
-                    let enum_number = get_ustatus_code(&u_status);
+                    let enum_number = UStatus::get_code(&u_status) as i32;
                     status_dict.insert("code".to_string(), enum_number.to_string());
                 }
             }
