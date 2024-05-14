@@ -183,7 +183,7 @@ fn parse_uentity(value: &Value) -> UEntity {
         id,
         version_major,
         version_minor,
-        special_fields: SpecialFields::default(),
+        ..Default::default()
     }
 }
 
@@ -223,7 +223,7 @@ fn parse_uauthority(value: &Value) -> Option<UAuthority> {
     Some(UAuthority {
         name,
         number,
-        special_fields: SpecialFields::default(),
+        ..Default::default()
     })
 }
 #[derive(Default)]
@@ -371,9 +371,9 @@ fn parse_uuid(value: &Value, uuid: &str) -> Result<UUID, serde_json::Error> {
     };
 
     Ok(UUID {
-        lsb,
         msb,
-        special_fields: SpecialFields::default(),
+        lsb,
+        ..Default::default()
     })
 }
 
@@ -429,7 +429,7 @@ fn parse_upayload(value: &Value) -> Result<UPayload, serde_json::Error> {
         format: format.into(),
         length,
         data,
-        special_fields: SpecialFields::default(),
+        ..Default::default()
     })
 }
 
@@ -458,7 +458,7 @@ impl<'de> Deserialize<'de> for WrapperUMessage {
         Ok(WrapperUMessage(UMessage {
             attributes: wattributes.into(),
             payload: wpayload.into(),
-            special_fields: SpecialFields::default(),
+            ..Default::default()
         }))
     }
 }

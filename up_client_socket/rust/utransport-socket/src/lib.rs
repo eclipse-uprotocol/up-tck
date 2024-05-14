@@ -159,9 +159,6 @@ impl UTransportSocket {
         }
     }
 
-    /// # Panics
-    ///
-    /// Will panic if something breaks
     /// # Errors
     ///
     /// Will return `Err` if no listeners registered for topic
@@ -326,12 +323,14 @@ impl UTransport for UTransportSocket {
                     )),
                 }
             }
-            UMessageType::UMESSAGE_TYPE_UNSPECIFIED | UMessageType::UMESSAGE_TYPE_NOTIFICATION => {
-                Err(UStatus::fail_with_code(
-                    UCode::INVALID_ARGUMENT,
-                    "Wrong Message type in UAttributes",
-                ))
-            }
+            UMessageType::UMESSAGE_TYPE_NOTIFICATION => Err(UStatus::fail_with_code(
+                UCode::INTERNAL,
+                "Notification-type not implemented",
+            )),
+            UMessageType::UMESSAGE_TYPE_UNSPECIFIED => Err(UStatus::fail_with_code(
+                UCode::INVALID_ARGUMENT,
+                "Wrong Message type in UAttributes",
+            )),
         }
     }
 
@@ -377,9 +376,9 @@ impl UTransport for UTransportSocket {
         topic: UUri,
         listener: Arc<dyn UListener>,
     ) -> Result<(), UStatus> {
-        debug!("register listner called !");
+        debug!("Register listener called");
         if topic.authority.is_some() && topic.entity.is_none() && topic.resource.is_none() {
-            // This is special UUri which means we need to register for all of Publish, Request, and Response
+            // This is special UUri which means we need to register for all of Publish, Request, Response, and Notification
             // RPC response
             Err(UStatus::fail_with_code(
                 UCode::UNIMPLEMENTED,
@@ -392,11 +391,11 @@ impl UTransport for UTransportSocket {
             UriValidator::validate(&topic)
                 .map_err(|err| UStatus::fail_with_code(UCode::INVALID_ARGUMENT, err.to_string()))?;
             if UriValidator::is_rpc_response(&topic) {
-                debug!("register listner called for rpc response !");
+                debug!("Register listener called for RPC Response");
             } else if UriValidator::is_rpc_method(&topic) {
-                debug!("register listner called for rpc !");
+                debug!("Register listener called for RPC");
             } else {
-                debug!("register listner called for topic !");
+                debug!("Register listener called for Topic");
             }
 
             let mut topics_listeners = match self.listener_map.lock() {
