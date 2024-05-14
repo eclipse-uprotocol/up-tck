@@ -27,7 +27,7 @@ TestAgent::~TestAgent()
 
 UStatus TestAgent::onReceive(uprotocol::utransport::UMessage &transportUMessage) const
 {
-	std::cout << "SocketUListener::onReceive(), received." << std::endl;
+	std::cout << "TestAgent::onReceive(), received." << std::endl;
 	uprotocol::v1::UPayload payV1;
 		payV1.set_format((uprotocol::v1::UPayloadFormat)transportUMessage.payload().format());
 
@@ -99,8 +99,8 @@ void TestAgent::sendToTestManager(const Message& proto, const string& action, co
 {
 	Document responseDict;
 	responseDict.SetObject();
-	//Value dataValue = ProtoConverter::convertMessageToJson(proto, responseDict);
-	Value dataValue = ProtoConverter::convertMessageToDocument(proto, responseDict);
+	Value dataValue = ProtoConverter::convertMessageToJson(proto, responseDict);
+	//Value dataValue = ProtoConverter::convertMessageToDocument(proto, responseDict);
 	responseDict.AddMember("data", dataValue, responseDict.GetAllocator());
 
 	if(!strTest_id.empty())
