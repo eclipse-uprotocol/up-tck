@@ -46,6 +46,7 @@ class TestAgentRecipe(ConanFile):
         self.requires("fmt/10.2.1")
         self.requires("libuuid/1.0.3")
         self.requires("up-client-zenoh-cpp/0.1.4-dev")
+        self.requires("openssl/1.1.1w")
 
     def generate(self):
         tc = CMakeToolchain(self)
