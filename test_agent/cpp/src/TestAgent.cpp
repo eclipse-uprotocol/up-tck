@@ -176,20 +176,24 @@ UStatus TestAgent::handleUnregisterListenerCommand(Document &jsonData)
 void TestAgent::handleInvokeMethodCommand(Document &jsonData)
 {
 	Value& data = jsonData["data"];
+	std::string strTest_id = jsonData["test_id"].GetString();
+
 	// Convert data and payload to protocol buffers
-	UUri uri = BuildUUri().build();
-	ProtoConverter::dictToProto(data, uri, jsonData.GetAllocator());
 	uprotocol::v1::UPayload upPay;
 	ProtoConverter::dictToProto(data["payload"],upPay, jsonData.GetAllocator());
 	string str = upPay.value();
-	//std::cout << "handleInvokeMethodCommand(), payload is : " << str << std::endl;
+	spdlog::debug("TestAgent::handleInvokeMethodCommand(), payload in string format is :  {}", str);
 	uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),uprotocol::utransport::UPayloadType::VALUE);
 	payload.setFormat((uprotocol::utransport::UPayloadFormat)upPay.format());
 	
+	data.RemoveMember("payload"); // removing payload to make it proper  uuri
+	UUri uri = BuildUUri().build();
+	ProtoConverter::dictToProto(data, uri, jsonData.GetAllocator());
+	spdlog::debug("TestAgent::handleInvokeMethodCommand(), UUri in string format is :  {}", uri.DebugString());
+
 	CallOptions options;
 	options.set_ttl(10000);
 
-	// TODO: get umsg from transport and send to test manager
 	auto rpc_ptr = dynamic_cast<uprotocol::rpc::RpcClient*>(transportPtr_.get());
 	std::future<uprotocol::rpc::RpcResponse> responseFuture = rpc_ptr->invokeMethod(uri, payload, options);
 
@@ -204,12 +208,11 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData)
 	string strPayload = std::string(reinterpret_cast<const char*>(pay2.data()), pay2.size());
 	spdlog::info("TestAgent::handleInvokeMethodCommand(), payload got from responseFuture is : {}", strPayload);
 
-	std::string strTest_id = jsonData["test_id"].GetString();
-
 	uprotocol::v1::UPayload payV1;
 	payV1.set_format((uprotocol::v1::UPayloadFormat)pay2.format());
 	payV1.set_value(pay2.data(), pay2.size());
 
+	// Create v1 UMessage from transport UMessage
 	UMessage umsg;
 	umsg.mutable_payload()->CopyFrom(payV1);
 	umsg.mutable_attributes()->CopyFrom(rpcResponse.message.attributes());
@@ -358,7 +361,8 @@ int TestAgent::DisConnect()
 }
 
 int main(int argc, char* argv[]) {
-
+	// uncomment this line to set log level to debug
+	//spdlog::set_level(spdlog::level::level_enum::debug);
 	spdlog::info(" *** Starting CPP Test Agent *** ");
     if (argc < 2){
         spdlog::error("Incorrect input prams: {} ", argv[0]);
