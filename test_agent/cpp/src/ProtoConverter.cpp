@@ -1,22 +1,82 @@
 #include "ProtoConverter.h"
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
+#include <string>
+#include <regex>
+
+std::string base64_encode(const std::string &in) {
+
+    BIO *bio, *b64;
+    BUF_MEM *bufferPtr;
+
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new(BIO_s_mem());
+    bio = BIO_push(b64, bio);
+
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //Ignore newlines - write everything in one line
+    BIO_write(bio, in.c_str(), in.length());
+    BIO_flush(bio);
+    BIO_get_mem_ptr(bio, &bufferPtr);
+    BIO_set_close(bio, BIO_NOCLOSE);
+    BIO_free_all(bio);
+
+    std::string encoded(bufferPtr->data, bufferPtr->length);
+    BUF_MEM_free(bufferPtr);
+    return encoded;
+}
+
+std::string base64_decode(const std::string &in) {
+
+    BIO *bio, *b64;
+    int decodeLen = in.length();
+    char* decode = new char[decodeLen];
+
+    bio = BIO_new_mem_buf(in.c_str(), -1);
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_push(b64, bio);
+
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); // Do not use newlines to flush buffer
+    decodeLen = BIO_read(bio, decode, decodeLen);
+    decode[decodeLen] = '\0';
+
+    BIO_free_all(bio);
+
+    std::string decoded(decode, decodeLen);
+    delete [] decode;
+    return decoded;
+}
+
+void ProtoConverter::processNested(Value& parentJsonObj, Document::AllocatorType& allocator) {
+    for (auto& m : parentJsonObj.GetObject()) {
+        if (m.value.IsObject()) {
+            // Recursively process nested object
+            processNested(m.value, allocator);
+        } else if (m.value.IsString() && std::string(m.value.GetString()).find("BYTES:") == 0) {
+            std::string byteString = std::string(m.value.GetString()).substr(6); // Remove 'BYTES:' prefix
+
+            // Encode the byte string in base64
+            std::string base64_encoded = base64_encode(byteString);
+            m.value.SetString(base64_encoded.c_str(), static_cast<rapidjson::SizeType>(base64_encoded.length()), allocator);
+        }
+    }
+}
+
+bool isValidBase64(const std::string& input) {
+    std::regex base64Pattern("^[A-Za-z0-9+/]+={0,2}$");
+    return std::regex_match(input, base64Pattern);
+}
 
 Message* ProtoConverter::dictToProto(Value& parentJsonObj, Message& parentProtoObj, Document::AllocatorType& allocator)
 {
-    // Covert parentJsonObj value to string
+
+    // Process JSON object members
+    processNested(parentJsonObj, allocator);
+    // Convert parentJsonObj value to string
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     parentJsonObj.Accept(writer);
     std::string strBuf = buffer.GetString();
-    std::cout << "Received parentJsonObj string is  : " << strBuf << std::endl;
-
-    // Iterate over JSON object members
-    for (auto& m : parentJsonObj.GetObject()) {
-        // Check if value is a string and has 'BYTES:' prefix
-        if (m.value.IsString() && std::string(m.value.GetString()).find("BYTES:") == 0) {
-            std::string byteString = std::string(m.value.GetString()).substr(6); // Remove 'BYTES:' prefix
-            m.value.SetString(byteString.c_str(), byteString.length(), allocator);
-        }
-    }
 
     google::protobuf::util::JsonParseOptions options;
     auto status = google::protobuf::util::JsonStringToMessage(strBuf, &parentProtoObj, options);
@@ -30,67 +90,25 @@ Message* ProtoConverter::dictToProto(Value& parentJsonObj, Message& parentProtoO
 Value ProtoConverter::convertMessageToJson(const Message& message, Document& doc) {
     std::string jsonString;
     util::MessageToJsonString(message, &jsonString);
-    return Value(jsonString.c_str(), jsonString.length(), doc.GetAllocator());
-}
 
+    Document jsonDoc;
+    jsonDoc.Parse(jsonString.c_str());
 
-Value ProtoConverter::convertFieldToValue(const FieldDescriptor* field, const Message& message, Document& doc) {
-    const Reflection* reflection = message.GetReflection();
-    switch (field->cpp_type()) {
-        case FieldDescriptor::CPPTYPE_INT32:
-            return Value(reflection->GetInt32(message, field));
-        case FieldDescriptor::CPPTYPE_INT64:
-            return Value(reflection->GetInt64(message, field));
-        case FieldDescriptor::CPPTYPE_UINT32:
-            return Value(reflection->GetUInt32(message, field));
-        case FieldDescriptor::CPPTYPE_UINT64:
-            return Value(reflection->GetUInt64(message, field));
-        case FieldDescriptor::CPPTYPE_DOUBLE:
-            return Value(reflection->GetDouble(message, field));
-        case FieldDescriptor::CPPTYPE_FLOAT:
-            return Value(reflection->GetFloat(message, field));
-        case FieldDescriptor::CPPTYPE_BOOL:
-            return Value(reflection->GetBool(message, field));
-        case FieldDescriptor::CPPTYPE_ENUM:
-            return Value(reflection->GetEnum(message, field)->number());
-        case FieldDescriptor::CPPTYPE_STRING:
-            return Value(reflection->GetString(message, field).c_str(), doc.GetAllocator());
-        case FieldDescriptor::CPPTYPE_MESSAGE:
-            return convertMessageToDocument(reflection->GetMessage(message, field), doc);
-        default:
-            return Value();
-    }
-}
-
-Value ProtoConverter::convertRepeatedFieldToValue(const FieldDescriptor* field, const Message& message, Document& doc) {
-    const Reflection* reflection = message.GetReflection();
-    const int size = reflection->FieldSize(message, field);
-    Value array(kArrayType);
-    for (int i = 0; i < size; ++i) {
-        array.PushBack(convertFieldToValue(field, message, doc), doc.GetAllocator());
-    }
-    return array;
-}
-
-Value ProtoConverter::convertMessageToDocument(const Message& message, Document& doc) {
-    Value object(kObjectType);
-
-    const Descriptor* descriptor = message.GetDescriptor();
-    const Reflection* reflection = message.GetReflection();
-
-    for (int i = 0; i < descriptor->field_count(); ++i) {
-        const FieldDescriptor* field = descriptor->field(i);
-        if (field->is_repeated()) {
-            Value array(kArrayType);
-            const int size = reflection->FieldSize(message, field);
-            for (int j = 0; j < size; ++j) {
-                array.PushBack(convertFieldToValue(field, message, doc), doc.GetAllocator());
-            }
-            object.AddMember(StringRef(field->name().c_str()), array, doc.GetAllocator());
-        } else {
-            object.AddMember(StringRef(field->name().c_str()), convertFieldToValue(field, message, doc), doc.GetAllocator());
+    if (jsonDoc.HasMember("payload") && jsonDoc["payload"].HasMember("value")) {
+        std::string byteString = jsonDoc["payload"]["value"].GetString();
+        if (isValidBase64(byteString)) { // Check if the string is base64 encoded
+            //std::cout << "Decoding base64 string: " << byteString << std::endl;
+            std::string base64_decoded = base64_decode(byteString);
+            jsonDoc["payload"]["value"].SetString(base64_decoded.c_str(), static_cast<rapidjson::SizeType>(base64_decoded.length()), doc.GetAllocator());
         }
     }
 
-    return object;
+    // Convert the modified JSON document back to a string
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    jsonDoc.Accept(writer);
+    jsonString = buffer.GetString();
+
+    return Value(jsonString.c_str(), jsonString.length(), doc.GetAllocator());
 }
+

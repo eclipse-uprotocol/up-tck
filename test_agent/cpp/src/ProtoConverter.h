@@ -45,13 +45,9 @@ public:
     //static bool dictToProto(const Value& parentJsonObj, Message& parentProtoObj);
     static Message* dictToProto(Value& parentJsonObj, Message& parentProtoObj, Document::AllocatorType& allocator);
     static Value convertMessageToJson(const Message& message, Document& doc);
-    static Value convertMessageToDocument(const Message& message, Document& doc);
 
 private:
-    static void populateFields(const Value& jsonObj, Message& protoObj);
-    static void setFieldValue(Message& protoObj, const FieldDescriptor* fieldDescriptor, const Value& value);
-    static Value convertRepeatedFieldToValue(const FieldDescriptor* field, const Message& message, Document& doc);
-    static Value convertFieldToValue(const FieldDescriptor* field, const Message& message, Document& doc);
+    static void processNested(Value& parentJsonObj, Document::AllocatorType& allocator);
 };
 
 #endif /* _PROTO_CONVERTER_H_ */

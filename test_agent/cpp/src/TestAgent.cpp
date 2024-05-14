@@ -101,6 +101,8 @@ void TestAgent::sendToTestManager(const Message& proto, const string& action, co
 	responseDict.SetObject();
 	Value dataValue = ProtoConverter::convertMessageToJson(proto, responseDict);
 	//Value dataValue = ProtoConverter::convertMessageToDocument(proto, responseDict);
+	spdlog::info("TestAgent::sendToTestManager(), dataValue is : {}", dataValue.GetString());
+
 	responseDict.AddMember("data", dataValue, responseDict.GetAllocator());
 
 	if(!strTest_id.empty())
@@ -120,6 +122,7 @@ void TestAgent::sendToTestManager(const Message& proto, const string& action, co
 void TestAgent::sendToTestManager(Document &document, Value &jsonData, string action, const string& strTest_id) const
 {
 	document.AddMember("data", jsonData, document.GetAllocator());
+	spdlog::info("TestAgent::sendToTestManager(), jsonData is : {}", jsonData.GetString());
 	if(!strTest_id.empty())
 	{
 		Value jsonStrValue(rapidjson::kStringType);

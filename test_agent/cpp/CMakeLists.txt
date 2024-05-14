@@ -48,6 +48,8 @@ find_package(fmt REQUIRED CONFIG)
 find_package(RapidJSON CONFIG REQUIRED)
 find_package(libuuid REQUIRED CONFIG)
 find_package(up-client-zenoh-cpp REQUIRED)
+find_package(OpenSSL REQUIRED)
+
 
 set(libs_required
      up-cpp::up-cpp
@@ -81,5 +83,7 @@ target_link_libraries(${APP_NAME}
         ${libs_required}
         libuuid::libuuid
         up_client_socket
+        OpenSSL::SSL 
+        OpenSSL::Crypto
 )
 
