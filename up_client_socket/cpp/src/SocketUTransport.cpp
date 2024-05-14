@@ -1,4 +1,5 @@
 #include "SocketUTransport.h"
+#include <spdlog/spdlog.h>
 #include <up-cpp/uri/validator/UriValidator.h>
 #include <up-cpp/uuid/factory/Uuidv8Factory.h>
 
@@ -10,7 +11,7 @@ SocketUTransport::SocketUTransport()
 {
 	struct sockaddr_in serv_addr;
 	if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		std::cerr << "SocketUTransport(), Socket creation error" << std::endl;
+		spdlog::error("SocketUTransport::SocketUTransport():{}, Socket creation error", __LINE__);
 		exit(EXIT_FAILURE);
 	}
 
@@ -18,17 +19,16 @@ SocketUTransport::SocketUTransport()
 	serv_addr.sin_port = htons(DISPATCHER_PORT);
 
 	if (inet_pton(AF_INET, DISPATCHER_IP, &serv_addr.sin_addr) <= 0) {
-		std::cerr << "SocketUTransport(), Invalid address/ Address not supported" << std::endl;
+		spdlog::error("SocketUTransport::SocketUTransport():{}, Invalid address/ Address not supported", __LINE__);
 		exit(EXIT_FAILURE);
 	}
 
 	if (connect(socketFd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-		std::cerr << "SocketUTransport(), Socket connection Failed" << std::endl;
+		spdlog::error("SocketUTransport::SocketUTransport():{}, Socket connection Failed", __LINE__);
 		exit(EXIT_FAILURE);
 	}
 
 	processThread = std::thread(&SocketUTransport::listen, this);
-	//threadPool_ = make_shared<ThreadPool>(queueSize_, maxNumOfCuncurrentRequests_);
 }
 
 SocketUTransport::~SocketUTransport()
@@ -42,7 +42,7 @@ void SocketUTransport::listen() {
 			char buffer[BYTES_MSG_LENGTH];
 			int readSize = read(socketFd, buffer, sizeof(buffer));
 			if (readSize < 0) {
-				std::cerr << "SocketUTransport::listen(), Read error" << std::endl;
+				spdlog::error("SocketUTransport::listen():{}, Read error", __LINE__);
 				close(socketFd);
 				return;
 			}
@@ -53,11 +53,11 @@ void SocketUTransport::listen() {
 
 			UMessage umsg;
 			if (!umsg.ParseFromArray(buffer, readSize)) {
-				std::cerr << "SocketUTransport::listen(), Error parsing UMessage" << std::endl;
+				spdlog::error("SocketUTransport::listen():{}, Error parsing UMessage", __LINE__);
 				continue;
 			}
 
-			std::cout << "SocketUTransport::listen(), Received uMessage: " << umsg.DebugString() << ", size is " << readSize << std::endl;
+			spdlog::debug("SocketUTransport::listen():{}, Received uMessage:{}, size is {}", __LINE__, umsg.DebugString(), readSize);
 
 			auto attributes = umsg.attributes();
 			if (attributes.type() == uprotocol::v1::UMessageType::UMESSAGE_TYPE_PUBLISH)
@@ -68,7 +68,7 @@ void SocketUTransport::listen() {
 				handleResponseMessage(umsg);
 
 		} catch (const std::exception& e) {
-			std::cerr << "SocketUTransport::listen(), Exception: " << e.what() << std::endl;
+			spdlog::error("SocketUTransport::listen():{}, Exception: {}", __LINE__, e.what());
 		}
 	}
 }
@@ -84,23 +84,19 @@ UStatus SocketUTransport::send(const uprotocol::utransport::UMessage &transportU
 	umsg.mutable_payload()->CopyFrom(payV1);
 	umsg.mutable_attributes()->CopyFrom(transportUMessage.attributes());
 
-	std::cout << "SocketUTransport::send(), UMessage in string format is : " << umsg.DebugString() << std::endl;
-
-	/*std::string umsgSerialized;
-	bool ret = umsg.SerializeToString(&umsgSerialized);*/
+	spdlog::debug("SocketUTransport::send():{}, UMessage in string format is : {}", __LINE__, umsg.DebugString());
 
 	size_t serializedSize = umsg.ByteSizeLong();
 	std::string umsgSerialized(serializedSize, '\0');
 	bool ret = umsg.SerializeToArray(umsgSerialized.data(), serializedSize);
-	std::cout << "SocketUTransport::send(), ret is "  << ret << " Serialized UMessage is " << umsgSerialized <<
-			", size is " << serializedSize << std::endl;
+	spdlog::debug("SocketUTransport::send():{}, Serialized UMessage is {}", __LINE__, umsgSerialized);
 
 	UStatus status;
 	status.set_code(UCode::OK);
 	status.set_message("OK");
 
 	if (::send(socketFd, umsgSerialized.c_str(), serializedSize,0) < 0) {
-		std::cerr << "SocketUTransport::send(), Error sending UMessage" << std::endl;
+		spdlog::error("SocketUTransport::send():{}, Error sending UMessage", __LINE__);
 		status.set_code(UCode::INTERNAL);
 		status.set_message("Sending data in socket failed.");
 		return status;
@@ -113,11 +109,9 @@ UStatus SocketUTransport::registerListener(const UUri &topic, const uprotocol::u
 	UStatus status;
 	status.set_code(UCode::INTERNAL);
 
-	std::cout << "SocketUTransport::registerListener()" << std::endl;
-
 	if(valid_uri(LongUriSerializer::serialize(topic)))
 	{
-		std::cout << "SocketUTransport::registerListener(), found valid_uri" << std::endl;
+		spdlog::debug("SocketUTransport::registerListener():{}, found valid_uri", __LINE__);
 		status.set_code(UCode::OK);
 		status.set_message("OK");
 		auto uriHash = std::hash<std::string>{}(LongUriSerializer::serialize(topic));
@@ -133,6 +127,7 @@ UStatus SocketUTransport::registerListener(const UUri &topic, const uprotocol::u
 	}
 	else
 	{
+		spdlog::warn("SocketUTransport::registerListener():{}, Received invalid URI", __LINE__);
 		status.set_message("Received invalid URI");
 	}
 
@@ -152,7 +147,7 @@ UStatus SocketUTransport::unregisterListener(const UUri &topic, const uprotocol:
 			return item == &listener;
 		});
 		if (it != vec.end()) {
-			std::cout << "SocketUTransport::unregisterListener(), found listner and removing the same." << std::endl;
+			spdlog::debug("SocketUTransport::unregisterListener():{}, found listner and removing the same.", __LINE__);
 			vec.erase(it);
 			status.set_code(UCode::OK);
 			status.set_message("OK");
@@ -161,11 +156,13 @@ UStatus SocketUTransport::unregisterListener(const UUri &topic, const uprotocol:
 		{
 			status.set_code(UCode::NOT_FOUND);
 			status.set_message("Listener not found for the given UUri");
+			spdlog::warn("SocketUTransport::unregisterListener():{}, Listener not found for the given UUri", __LINE__);
 		}
 	}
 	else
 	{
 		status.set_message("Received invalid URI");
+		spdlog::warn("SocketUTransport::unregisterListener():{}, Received invalid URI", __LINE__);
 	}
 	return status;
 }
@@ -185,16 +182,17 @@ void SocketUTransport::timeout_counter(UUID &req_id, std::future<uprotocol::rpc:
 					uuidStr + " within " + std::to_string(timeout) + " ms")));
 		}
 		else{
-			std::cout << "SocketUTransport::timeout_counter(), resFuture is valid" << std::endl;
+			spdlog::debug("SocketUTransport::timeout_counter():{}, response future is valid", __LINE__);
 		}
 	} catch (const std::exception& e) {
-		std::cerr << "SocketUTransport::timeout_counter(), Exception received from thread: " << e.what() << std::endl;
+		spdlog::error("SocketUTransport::timeout_counter():{}, Exception received in thread: {}", __LINE__, e.what());
 	}
 }
 
 std::future<uprotocol::rpc::RpcResponse> SocketUTransport::invokeMethod(const UUri &topic,
 		const uprotocol::utransport::UPayload &payload, const CallOptions &options)
 {
+	spdlog::debug("SocketUTransport::invokeMethod():{}, called", __LINE__);
 	std::promise<uprotocol::rpc::RpcResponse> promise;
 	std::future<uprotocol::rpc::RpcResponse> responseFuture = promise.get_future();
 
@@ -245,7 +243,7 @@ void SocketUTransport::handleResponseMessage(UMessage umsg) {
 		// TODO:get from umsg and convert to utransport objects
 		uprotocol::v1::UPayload pay = umsg.payload();
 		string str = pay.value();
-		std::cout << "SocketUTransport::handleResponseMessage(),  payload : " << str << std::endl;
+		spdlog::debug("SocketUTransport::handleResponseMessage():{}, payload is {}", __LINE__, str);
 		uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(), uprotocol::utransport::UPayloadType::VALUE);
 		payload.setFormat((uprotocol::utransport::UPayloadFormat)pay.format());
 		
@@ -261,7 +259,7 @@ void SocketUTransport::handleResponseMessage(UMessage umsg) {
 	}
 	else
 	{
-		std::cerr << "SocketUTransport::handleResponseMessage(), Request ID not found: " << uuidStr << std::endl;
+		spdlog::error("SocketUTransport::handleResponseMessage():{}, Request ID {} not found.", __LINE__, uuidStr);
 	}
 }
 
@@ -275,7 +273,7 @@ void SocketUTransport::notifyListeners(UUri uri, UMessage umsg) {
 			// TODO:get from v1 umsg and convert to transport umsg
 			uprotocol::v1::UPayload pay = umsg.payload();
 			string str = pay.value();
-			std::cout << "SocketUTransport::notifyListeners(),  payload : " << str << std::endl;
+			spdlog::debug("SocketUTransport::notifyListeners():{}, payload is {}", __LINE__, str);
 			uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),
 							uprotocol::utransport::UPayloadType::VALUE);
 			payload.setFormat((uprotocol::utransport::UPayloadFormat)pay.format());
@@ -285,6 +283,6 @@ void SocketUTransport::notifyListeners(UUri uri, UMessage umsg) {
 			listener->onReceive(transportUMessage);
 		}
 	} else {
-		std::cerr << "SocketUTransport::notifyListeners(), Uri not found in Listener Map, discarding..."<< std::endl;
+		spdlog::warn("SocketUTransport::notifyListeners():{}, Uri not found in Listener Map, discarding...", __LINE__);
 	}
 }
