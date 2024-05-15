@@ -27,7 +27,7 @@ use up_rust::{
     UPayloadFormat, UPriority, UResource, UUri, UUID,
 };
 
-use protobuf::{Enum, MessageField, SpecialFields};
+use protobuf::{Enum, MessageField};
 
 pub fn convert_json_to_jsonstring<T: serde::Serialize>(value: &T) -> String {
     if let Ok(json_string) = serde_json::to_string(value) {
@@ -341,8 +341,6 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
         } else {
             error!("Error: traceparent is not a string");
         };
-
-        uattributes.special_fields = SpecialFields::default();
 
         Ok(WrapperUAttribute(uattributes))
     }
