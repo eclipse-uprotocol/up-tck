@@ -17,7 +17,6 @@ MANIFEST
 *.log.lck
 *.log.1
 *.html
-*.json
 **/jar_files/**
 *.jar
 **/.DS_Store

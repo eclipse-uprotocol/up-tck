@@ -1,0 +1,72 @@
+{
+    "long_uri_deserializer": {
+        "path": "serializers",
+        "ues": ["python", "java"],
+        "transports": ["socket"]
+    },
+    "long_uri_serializer": {
+        "path": "serializers",
+        "ues": ["python", "java"],
+        "transports": ["socket"]
+    },
+    "long_uuid_deserializer": {
+        "path": "serializers",
+        "ues": ["python", "java"],
+        "transports": ["socket"]
+    },
+    "long_uuid_serializer": {
+        "path": "serializers",
+        "ues": ["python", "java"],
+        "transports": ["socket"]
+    },
+    "micro_uri_deserializer": {
+        "path": "serializers",
+        "ues": ["python", "java"],
+        "transports": ["socket"]
+    },
+    "micro_uri_serializer": {
+        "path": "serializers",
+        "ues": ["python", "java"],
+        "transports": ["socket"]
+    },
+    "register_and_invoke": {
+        "path": "transport_rpc",
+        "ues": ["all"],
+        "transports": ["socket"]
+    },
+    "register_and_send": {
+        "path": "transport_rpc",
+        "ues": ["all"],
+        "transports": ["socket"]
+    },
+    "register_and_unregister": {
+        "path": "transport_rpc",
+        "ues": ["all"],
+        "transports": ["socket"]
+    },
+    "register_and_send_zenoh": {
+        "path": "transport_rpc",
+        "ues": ["all"],
+        "transports": ["zenoh"]
+    },
+    "register_and_unregister_zenoh": {
+        "path": "transport_rpc",
+        "ues": ["all"],
+        "transports": ["zenoh"]
+    },
+    "uattributes_validator": {
+        "path": "validators",
+        "ues": ["python", "java"],
+        "transports": ["socket"]
+    },
+    "uri_validator": {
+        "path": "validators",
+        "ues": ["python", "java"],
+        "transports": ["socket"]
+    },
+    "uuid_validator": {
+        "path": "validators",
+        "ues": ["python", "java"],
+        "transports": ["socket"]
+    }
+}

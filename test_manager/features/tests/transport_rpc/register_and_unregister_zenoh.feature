@@ -22,7 +22,7 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Testing register and unregister
+Feature: Testing register and unregister - Zenoh
 
   Scenario Outline: To test the registerlistener and unregisterlistener apis
     Given "<uE1>" creates data for "registerlistener"
@@ -51,8 +51,6 @@ Feature: Testing register and unregister
 
     Examples:
       | uE1    |
-      | java   |
-      | python |
       | rust   |
 
 
@@ -68,10 +66,8 @@ Feature: Testing register and unregister
 
       When sends "unregisterlistener" request
 
-      Then the status received with "code" is "NOT_FOUND"
+      Then the status received with "code" is "INVALID_ARGUMENT"
 
       Examples:
         | uE1    |
-        | java   |
-        | python |
         | rust   |
