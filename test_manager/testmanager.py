@@ -191,7 +191,8 @@ class TestManager:
             return
         json_data = json.loads(recv_data.decode("utf-8"))
         logger.info("Received from test agent: %s", json_data)
-        # self._process_message(json_data, test_agent)
+        if json_data.get("test_id") is not None:
+            json_data["test_id"] = json_data["test_id"].strip('"')
         self._process_receive_message(json_data, test_agent)
 
     def _process_receive_message(

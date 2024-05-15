@@ -47,6 +47,7 @@ Feature: Testing register and unregister
       | uE1    |
       | java   |
       | python |
+      | rust   |
 
 
     Scenario Outline: Test unregisterlistener when no entity is registered to any topic
@@ -64,3 +65,4 @@ Feature: Testing register and unregister
         | uE1    |
         | java   |
         | python |
+        | rust   |

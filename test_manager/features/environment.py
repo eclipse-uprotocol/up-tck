@@ -59,6 +59,8 @@ def after_all(context: Context):
     context.action = None
     context.json_dict = None
 
+    context.rust_sender = False
+    context.tm.close_test_agent("rust")
     context.tm.close_test_agent("python")
     context.tm.close_test_agent("java")
     context.tm.close()
