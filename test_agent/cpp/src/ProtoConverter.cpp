@@ -89,7 +89,9 @@ Message* ProtoConverter::dictToProto(Value& parentJsonObj, Message& parentProtoO
 
 Value ProtoConverter::convertMessageToJson(const Message& message, Document& doc) {
     std::string jsonString;
-    util::MessageToJsonString(message, &jsonString);
+    util::JsonPrintOptions options;
+    options.preserve_proto_field_names = true;
+    util::MessageToJsonString(message, &jsonString, options);
 
     Document jsonDoc;
     jsonDoc.Parse(jsonString.c_str());

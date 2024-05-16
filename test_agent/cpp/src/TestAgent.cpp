@@ -146,14 +146,13 @@ UStatus TestAgent::handleSendCommand(Document &jsonData)
 	
 	uprotocol::v1::UPayload pay = umsg.payload();
 	string str = pay.value();
-	//std::cout << "TestAgent::handleSendCommand(), payload is : " << str << std::endl;
+	spdlog::debug("TestAgent::handleSendCommand(), payload in string format is :  {}", str);
 	uprotocol::utransport::UPayload payload((const unsigned char *)str.c_str(), str.length(),uprotocol::utransport::UPayloadType::VALUE);
 	payload.setFormat((uprotocol::utransport::UPayloadFormat)pay.format());
 
 	auto id = uprotocol::uuid::Uuidv8Factory::create();
 	auto uAttributesWithId = uprotocol::utransport::UAttributesBuilder(umsg.attributes().source(), id, umsg.attributes().type(),
 			umsg.attributes().priority()).build();
-	//uAttributesWithId.setSink(umsg.attributes().sink());
 
 	uprotocol::utransport::UMessage transportUMessage(payload, uAttributesWithId);
 	return transportPtr_->send(transportUMessage);
@@ -193,18 +192,19 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData)
 
 	CallOptions options;
 	options.set_ttl(10000);
+	options.set_priority(UPriority::UPRIORITY_CS4);
 
 	auto rpc_ptr = dynamic_cast<uprotocol::rpc::RpcClient*>(transportPtr_.get());
 	std::future<uprotocol::rpc::RpcResponse> responseFuture = rpc_ptr->invokeMethod(uri, payload, options);
 
 	try
 	{
-	//std::cout << "handleInvokeMethodCommand(), waiting for payload from responseFuture " << std::endl;
+	spdlog::debug("handleInvokeMethodCommand(), waiting for payload from responseFuture ");
 	responseFuture.wait();
-	//std::cout << "handleInvokeMethodCommand(), getting payload from responseFuture " << std::endl;
+	spdlog::debug("TestAgent::handleInvokeMethodCommand(), getting payload from responseFuture ");
 	uprotocol::rpc::RpcResponse rpcResponse = responseFuture.get();
 	uprotocol::utransport::UPayload pay2 = rpcResponse.message.payload();
-	//std::cout << "handleInvokeMethodCommand(), payload size from responseFuture is : " << pay2.size() << std::endl;
+	spdlog::debug("TestAgent::handleInvokeMethodCommand(), payload size from responseFuture is : {}", pay2.size());
 	string strPayload = std::string(reinterpret_cast<const char*>(pay2.data()), pay2.size());
 	spdlog::info("TestAgent::handleInvokeMethodCommand(), payload got from responseFuture is : {}", strPayload);
 
@@ -270,7 +270,7 @@ void TestAgent::processMessage(Document &json_msg)
 	if (it != actionHandlers_.end())
 	{
 		const auto& function = it->second;
-		//std::cout << "TestAgent::processMessage(), Found respective function and calling the same. " << std::endl;
+		spdlog::debug("TestAgent::processMessage(), Found respective function and calling the same. ");
 		if (std::holds_alternative<std::function<UStatus(Document &)>>(function)) {
 			auto result = std::get<std::function<UStatus(Document &)>>(function)(json_msg);
 			spdlog::info("TestAgent::processMessage(), received result is : {}", result.message());
@@ -283,8 +283,6 @@ void TestAgent::processMessage(Document &json_msg)
 			strValMsg.SetString(result.message().c_str(), document.GetAllocator());
 			statusObj.AddMember("message", strValMsg, document.GetAllocator());
 
-			//Value strValCode;
-			//strValCode.SetString(UCode_Name(result.code()).c_str(), document.GetAllocator());
 			statusObj.AddMember("code", result.code(), document.GetAllocator());
 
 			rapidjson::Value detailsArray(rapidjson::kArrayType);
