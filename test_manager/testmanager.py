@@ -26,9 +26,10 @@
 from collections import defaultdict, deque
 import json
 import logging
+import re
 import selectors
 import socket
-from typing import Any, Deque, Dict, Tuple
+from typing import Any, Deque, Dict, List, Tuple
 from typing import Any as AnyType
 from threading import Lock
 import uuid
@@ -197,10 +198,39 @@ class TestManager:
         if is_close_socket_signal(recv_data):
             self.close_test_agent(test_agent)
             return
-        json_data = json.loads(recv_data.decode("utf-8"))
-        logger.info("Received from test agent: %s", json_data)
-        # self._process_message(json_data, test_agent)
-        self._process_receive_message(json_data, test_agent)
+
+        json_str: str = recv_data.decode("utf-8")
+        logger.info(f"json_str: {json_str}")
+        
+        # in case if json messages are concatenated, we are splitting the json data and handling it separately
+        # eg: {json, action: ..., messge: "...."}{json, action: status messge: "...."}
+        def convert_json_str_to_list_of_nested_dictionaries(flat_concatenated_json: str) -> List[Dict[str, Any]]:
+            list_of_nested_dictionaries: List[Dict[str, Any]] = []
+            open_curly_brace_count: int = 0  # x >= 0
+            start_nested_dict_index: int = 0  # x >= 0
+            for i, char in enumerate(flat_concatenated_json):
+                if char == "}":
+                    open_curly_brace_count -= 1
+                    
+                    if open_curly_brace_count == 0:  # if found an entire nested dict,
+                        end_nested_dict_index: int = i + 1
+                        
+                        # get sub json string
+                        sub_flat_json: str = flat_concatenated_json[start_nested_dict_index : end_nested_dict_index]
+                        nested_dict: Dict[str, Any] = json.loads(sub_flat_json)
+                        list_of_nested_dictionaries.append(nested_dict)
+                        
+                        # start to find next nested dictionary in jsonstring
+                        start_nested_dict_index = end_nested_dict_index
+                elif char == "{":
+                    open_curly_brace_count += 1
+
+            return list_of_nested_dictionaries
+        
+        received_jsons: List[Dict[str, Any]] = convert_json_str_to_list_of_nested_dictionaries(json_str)
+        for json_data in received_jsons:
+            logger.info("Received from test agent: %s", json_data)
+            self._process_receive_message(json_data, test_agent)
 
     def _process_receive_message(
         self, response_json: Dict[str, Any], ta_socket: socket.socket
