@@ -63,7 +63,7 @@ class SocketUTransport(UTransport, RpcClient):
 
     def __init__(self):
         """
-        Creates a uEntity with Socket Connection, as well as a map of registered topics.
+        Creates a uEntity with TCP (socket.SOCK_STREAM) Socket Connection, as well as a map of registered topics.
         """
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -73,7 +73,7 @@ class SocketUTransport(UTransport, RpcClient):
         self.uri_to_listener = defaultdict(list)
         self.lock = Lock()
         thread = threading.Thread(target=self.__listen)
-        thread.start()  # with ThreadPoolExecutor(max_workers=5) as executor:  #     executor.submit(self.__listen)
+        thread.start()  
 
     def __listen(self):
         """

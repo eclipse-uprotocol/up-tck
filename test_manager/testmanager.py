@@ -29,6 +29,7 @@ import logging
 import re
 import selectors
 import socket
+import time
 from typing import Any, Deque, Dict, List, Tuple
 from typing import Any as AnyType
 from threading import Lock
@@ -287,12 +288,20 @@ class TestManager:
         send_socket_data(test_agent_socket, request_bytes)
         logger.info(f"Sent to TestAgent{request_json}")
 
-        # Wait until get response
+        # Wait n secs until get response, or return (exit if got response or time > 10)
+        # USocket transport is a TCP connection: reliable, inorder packet delivery
+        # -> no need to retransmit or check if messages are received or sent properly
         logger.info(f"Waiting test_id {test_id}")
+        start_time: float = time.time()
+        wait_time_sec: float = 10.0
         while not self.action_type_to_response_queue.contains(
             action, "test_id", test_id
-        ):
+        ) and time.time() - start_time <= wait_time_sec:
             pass
+        
+        if time.time() - start_time > wait_time_sec:
+            return {"error", f"timed out: did not get an UStatus response within {wait_time_sec} seconds"}
+            
         logger.info(f"Received test_id {test_id}")
 
         # Get response
@@ -301,14 +310,15 @@ class TestManager:
         )
         return response_json
 
-    def _wait_for_onreceive(self, test_agent_name: str):
+    def get_onreceive(self, test_agent_name: str) -> Dict[str, Any]:
+        start_time: float = time.time()
+        wait_time_sec: float = 10.0
         while not self.action_type_to_response_queue.contains(
             "onreceive", "ue", test_agent_name
-        ):
+        ) and time.time() - start_time <= wait_time_sec:
             pass
-
-    def get_onreceive(self, test_agent_name: str) -> Dict[str, Any]:
-        self._wait_for_onreceive(test_agent_name)
+        if time.time() - start_time > wait_time_sec:
+            return {"error", f"timed out: did not get an OnReceive message within {wait_time_sec} seconds"}
 
         return self.action_type_to_response_queue.popleft("onreceive")
 

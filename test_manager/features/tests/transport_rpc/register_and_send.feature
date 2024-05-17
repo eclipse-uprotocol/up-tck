@@ -66,3 +66,23 @@ Feature: Testing Publish and Subscribe Functionality
       | java   | java   |
       | java   | python |
       | python | java   |
+      | python | python |
+      | java   | java   |
+      | java   | python |
+      | python | java   |
+      | python | python |
+      | java   | java   |
+      | java   | python |
+      | python | java   |
+      | python | python |
+      | java   | java   |
+      | java   | python |
+      | python | java   |
+      | python | python |
+      | java   | java   |
+      | java   | python |
+      | python | java   |
+      | python | python |
+      | java   | java   |
+      | java   | python |
+      | python | java   |
