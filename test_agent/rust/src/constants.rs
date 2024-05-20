@@ -28,3 +28,5 @@ pub const SDK_INIT_MESSAGE: &str =
 pub const RESPONSE_ON_RECEIVE: &str = "onreceive";
 
 pub const TEST_MANAGER_ADDR: (&str, u16) = ("127.0.0.5", 12345);
+
+pub const ZENOH_TRANSPORT: &str = "zenoh";

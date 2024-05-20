@@ -65,6 +65,7 @@ def create_command(context, filepath_from_root_repo: str) -> List[str]:
         )
     )
 
+    command.append("--transport")
     command.append(context.transport["transport"])
     return command
 

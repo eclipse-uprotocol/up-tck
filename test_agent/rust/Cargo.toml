@@ -54,6 +54,7 @@ protobuf-json-mapping = "3.4.0"
 serde_json = "1.0"
 uuid = "1.8.0"
 rand = "0.8.4"
+clap = { version = "4.5.4", features = ["derive"] }
 
 
 #prost-json = "0.8"
