@@ -204,7 +204,7 @@ impl SocketTestAgent {
 
     pub async fn receive_from_tm(
         &mut self,
-        utransport: &dyn UTransport,
+        utransport: Box<dyn UTransport>,
         ta_to_tm_socket: TcpStream,
     ) {
         self.clone().inform_tm_ta_starting().await;
@@ -243,14 +243,14 @@ impl SocketTestAgent {
 
             let status = match json_str_ref {
                 constants::SEND_COMMAND => {
-                    self.handle_send_command(utransport, json_data_value).await
+                    self.handle_send_command(&*utransport, json_data_value).await
                 }
                 constants::REGISTER_LISTENER_COMMAND => {
-                    self.handle_register_listener_command(utransport, json_data_value)
+                    self.handle_register_listener_command(&*utransport, json_data_value)
                         .await
                 }
                 constants::UNREGISTER_LISTENER_COMMAND => {
-                    self.handle_unregister_listener_command(utransport, json_data_value)
+                    self.handle_unregister_listener_command(&*utransport, json_data_value)
                         .await
                 }
                 _ => Ok(()),

@@ -90,7 +90,7 @@ async fn connect_and_receive(transport_name: &str) -> Result<(), Box<dyn std::er
         Box::new(UTransportSocket::new()?)
     };
 
-    let u_transport_ref: &dyn UTransport = &*u_transport;
+    let u_transport_ref: Box<dyn UTransport> = u_transport;
 
     let foo_listener = Arc::new(ListenerHandlers::new(foo_listener_socket_to_tm));
     let agent = SocketTestAgent::new(test_agent, foo_listener);
