@@ -83,20 +83,20 @@ async fn connect_and_receive(transport_name: &str) -> Result<(), Box<dyn std::er
     let ta_to_tm_socket = connect_to_socket(TEST_MANAGER_ADDR.0, TEST_MANAGER_ADDR.1)?;
     let foo_listener_socket_to_tm = connect_to_socket(TEST_MANAGER_ADDR.0, TEST_MANAGER_ADDR.1)?;
 
-    let u_transport: Box<dyn UTransport> = if transport_name == ZENOH_TRANSPORT {
-        create_zenoh_u_transport().await
-    } else {
-        dbg!("Socket transport created successfully");
-        Box::new(UTransportSocket::new()?)
+    #[allow(clippy::single_match_else)]
+    let u_transport: Box<dyn UTransport> = match transport_name {
+        ZENOH_TRANSPORT => create_zenoh_u_transport().await,
+        _ => {
+            debug!("Socket transport created successfully");
+            Box::new(UTransportSocket::new()?)
+        }
     };
-
-    let u_transport_ref: Box<dyn UTransport> = u_transport;
 
     let foo_listener = Arc::new(ListenerHandlers::new(foo_listener_socket_to_tm));
     let agent = SocketTestAgent::new(test_agent, foo_listener);
     agent
         .clone()
-        .receive_from_tm(u_transport_ref, ta_to_tm_socket)
+        .receive_from_tm(u_transport, ta_to_tm_socket)
         .await;
 
     Ok(())
