@@ -84,6 +84,8 @@ async fn connect_and_receive(transport_name: &str) -> Result<(), Box<dyn std::er
     let foo_listener_socket_to_tm = connect_to_socket(TEST_MANAGER_ADDR.0, TEST_MANAGER_ADDR.1)?;
 
     #[allow(clippy::single_match_else)]
+    // We allow this because we'll have further transports we want to support and match works well
+    // for that
     let u_transport: Box<dyn UTransport> = match transport_name {
         ZENOH_TRANSPORT => create_zenoh_u_transport().await,
         _ => {

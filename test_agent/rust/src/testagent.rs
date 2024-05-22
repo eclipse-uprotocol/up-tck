@@ -243,7 +243,8 @@ impl SocketTestAgent {
 
             let status = match json_str_ref {
                 constants::SEND_COMMAND => {
-                    self.handle_send_command(&*utransport, json_data_value).await
+                    self.handle_send_command(&*utransport, json_data_value)
+                        .await
                 }
                 constants::REGISTER_LISTENER_COMMAND => {
                     self.handle_register_listener_command(&*utransport, json_data_value)
