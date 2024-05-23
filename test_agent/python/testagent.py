@@ -250,9 +250,6 @@ def handle_long_deserialize_uri(json_msg: Dict[str, Any]):
         received_test_id=json_msg["test_id"],
     )
 
-    logger.info("handle_long_deserialize_uri:")
-    logger.info(uuri)
-
 
 def handle_long_deserialize_uuid(json_msg: Dict[str, Any]):
     uuid: UUID = LongUuidSerializer().deserialize(json_msg["data"])
