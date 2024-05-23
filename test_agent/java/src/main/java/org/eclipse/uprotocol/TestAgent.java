@@ -226,11 +226,11 @@ public class TestAgent {
             ValidationResult status = validatorFunc.apply(uri);
             String result = status.isSuccess() ? "True" : "False";
             String message = status.getMessage();
-            sendToTestManager(Map.of("result", result, "message", message), Constant.VALIDATE_URI, testID);
+            sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_URI, testID);
         } else if (validatorFuncBool != null) {
             Boolean status = validatorFuncBool.apply(uri);
             String result = status ? "True" : "False";
-            sendToTestManager(Map.of("result", result, "message", ""), Constant.VALIDATE_URI, testID);
+            sendToTestManager(Map.of("result", result, "message", ""), ActionCommands.VALIDATE_URI, testID);
         }
 
         return null;
