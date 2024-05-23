@@ -35,6 +35,8 @@ Feature: Testing Publish and Subscribe Functionality
     Then the status received with "code" is "OK"
 
     When "<uE2>" creates data for "send"
+    And sets "attributes.id.msb" to "112128268635242497"
+    And sets "attributes.id.lsb" to "11155833020022798372"
     And sets "attributes.source.entity.name" to "body.access"
     And sets "attributes.source.resource.name" to "door"
     And sets "attributes.source.resource.instance" to "front_left"
@@ -60,6 +62,11 @@ Feature: Testing Publish and Subscribe Functionality
 
     Examples:
       | uE1    | uE2    |
+      | rust   | rust   |
+      | rust   | python |
+      | python | rust   |
+      | rust   | java   |
+      | java   | rust   |
       | python | python |
       | java   | java   |
       | java   | python |
