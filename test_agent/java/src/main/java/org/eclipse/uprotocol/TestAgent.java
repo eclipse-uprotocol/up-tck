@@ -24,7 +24,7 @@ package org.eclipse.uprotocol;
 import com.google.gson.Gson;
 import com.google.protobuf.Any;
 import com.google.protobuf.Message;
-import com.google.protobuf.StringValue; 
+import com.google.protobuf.StringValue;
 import org.eclipse.uprotocol.Constants.ActionCommands;
 import org.eclipse.uprotocol.Constants.Constant;
 import org.eclipse.uprotocol.transport.UListener;
@@ -142,7 +142,8 @@ public class TestAgent {
     private static UStatus handleSendCommand(Map<String, Object> jsonData) {
         UMessage uMessage = (UMessage) ProtoConverter.dictToProto((Map<String, Object>) jsonData.get("data"),
                 UMessage.newBuilder());
-        UAttributes uAttributesWithId = uMessage.getAttributes().toBuilder().setId(UuidFactory.Factories.UPROTOCOL.factory().create()).build();
+        UAttributes uAttributesWithId = uMessage.getAttributes().toBuilder()
+                .setId(UuidFactory.Factories.UPROTOCOL.factory().create()).build();
         UMessage uMessageWithId = uMessage.toBuilder().setAttributes(uAttributesWithId).build();
         return transport.send(uMessageWithId);
     }
@@ -181,7 +182,7 @@ public class TestAgent {
     }
 
     private static Object handleLongDeserializeUriCommand(Map<String, Object> jsonData) {
-    	UUri uri = LongUriSerializer.instance().deserialize(jsonData.get("data").toString());
+        UUri uri = LongUriSerializer.instance().deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uri, ActionCommands.DESERIALIZE_URI, testID);
         return null;
@@ -243,7 +244,8 @@ public class TestAgent {
 
         UAttributes attributes = null;
         if (data.get("attributes") != null) {
-            attributes = (UAttributes) ProtoConverter.dictToProto((Map<String, Object>)data.get("attributes"), UAttributes.newBuilder());
+            attributes = (UAttributes) ProtoConverter.dictToProto((Map<String, Object>) data.get("attributes"),
+                    UAttributes.newBuilder());
             if ("default".equals(attributes.getSink().getAuthority().getName())) {
                 attributes = attributes.toBuilder().setSink(UUri.getDefaultInstance()).build();
             }
@@ -280,7 +282,7 @@ public class TestAgent {
             }
         }
 
-        if (valType.equals("get_validator")){
+        if (valType.equals("get_validator")) {
             str_result = UAttributesValidator.getValidator(attributes).toString();
         }
 
@@ -382,7 +384,7 @@ public class TestAgent {
         String result = "";
         String message = "";
 
-        if (bool_result != null){
+        if (bool_result != null) {
             result = bool_result ? "True" : "False";
             message = "";
         } else if (val_result != null) {
@@ -398,10 +400,10 @@ public class TestAgent {
         return null;
     }
 
-
     public static Object handleValidateUuidCommand(Map<String, Object> jsonData) {
         String uuidType = ((Map<String, Object>) jsonData.get("data")).getOrDefault("uuid_type", "default").toString();
-        String validatorType = ((Map<String, Object>) jsonData.get("data")).getOrDefault("validator_type", "default").toString();
+        String validatorType = ((Map<String, Object>) jsonData.get("data")).getOrDefault("validator_type", "default")
+                .toString();
 
         UUID uuid;
         switch (uuidType) {
@@ -453,7 +455,6 @@ public class TestAgent {
         return null;
     }
 
-
     private static Object handleLongSerializeUuidCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         UUID uuid = (UUID) ProtoConverter.dictToProto(data, UUID.newBuilder());
@@ -464,7 +465,7 @@ public class TestAgent {
     }
 
     private static Object handleLongDeserializeUuidCommand(Map<String, Object> jsonData) {
-    	UUID uuid = LongUuidSerializer.instance().deserialize(jsonData.get("data").toString());
+        UUID uuid = LongUuidSerializer.instance().deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uuid, ActionCommands.DESERIALIZE_UUID, testID);
         return null;
@@ -487,8 +488,8 @@ public class TestAgent {
     }
 
     private static Object handleMicroDeserializeUuriCommand(Map<String, Object> jsonData) {
-    	String microSerializedUuriAsStr = (String) jsonData.get("data");
-    	byte[] microSerializedUuri = microSerializedUuriAsStr.getBytes(StandardCharsets.ISO_8859_1);
+        String microSerializedUuriAsStr = (String) jsonData.get("data");
+        byte[] microSerializedUuri = microSerializedUuriAsStr.getBytes(StandardCharsets.ISO_8859_1);
         UUri uri = MicroUriSerializer.instance().deserialize(microSerializedUuri);
 
         String testID = (String) jsonData.get("test_id");
@@ -549,6 +550,5 @@ public class TestAgent {
     private interface ActionHandler {
         Object handle(Map<String, Object> jsonData);
     }
-
 
 }

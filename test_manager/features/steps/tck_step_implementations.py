@@ -87,10 +87,14 @@ def create_subprocess(command: List[str]) -> subprocess.Popen:
 def cast_data_to_jsonable_bytes(value: str):
     return "BYTES:" + value
 
+
 def cast_data_to_bytes(value: str):
     return value.encode()
 
-def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, bool, float]:
+
+def cast(
+    value: str, data_type: str, jsonable: bool = True
+) -> Union[str, int, bool, float]:
     """
     Cast value to a specific type represented as a string
     @param value The original value as string data type
@@ -109,13 +113,13 @@ def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, b
         enum_member: str = value.split(".")[1]
         value = getattr(UCode, enum_member)
 
-    if data_type == "int": 
+    if data_type == "int":
         value = int(value)
-    elif data_type == "str": 
+    elif data_type == "str":
         pass
-    elif data_type == "bool": 
+    elif data_type == "bool":
         value = bool(value)
-    elif data_type == "float": 
+    elif data_type == "float":
         value = float(value)
     elif data_type == "bytes":
         if jsonable:
@@ -127,9 +131,11 @@ def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, b
 
     return value
 
-@parse.with_pattern(r'.*')
+
+@parse.with_pattern(r".*")
 def parse_nullable_string(text):
     return text
+
 
 # creates behave's input data type to be empty/blank/""
 register_type(NullableString=parse_nullable_string)
@@ -143,8 +149,8 @@ def create_sdk_data(context, sdk_name: str, command: str):
     if sdk_name == "uE1":
         sdk_name = context.config.userdata["uE1"]
     elif sdk_name == "uE2":
-        sdk_name = context.config.userdata['uE2']
-        
+        sdk_name = context.config.userdata["uE2"]
+
     if context.transport == {}:
         context.transport["transport"] = context.config.userdata["transport"]
         if context.transport["transport"] == "socket":
@@ -171,7 +177,6 @@ def create_sdk_data(context, sdk_name: str, command: str):
             context.ues.setdefault(sdk_name, []).append(process)
         else:
             raise ValueError("Invalid SDK name")
-    
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
@@ -186,25 +191,25 @@ def create_sdk_data(context, sdk_name: str, command: str):
 
     context.ue = sdk_name
     context.action = command
-    
+
     # if feature file provides step-table data in step definition ...
     if context.table is not None:
         for row in context.table:
             field_name: str = row["protobuf_field_names"]
-            value: str = row["protobuf_field_values"] 
-            
-            value = cast(value, row["protobuf_field_type"] )
+            value: str = row["protobuf_field_values"]
+
+            value = cast(value, row["protobuf_field_type"])
             context.json_dict[field_name] = value
-        
-        context.logger.info("context.json_dict")  
-        context.logger.info(context.json_dict) 
-        
-        
-@when('sets "{key}" to previous response data') 
+
+        context.logger.info("context.json_dict")
+        context.logger.info(context.json_dict)
+
+
+@when('sets "{key}" to previous response data')
 def sets_key_to_previous_response(context, key: str):
     if key not in context.json_dict:
         context.json_dict[key] = context.response_data
-    
+
 
 @then('the serialized uri received is "{expected_uri}"')
 def serialized_uri_received(context, expected_uri: str):
@@ -266,7 +271,10 @@ def receive_validation_result(context, expected_message):
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
-@when('sends a "{command}" request with serialized input "{serialized:NullableString}"')
+
+@when(
+    'sends a "{command}" request with serialized input "{serialized:NullableString}"'
+)
 def send_serialized_command(context, command: str, serialized: str):
     context.logger.info(f"Json request for {command} -> {serialized}")
     response_json: Dict[str, Any] = context.tm.request(
@@ -601,17 +609,21 @@ def unflatten_dict(d, delimiter="."):
     return unflattened
 
 
-@then(u'receives json with following set fields')
+@then("receives json with following set fields")
 def generic_expected_and_actual_json_comparison(context):
     for row in context.table:
         field_name: str = row["protobuf_field_names"]
-        expected_value: str = row["protobuf_field_values"] 
-        expected_value = cast(expected_value, row["protobuf_field_type"], jsonable=False)
-        
+        expected_value: str = row["protobuf_field_values"]
+        expected_value = cast(
+            expected_value, row["protobuf_field_type"], jsonable=False
+        )
+
         # get the field_name's value from incoming context.response_data
         actual_value = access_nested_dict(context.response_data, field_name)
         if row["protobuf_field_type"] == "bytes":
             actual_value = actual_value.encode()
-            
-        context.logger.info(f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}")
-        assert_that( actual_value, equal_to(expected_value))
+
+        context.logger.info(
+            f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}"
+        )
+        assert_that(actual_value, equal_to(expected_value))
