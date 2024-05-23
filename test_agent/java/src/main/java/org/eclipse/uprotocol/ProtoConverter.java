@@ -209,7 +209,6 @@ public class ProtoConverter {
             }
             
     	}catch (Exception e) {
-    		System.out.println(e);
             return defaultValue;
         }
     }
