@@ -1,7 +1,7 @@
 # Distribution / packaging
 .Python
 __pycache__/
-scripts/up-python/
+scripts/up-python/**
 downloads/
 testing/
 lib/
