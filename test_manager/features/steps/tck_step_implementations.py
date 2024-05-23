@@ -23,10 +23,11 @@ import os
 import subprocess
 import parse
 import json
-from typing import Any, Dict, Union, Optional
+from typing import Any, Dict, Union, Optional, Union
 from uprotocol.proto.ustatus_pb2 import UCode
 from threading import Thread
 from typing import List
+from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
 from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
 
 from behave import when, then, given, register_type
@@ -144,19 +145,59 @@ def cast(
     return value
 
 
-@parse.with_pattern(r".*")
-def parse_nullable_string(text):
-    return text
+def cast_data_to_jsonable_bytes(value: str):
+    return "BYTES:" + value
 
 
-# creates behave's input data type to be empty/blank/""
-register_type(NullableString=parse_nullable_string)
+def cast_data_to_bytes(value: str):
+    return value.encode()
+
+
+def cast(
+    value: str, data_type: str, jsonable: bool = True
+) -> Union[str, int, bool, float]:
+    """
+    Cast value to a specific type represented as a string
+    @param value The original value as string data type
+    @param data_type Data type to cast to
+    @raises ValueError Error if a data_type is not handled below
+    @return Correctly typed value
+    """
+
+    if "UPriority" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UPriority, enum_member)
+    elif "UMessageType" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UMessageType, enum_member)
+    elif "UCode" in value:
+        enum_member: str = value.split(".")[1]
+        value = getattr(UCode, enum_member)
+
+    if data_type == "int":
+        value = int(value)
+    elif data_type == "str":
+        pass
+    elif data_type == "bool":
+        value = bool(value)
+    elif data_type == "float":
+        value = float(value)
+    elif data_type == "bytes":
+        if jsonable:
+            value = cast_data_to_jsonable_bytes(value)
+        else:
+            value = cast_data_to_bytes(value)
+    else:
+        raise ValueError(f"protobuf_field_type {data_type} not handled!")
+
+    return value
 
 
 @given('"{sdk_name}" creates data for "{command}"')
 @when('"{sdk_name}" creates data for "{command}"')
 def create_sdk_data(context, sdk_name: str, command: str):
     context.json_dict = {}
+
 
     if sdk_name == "uE1":
         sdk_name = context.config.userdata["uE1"]
@@ -220,12 +261,6 @@ def create_sdk_data(context, sdk_name: str, command: str):
         context.logger.info(context.json_dict)
 
 
-@when('sets "{key}" to previous response data')
-def sets_key_to_previous_response(context, key: str):
-    if key not in context.json_dict:
-        context.json_dict[key] = context.response_data
-
-
 @then('the serialized uri received is "{expected_uri}"')
 def serialized_uri_received(context, expected_uri: str):
     try:
@@ -287,9 +322,7 @@ def receive_validation_result(context, expected_message):
         raise ValueError(f"Exception occurred. {ae}")
 
 
-@when(
-    'sends a "{command}" request with serialized input "{serialized:NullableString}"'
-)
+@when('sends a "{command}" request with serialized input "{serialized}"')
 def send_serialized_command(context, command: str, serialized: str):
     context.logger.info(f"Json request for {command} -> {serialized}")
     response_json: Dict[str, Any] = context.tm.request(
@@ -409,6 +442,7 @@ def send_command_request(context, command: str):
     context.response_data = response_json["data"]
 
 
+
 @then('the status received with "{field_name}" is "{expected_value}"')
 def receive_status(context, field_name: str, expected_value: str):
     try:
@@ -430,15 +464,34 @@ def receive_status(context, field_name: str, expected_value: str):
 def receive_value_as_bytes(
     context, sender_sdk_name: str, field_name: str, expected_value: str
 ):
+@then(
+    '"{sender_sdk_name}" sends onreceive message with field "{field_name}" as b"{expected_value}"'
+)
+def receive_value_as_bytes(
+    context, sender_sdk_name: str, field_name: str, expected_value: str
+):
     try:
         expected_value = expected_value.strip()
         context.logger.info(f"getting on_receive_msg from {sender_sdk_name}")
         on_receive_msg: Dict[str, Any] = context.tm.get_onreceive(
             sender_sdk_name
         )
+        on_receive_msg: Dict[str, Any] = context.tm.get_onreceive(
+            sender_sdk_name
+        )
         context.logger.info(f"got on_receive_msg:  {on_receive_msg}")
         if sender_sdk_name == "rust":
             val = on_receive_msg["data"]["data"]
+            rec_field_value = bytes(
+                val.split("value")[1]
+                .replace('"', "")
+                .replace(":", "")
+                .replace("\\", "")
+                .replace("x", "\\x")
+                .replace("}", "")
+                .strip()[1:],
+                "utf-8",
+            )
             rec_field_value = bytes(
                 val.split("value")[1]
                 .replace('"', "")
@@ -458,11 +511,21 @@ def receive_value_as_bytes(
                     .replace("\\", "")
                     .replace("x", "\\x")[1:]
                 )
+                decoded_string = (
+                    val.replace('"', "")
+                    .replace("\\", "")
+                    .replace("x", "\\x")[1:]
+                )
                 rec_field_value = bytes(decoded_string, "utf-8")
             else:
                 rec_field_value: bytes = val.encode("utf-8")
+                rec_field_value: bytes = val.encode("utf-8")
         context.logger.info(f"val {field_name}:  {val}")
 
+        assert (
+            rec_field_value.split(b"googleapis.com/")[1]
+            == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
+        )
         assert (
             rec_field_value.split(b"googleapis.com/")[1]
             == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
@@ -473,10 +536,18 @@ def receive_value_as_bytes(
             f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
             f"received {rec_field_value}"
         )
+        raise AssertionError(
+            f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
+            f"received {rec_field_value}"
+        )
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
 
+@then('"{sdk_name}" receives data field "{field_name}" as b"{expected_value}"')
+def receive_rpc_response_as_bytes(
+    context, sdk_name, field_name: str, expected_value: str
+):
 @then('"{sdk_name}" receives data field "{field_name}" as b"{expected_value}"')
 def receive_rpc_response_as_bytes(
     context, sdk_name, field_name: str, expected_value: str
@@ -494,7 +565,20 @@ def receive_rpc_response_as_bytes(
                 .strip()[1:],
                 "utf-8",
             )
+            actual_value = bytes(
+                actual_value.split("value")[1]
+                .replace('"', "")
+                .replace(":", "")
+                .replace("\\", "")
+                .replace("x", "\\x")
+                .replace("}", "")
+                .strip()[1:],
+                "utf-8",
+            )
         else:
+            actual_value: str = access_nested_dict(
+                context.response_data, field_name
+            )
             actual_value: str = access_nested_dict(
                 context.response_data, field_name
             )
@@ -507,8 +591,17 @@ def receive_rpc_response_as_bytes(
                     .replace("\\", "")
                     .replace("x", "\\x")[1:]
                 )
+                actual_value = base64.b64decode(actual_value.encode("utf-8"))
+                decoded_string = actual_value.decode("utf-8")
+                decoded_string = (
+                    decoded_string.replace('"', "")
+                    .replace("\\", "")
+                    .replace("x", "\\x")[1:]
+                )
                 actual_value = bytes(decoded_string, "utf-8")
             else:
+                actual_value: bytes = actual_value.encode("utf-8")
+
                 actual_value: bytes = actual_value.encode("utf-8")
 
         # Convert bytes to byte string with escape sequences
@@ -519,9 +612,20 @@ def receive_rpc_response_as_bytes(
             actual_value.split(b"googleapis.com/")[1]
             == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
         )
+        actual_value = codecs.encode(
+            actual_value.decode("utf-8"), "unicode_escape"
+        )
+        assert (
+            actual_value.split(b"googleapis.com/")[1]
+            == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
+        )
     except KeyError as ke:
         raise KeyError(f"Key error. {sdk_name} has not received rpc response.")
     except AssertionError as ae:
+        raise AssertionError(
+            f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
+            f"received {repr(actual_value)}"
+        )
         raise AssertionError(
             f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
             f"received {repr(actual_value)}"
@@ -593,6 +697,9 @@ def access_nested_dict(dictionary, keys):
     if keys == "":
         return dictionary
 
+    if keys == "":
+        return dictionary
+
     keys = keys.split(".")
     value = dictionary
     if isinstance(value,str):
@@ -624,6 +731,26 @@ def unflatten_dict(d, delimiter="."):
             temp = temp[part]
         temp[parts[-1]] = value
     return unflattened
+
+
+@then("receives json with following set fields")
+def generic_expected_and_actual_json_comparison(context):
+    for row in context.table:
+        field_name: str = row["protobuf_field_names"]
+        expected_value: str = row["protobuf_field_values"]
+        expected_value = cast(
+            expected_value, row["protobuf_field_type"], jsonable=False
+        )
+
+        # get the field_name's value from incoming context.response_data
+        actual_value = access_nested_dict(context.response_data, field_name)
+        if row["protobuf_field_type"] == "bytes":
+            actual_value = actual_value.encode()
+
+        context.logger.info(
+            f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}"
+        )
+        assert_that(actual_value, equal_to(expected_value))
 
 
 @then("receives json with following set fields")

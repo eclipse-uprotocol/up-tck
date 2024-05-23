@@ -24,7 +24,7 @@ package org.eclipse.uprotocol;
 import com.google.gson.Gson;
 import com.google.protobuf.Any;
 import com.google.protobuf.Message;
-import com.google.protobuf.StringValue;
+import com.google.protobuf.StringValue; 
 import org.eclipse.uprotocol.Constants.ActionCommands;
 import org.eclipse.uprotocol.Constants.Constant;
 import org.eclipse.uprotocol.transport.UListener;
@@ -77,6 +77,19 @@ public class TestAgent {
         actionHandlers.put(ActionCommands.VALIDATE_UATTRIBUTES, TestAgent::handleUAttributesValidateCommand);
         actionHandlers.put(ActionCommands.MICRO_SERIALIZE_URI, TestAgent::handleMicroSerializeUuriCommand);
         actionHandlers.put(ActionCommands.MICRO_DESERIALIZE_URI, TestAgent::handleMicroDeserializeUuriCommand);
+        actionHandlers.put(ActionCommands.SEND_COMMAND, TestAgent::handleSendCommand);
+        actionHandlers.put(ActionCommands.REGISTER_LISTENER_COMMAND, TestAgent::handleRegisterListenerCommand);
+        actionHandlers.put(ActionCommands.UNREGISTER_LISTENER_COMMAND, TestAgent::handleUnregisterListenerCommand);
+        actionHandlers.put(ActionCommands.INVOKE_METHOD_COMMAND, TestAgent::handleInvokeMethodCommand);
+        actionHandlers.put(ActionCommands.SERIALIZE_URI, TestAgent::handleLongSerializeUriCommand);
+        actionHandlers.put(ActionCommands.DESERIALIZE_URI, TestAgent::handleLongDeserializeUriCommand);
+        actionHandlers.put(ActionCommands.VALIDATE_URI, TestAgent::handleValidateUriCommand);
+        actionHandlers.put(ActionCommands.VALIDATE_UUID, TestAgent::handleValidateUuidCommand);
+        actionHandlers.put(ActionCommands.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
+        actionHandlers.put(ActionCommands.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
+        actionHandlers.put(ActionCommands.VALIDATE_UATTRIBUTES, TestAgent::handleUAttributesValidateCommand);
+        actionHandlers.put(ActionCommands.MICRO_SERIALIZE_URI, TestAgent::handleMicroSerializeUuriCommand);
+        actionHandlers.put(ActionCommands.MICRO_DESERIALIZE_URI, TestAgent::handleMicroDeserializeUuriCommand);
     }
 
     static {
@@ -103,9 +116,11 @@ public class TestAgent {
         sendToTestManager(json, action, null);
     }
 
+
     private static void sendToTestManager(Message proto, String action) {
         sendToTestManager(proto, action, null);
     }
+
 
     private static void sendToTestManager(Object json, String action, String received_test_id) {
         JSONObject responseDict = new JSONObject();
@@ -115,6 +130,7 @@ public class TestAgent {
         }
         writeDataToTMSocket(responseDict, action);
     }
+
 
     private static void sendToTestManager(Message proto, String action, String received_test_id) {
         JSONObject responseDict = new JSONObject();
@@ -168,6 +184,7 @@ public class TestAgent {
                 CallOptions.newBuilder().setTtl(10000).build());
         responseFuture.whenComplete((responseMessage, exception) -> {
             sendToTestManager(responseMessage, ActionCommands.INVOKE_METHOD_COMMAND, (String) jsonData.get("test_id"));
+            sendToTestManager(responseMessage, ActionCommands.INVOKE_METHOD_COMMAND, (String) jsonData.get("test_id"));
         });
         return null;
     }
@@ -178,12 +195,14 @@ public class TestAgent {
         String serializedUuri = LongUriSerializer.instance().serialize(uri);
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(serializedUuri, ActionCommands.SERIALIZE_URI, testID);
+        sendToTestManager(serializedUuri, ActionCommands.SERIALIZE_URI, testID);
         return null;
     }
 
     private static Object handleLongDeserializeUriCommand(Map<String, Object> jsonData) {
         UUri uri = LongUriSerializer.instance().deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
+        sendToTestManager(uri, ActionCommands.DESERIALIZE_URI, testID);
         sendToTestManager(uri, ActionCommands.DESERIALIZE_URI, testID);
         return null;
     }
@@ -227,10 +246,12 @@ public class TestAgent {
             ValidationResult status = validatorFunc.apply(uri);
             String result = status.isSuccess() ? "True" : "False";
             String message = status.getMessage();
+            String testID = (String) jsonData.get("test_id");
             sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_URI, testID);
         } else if (validatorFuncBool != null) {
             Boolean status = validatorFuncBool.apply(uri);
             String result = status ? "True" : "False";
+            String testID = (String) jsonData.get("test_id");
             sendToTestManager(Map.of("result", result, "message", ""), ActionCommands.VALIDATE_URI, testID);
         }
 
@@ -397,6 +418,7 @@ public class TestAgent {
 
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_UATTRIBUTES, testID);
+        sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_UATTRIBUTES, testID);
         return null;
     }
 
@@ -452,6 +474,7 @@ public class TestAgent {
         String message = status.getMessage();
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_UUID, testID);
+        sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_UUID, testID);
         return null;
     }
 
@@ -461,12 +484,14 @@ public class TestAgent {
         String serializedUUid = LongUuidSerializer.instance().serialize(uuid);
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(serializedUUid, ActionCommands.SERIALIZE_UUID, testID);
+        sendToTestManager(serializedUUid, ActionCommands.SERIALIZE_UUID, testID);
         return null;
     }
 
     private static Object handleLongDeserializeUuidCommand(Map<String, Object> jsonData) {
         UUID uuid = LongUuidSerializer.instance().deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
+        sendToTestManager(uuid, ActionCommands.DESERIALIZE_UUID, testID);
         sendToTestManager(uuid, ActionCommands.DESERIALIZE_UUID, testID);
         return null;
     }
@@ -482,17 +507,26 @@ public class TestAgent {
             e.printStackTrace();
             return null;
         }
+            serializedUuriAsStr = new String(serializedUuri, "ISO-8859-1");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return null;
+        }
         String testID = (String) jsonData.get("test_id");
+        sendToTestManager(serializedUuriAsStr, ActionCommands.MICRO_SERIALIZE_URI, testID);
         sendToTestManager(serializedUuriAsStr, ActionCommands.MICRO_SERIALIZE_URI, testID);
         return null;
     }
+
 
     private static Object handleMicroDeserializeUuriCommand(Map<String, Object> jsonData) {
         String microSerializedUuriAsStr = (String) jsonData.get("data");
         byte[] microSerializedUuri = microSerializedUuriAsStr.getBytes(StandardCharsets.ISO_8859_1);
         UUri uri = MicroUriSerializer.instance().deserialize(microSerializedUuri);
 
+
         String testID = (String) jsonData.get("test_id");
+        sendToTestManager(uri, ActionCommands.MICRO_DESERIALIZE_URI, testID);
         sendToTestManager(uri, ActionCommands.MICRO_DESERIALIZE_URI, testID);
         return null;
     }
@@ -512,6 +546,7 @@ public class TestAgent {
             UMessage resMsg = UMessage.newBuilder().setAttributes(uAttributes).setPayload(uPayload).build();
             transport.send(resMsg);
         } else {
+            sendToTestManager(uMessage, ActionCommands.RESPONSE_ON_RECEIVE);
             sendToTestManager(uMessage, ActionCommands.RESPONSE_ON_RECEIVE);
         }
 

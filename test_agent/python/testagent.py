@@ -59,6 +59,8 @@ from uprotocol.proto.ustatus_pb2 import UCode
 
 import constants.constants as CONSTANTS
 import constants.actioncommands as ACTION_COMMANDS
+import constants.constants as CONSTANTS
+import constants.actioncommands as ACTION_COMMANDS
 
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
@@ -93,6 +95,7 @@ class SocketUListener(UListener):
             )
             transport.send(res_msg)
         else:
+            send_to_test_manager(umsg, ACTION_COMMANDS.RESPONSE_ON_RECEIVE)
             send_to_test_manager(umsg, ACTION_COMMANDS.RESPONSE_ON_RECEIVE)
 
 
@@ -163,7 +166,7 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
     def populate_fields(json_obj: Dict[str, Any], proto_obj):
         for field_name, value in json_obj.items():
             # check if incoming json request is a "bytes" type with prepended prefix
-            if isinstance(value, str) and "BYTES:" in value:
+            if isinstance(value, str) and 'BYTES:' in value:
                 value = value.replace("BYTES:", "")
                 value = value.encode("utf-8")
 
@@ -188,6 +191,10 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
                     setattr(proto_obj, field_name, value)
         return proto_obj
 
+    if isinstance(parent_json_obj, dict):
+        populate_fields(parent_json_obj, parent_proto_obj)
+    else:
+        raise TypeError("variable parent_json_obj is not a Dict type")
     if isinstance(parent_json_obj, dict):
         populate_fields(parent_json_obj, parent_proto_obj)
     else:
@@ -225,6 +232,7 @@ def handle_invoke_method_command(json_msg):
         send_to_test_manager(
             message,
             ACTION_COMMANDS.INVOKE_METHOD_COMMAND,
+            ACTION_COMMANDS.INVOKE_METHOD_COMMAND,
             received_test_id=json_msg["test_id"],
         )
 
@@ -237,6 +245,7 @@ def handle_long_serialize_uuri(json_msg: Dict[str, Any]):
     send_to_test_manager(
         serialized_uuri,
         ACTION_COMMANDS.SERIALIZE_URI,
+        ACTION_COMMANDS.SERIALIZE_URI,
         received_test_id=json_msg["test_id"],
     )
 
@@ -244,18 +253,14 @@ def handle_long_serialize_uuri(json_msg: Dict[str, Any]):
 def handle_long_deserialize_uri(json_msg: Dict[str, Any]):
     uuri: UUri = LongUriSerializer().deserialize(json_msg["data"])
     send_to_test_manager(
-        uuri,
-        ACTION_COMMANDS.DESERIALIZE_URI,
-        received_test_id=json_msg["test_id"],
+        uuri, ACTION_COMMANDS.DESERIALIZE_URI, received_test_id=json_msg["test_id"]
     )
 
 
 def handle_long_deserialize_uuid(json_msg: Dict[str, Any]):
     uuid: UUID = LongUuidSerializer().deserialize(json_msg["data"])
     send_to_test_manager(
-        uuid,
-        ACTION_COMMANDS.DESERIALIZE_UUID,
-        received_test_id=json_msg["test_id"],
+        uuid, ACTION_COMMANDS.DESERIALIZE_UUID, received_test_id=json_msg["test_id"]
     )
 
 
@@ -264,6 +269,7 @@ def handle_long_serialize_uuid(json_msg: Dict[str, Any]):
     serialized_uuid: str = LongUuidSerializer().serialize(uuid)
     send_to_test_manager(
         serialized_uuid,
+        ACTION_COMMANDS.SERIALIZE_UUID,
         ACTION_COMMANDS.SERIALIZE_UUID,
         received_test_id=json_msg["test_id"],
     )
@@ -298,15 +304,6 @@ def handle_uri_validate_command(json_msg: Dict[str, Any]):
             ACTION_COMMANDS.VALIDATE_URI,
             received_test_id=json_msg["test_id"],
         )
-    else:
-        send_to_test_manager(
-            {
-                "result": "False",
-                "message": "Nonexistent UriValidator function",
-            },
-            ACTION_COMMANDS.VALIDATE_URI,
-            received_test_id=json_msg["test_id"],
-        )
 
 
 def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
@@ -315,9 +312,9 @@ def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
     # Use "iso-8859-1" to decode bytes -> str, so no UnicodeDecodeError if "utf-8" decode
     serialized_uuri_json_packed: str = serialized_uuri.decode("iso-8859-1")
     send_to_test_manager(
-        serialized_uuri_json_packed,
-        ACTION_COMMANDS.MICRO_SERIALIZE_URI,
-        received_test_id=json_msg["test_id"],
+        serialized_uuri_json_packed, 
+        ACTION_COMMANDS.MICRO_SERIALIZE_URI, 
+        received_test_id=json_msg["test_id"]
     )
 
 
@@ -329,9 +326,9 @@ def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
     )
     uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
     send_to_test_manager(
-        uuri,
-        ACTION_COMMANDS.MICRO_DESERIALIZE_URI,
-        received_test_id=json_msg["test_id"],
+        uuri, 
+        ACTION_COMMANDS.MICRO_DESERIALIZE_URI, 
+        received_test_id=json_msg["test_id"]
     )
 
 
@@ -367,6 +364,7 @@ def handle_uuid_validate_command(json_msg):
 
     send_to_test_manager(
         {"result": result, "message": message},
+        ACTION_COMMANDS.VALIDATE_UUID,
         ACTION_COMMANDS.VALIDATE_UUID,
         received_test_id=json_msg["test_id"],
     )
@@ -456,6 +454,7 @@ def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
     send_to_test_manager(
         {"result": result, "message": message},
         ACTION_COMMANDS.VALIDATE_UATTRIBUTES,
+        ACTION_COMMANDS.VALIDATE_UATTRIBUTES,
         received_test_id=json_msg["test_id"],
     )
 
@@ -473,7 +472,7 @@ action_handlers = {
     ACTION_COMMANDS.VALIDATE_UATTRIBUTES: handle_uattributes_validate_command,
     ACTION_COMMANDS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
     ACTION_COMMANDS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
-    ACTION_COMMANDS.VALIDATE_UUID: handle_uuid_validate_command,
+    ACTION_COMMANDS.VALIDATE_UUID: handle_uuid_validate_command
 }
 
 

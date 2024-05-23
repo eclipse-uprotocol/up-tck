@@ -30,3 +30,4 @@ public class Constant {
     public static final int BYTES_MSG_LENGTH = 32767;
 
 }
+

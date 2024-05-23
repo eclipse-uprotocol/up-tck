@@ -52,12 +52,18 @@ public class ProtoConverter {
 
             if (fieldDescriptor != null) {
                 setFieldValue(protoObj, fieldDescriptor, value);
+                setFieldValue(protoObj, fieldDescriptor, value);
             }
         }
     }
 
     private static void setFieldValue(Message.Builder protoObj, Descriptors.FieldDescriptor fieldDescriptor,
-            Object value) {
+                                      Object value) {
+
+        if (value instanceof String && ((String) value).startsWith("BYTES:")) {
+            String byteString = ((String) value).substring(6); // Remove 'BYTES:' prefix
+            value = ByteString.copyFromUtf8(byteString);
+        }
 
         try {
             switch (fieldDescriptor.getJavaType()) {
@@ -70,10 +76,10 @@ public class ProtoConverter {
                     break;
                 case LONG:
                     long longVal = Caster.toLong(value);
-                    protoObj.setField(fieldDescriptor, longVal);
+                    protoObj.setField(fieldDescriptor, longVal);     
                     break;
                 case FLOAT:
-                    float f = Caster.toFloat(value);
+                    float f = Caster.toFloat(value); 
                     protoObj.setField(fieldDescriptor, f);
                     break;
                 case DOUBLE:
@@ -88,12 +94,6 @@ public class ProtoConverter {
                     protoObj.setField(fieldDescriptor, value);
                     break;
                 case BYTE_STRING:
-                    if (value instanceof String && ((String) value).startsWith("BYTES:")) {
-                        String byteString = ((String) value).substring(6); // Remove 'BYTES:' prefix
-                        value = ByteString.copyFromUtf8(byteString);
-                    } else if (value instanceof String) {
-                        value = ByteString.copyFromUtf8((String) value);
-                    }
                     protoObj.setField(fieldDescriptor, value);
                     break;
                 case ENUM:
@@ -104,15 +104,15 @@ public class ProtoConverter {
                         Message.Builder nestedBuilder = protoObj.newBuilderForField(fieldDescriptor);
                         populateFields((Map<String, Object>) value, nestedBuilder);
                         protoObj.setField(fieldDescriptor, nestedBuilder.build());
-                    } else {
-                        throw new IllegalArgumentException(
-                                "If given a protobuf key, should be expecting a map/json typed value");
+                    }
+                    else {
+                        throw new IllegalArgumentException("If given a protobuf key, should be expecting a map/json typed value");
                     }
                     break;
                 default:
                     break;
             }
-        } catch (NumberFormatException e) {
+        }catch (NumberFormatException e) {
             throw new IllegalArgumentException("incorrect value type to field type");
         }
     }
@@ -198,8 +198,8 @@ public class ProtoConverter {
             } else {
                 return value;
             }
-
-        } catch (Exception e) {
+            
+    	}catch (Exception e) {
             return defaultValue;
         }
     }
