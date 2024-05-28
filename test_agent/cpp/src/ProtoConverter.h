@@ -25,16 +25,14 @@
 #ifndef _PROTO_CONVERTER_H_
 #define _PROTO_CONVERTER_H_
 
-#include <google/protobuf/message.h>
+#include <google/protobuf/any.pb.h>
 #include <google/protobuf/descriptor.h>
+#include <google/protobuf/message.h>
 #include <google/protobuf/util/json_util.h>
 #include <google/protobuf/wrappers.pb.h>
-#include <google/protobuf/any.pb.h>
-
 #include <rapidjson/document.h>
-#include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
-
+#include "rapidjson/writer.h"
 #include <string>
 
 using namespace google::protobuf;
@@ -42,13 +40,11 @@ using namespace rapidjson;
 
 class ProtoConverter {
 public:
-    //static bool dictToProto(const Value& parentJsonObj, Message& parentProtoObj);
-    static Message* dictToProto(Value& parentJsonObj, Message& parentProtoObj, Document::AllocatorType& allocator);
-    static Value convertMessageToJson(const Message& message, Document& doc);
+	static Message *dictToProto(Value &parentJsonObj, Message &parentProtoObj, Document::AllocatorType &allocator);
+	static Value    convertMessageToJson(const Message &message, Document &doc);
 
 private:
-    static void processNested(Value& parentJsonObj, Document::AllocatorType& allocator);
+	static void processNested(Value &parentJsonObj, Document::AllocatorType &allocator);
 };
 
 #endif /* _PROTO_CONVERTER_H_ */
-

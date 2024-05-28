@@ -1,0 +1,92 @@
+# Part of the uprocotol project, under the Apache License v2.0 
+# See /LICENSE for license information.
+# SPDX-License-Identifier: Apache-2.0 
+
+---
+# General style settings
+BasedOnStyle: Google
+IndentWidth: 4
+TabWidth: 4
+AccessModifierOffset: -4
+UseTab: ForIndentation
+
+# Alignment settings
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
+
+# Pointer and Reference alignment
+DerivePointerAlignment: false
+PointerAlignment: Right
+
+# Braces and blocks
+BreakBeforeBraces: Attach
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  BeforeCatch: true
+  BeforeElse: true
+  IndentBraces: false
+
+# Indentation and spacing
+IndentCaseLabels: false
+IndentGotoLabels: true
+IndentPPDirectives: None
+IndentWrappedFunctionNames: false
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+
+# Column limit
+ColumnLimit: 120
+
+# Doxygen comments
+CommentPragmas: '(^|\s)@[a-zA-Z0-9]*\b'
+SpaceBeforeCpp11BracedList: false
+SpacesBeforeTrailingComments: 2
+
+# Includes
+IncludeBlocks: Preserve
+IncludeCategories:
+  - Regex: '^<.*\.h>'
+    Priority: 1
+  - Regex: '^".*\.h"'
+    Priority: 2
+IncludeIsMainRegex: '([.]cpp|[.]cc)$'
+IncludeIsMainSourceRegex: '([.]c)$'
+
+# Naming conventions and types
+SortIncludes: true
+
+
+# Newlines and line breaks
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeTernaryOperators: true
+ExperimentalAutoDetectBinPacking: false
+FixNamespaceComments: true
+
+
+# Additional rules for functions and parameters
+AllowAllParametersOfDeclarationOnNextLine: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+AlignAfterOpenBracket: DontAlign
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 300
+PenaltyBreakString: 1000
