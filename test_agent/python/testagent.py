@@ -56,7 +56,6 @@ from uprotocol.validation.validationresult import ValidationResult
 from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
 from uprotocol.uuid.factory.uuidutils import UUIDUtils
 from uprotocol.proto.ustatus_pb2 import UCode
-from uprotocol.validation.validationresult import ValidationResult
 
 import constants.constants as CONSTANTS
 import constants.actioncommands as ACTION_COMMANDS
@@ -305,7 +304,7 @@ def handle_uri_validate_command(json_msg: Dict[str, Any]):
                 "result": "False",
                 "message": "Nonexistent UriValidator function",
             },
-            CONSTANTS.VALIDATE_URI,
+            ACTION_COMMANDS.VALIDATE_URI,
             received_test_id=json_msg["test_id"],
         )
 
