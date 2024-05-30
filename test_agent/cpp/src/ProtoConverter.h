@@ -38,12 +38,38 @@
 using namespace google::protobuf;
 using namespace rapidjson;
 
+/**
+ * @class ProtoConverter
+ * @brief This class provides methods to convert between protobuf messages and JSON.
+ */
 class ProtoConverter {
 public:
+	/**
+	 * @brief Convert a JSON object to a protobuf message.
+	 *
+	 * @param [in] parentJsonObj The JSON object to convert.
+	 * @param [in/out] parentProtoObj The protobuf message to populate with data from the JSON object.
+	 * @param [in] allocator The allocator to use for the conversion.
+	 * @return A pointer to the populated protobuf message.
+	 */
 	static Message *dictToProto(Value &parentJsonObj, Message &parentProtoObj, Document::AllocatorType &allocator);
-	static Value    convertMessageToJson(const Message &message, Document &doc);
+
+	/**
+	 * @brief Convert a protobuf message to a JSON object.
+	 *
+	 * @param [in] message The protobuf message to convert.
+	 * @param [in] doc The JSON document to populate with data from the protobuf message.
+	 * @return The populated JSON value.
+	 */
+	static Value convertMessageToJson(const Message &message, Document &doc);
 
 private:
+	/**
+	 * @brief Process nested JSON objects.
+	 *
+	 * @param [in/out] parentJsonObj The JSON object to process.
+	 * @param [in] allocator The allocator to use for the processing.
+	 */
 	static void processNested(Value &parentJsonObj, Document::AllocatorType &allocator);
 };
 
