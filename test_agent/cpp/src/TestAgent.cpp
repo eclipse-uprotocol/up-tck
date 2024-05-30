@@ -29,7 +29,7 @@ TestAgent::TestAgent(std::string transportType) {
 TestAgent::~TestAgent() {}
 
 UStatus TestAgent::onReceive(uprotocol::utransport::UMessage &transportUMessage) const {
-	std::cout << "TestAgent::onReceive(), received." << std::endl;
+	spdlog::info("TestAgent::onReceive(), received.");
 	uprotocol::v1::UPayload payV1;
 	payV1.set_format((uprotocol::v1::UPayloadFormat) transportUMessage.payload().format());
 
@@ -92,7 +92,7 @@ void TestAgent::writeDataToTMSocket(Document &responseDoc, string action) const 
 	spdlog::info("TestAgent::writeDataToTMSocket(), Sent to TM : {}", json);
 
 	if (send(clientSocket_, json.c_str(), strlen(json.c_str()), 0) == -1) {
-		perror("TestAgent::writeDataToTMSocket(), Error sending data to TM ");
+		spdlog::error("TestAgent::writeDataToTMSocket(), Error sending data to TM ");
 	}
 }
 
@@ -132,16 +132,17 @@ void TestAgent::sendToTestManager(Document &document, Value &jsonData, string ac
 }
 
 UStatus TestAgent::handleSendCommand(Document &jsonData) {
-	UMessage umsg1 = UMessage::default_instance();
-	UMessage umsg(*((UMessage *) ProtoConverter::dictToProto(jsonData["data"], umsg1, jsonData.GetAllocator())));
-	spdlog::info("TestAgent::handleSendCommand(), umsg string is : {}", umsg.DebugString());
+	UMessage umsg;
+	ProtoConverter::dictToProto(jsonData["data"], umsg, jsonData.GetAllocator());
+	spdlog::info("TestAgent::handleSendCommand(), umsg string is: {}", umsg.DebugString());
 
-	uprotocol::v1::UPayload pay = umsg.payload();
-	string                  str = pay.value();
-	spdlog::debug("TestAgent::handleSendCommand(), payload in string format is :  {}", str);
-	uprotocol::utransport::UPayload payload(
-	    (const unsigned char *) str.c_str(), str.length(), uprotocol::utransport::UPayloadType::VALUE);
-	payload.setFormat((uprotocol::utransport::UPayloadFormat) pay.format());
+	auto        payloadData   = umsg.payload();
+	std::string payloadString = payloadData.value();
+	spdlog::debug("TestAgent::handleSendCommand(), payload in string format is: {}", payloadString);
+
+	uprotocol::utransport::UPayload payload(reinterpret_cast<const unsigned char *>(payloadString.data()),
+	    payloadString.size(), uprotocol::utransport::UPayloadType::VALUE);
+	payload.setFormat(static_cast<uprotocol::utransport::UPayloadFormat>(payloadData.format()));
 
 	auto id                = uprotocol::uuid::Uuidv8Factory::create();
 	auto uAttributesWithId = uprotocol::utransport::UAttributesBuilder(
@@ -153,13 +154,13 @@ UStatus TestAgent::handleSendCommand(Document &jsonData) {
 }
 
 UStatus TestAgent::handleRegisterListenerCommand(Document &jsonData) {
-	UUri uri = BuildUUri().build();
+	UUri uri;
 	ProtoConverter::dictToProto(jsonData["data"], uri, jsonData.GetAllocator());
 	return transportPtr_->registerListener(uri, *this);
 }
 
 UStatus TestAgent::handleUnregisterListenerCommand(Document &jsonData) {
-	UUri uri = BuildUUri().build();
+	UUri uri;
 	ProtoConverter::dictToProto(jsonData["data"], uri, jsonData.GetAllocator());
 	return transportPtr_->unregisterListener(uri, *this);
 }
@@ -169,7 +170,7 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData) {
 	std::string strTest_id = jsonData["test_id"].GetString();
 
 	// Convert data and payload to protocol buffers
-	uprotocol::v1::UPayload upPay;
+	UPayload upPay;
 	ProtoConverter::dictToProto(data["payload"], upPay, jsonData.GetAllocator());
 	string str = upPay.value();
 	spdlog::debug(
@@ -181,7 +182,7 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData) {
 	payload.setFormat((uprotocol::utransport::UPayloadFormat) upPay.format());
 
 	data.RemoveMember("payload");  // removing payload to make it proper  uuri
-	UUri uri = BuildUUri().build();
+	UUri uri;
 	ProtoConverter::dictToProto(data, uri, jsonData.GetAllocator());
 	spdlog::debug(
 	    "TestAgent::handleInvokeMethodCommand(), UUri in string format is :  "
@@ -227,15 +228,13 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData) {
 		sendToTestManager(umsg, Constants::INVOKE_METHOD_COMMAND, strTest_id);
 
 	} catch (const std::exception &e) {
-		std::cerr << "TestAgent::handleInvokeMethodCommand(), Exception "
-		             "received while getting payload: "
-		          << e.what() << std::endl;
+		spdlog::error("TestAgent::handleInvokeMethodCommand(), Exception received while getting payload: {}", e.what());
 	}
 	return;
 }
 
 void TestAgent::handleSerializeUriCommand(Document &jsonData) {
-	UUri uri = BuildUUri().build();
+	UUri uri;
 	ProtoConverter::dictToProto(jsonData["data"], uri, jsonData.GetAllocator());
 
 	Document document;
@@ -311,10 +310,8 @@ void TestAgent::receiveFromTM() {
 		while (true) {
 			ssize_t bytes_received = recv(clientSocket_, recv_data, Constants::BYTES_MSG_LENGTH, 0);
 			if (bytes_received < 1) {
-				std::cerr << "TestAgent::receiveFromTM(), no data received, "
-				             "exiting the CPP Test Agent ... "
-				          << std::endl;
-				DisConnect();
+				spdlog::error("TestAgent::receiveFromTM(), no data received, exiting the CPP Test Agent ...");
+				socketDisconnect();
 				return;
 			}
 
@@ -340,10 +337,10 @@ void TestAgent::receiveFromTM() {
 	}
 }
 
-bool TestAgent::Connect() {
+bool TestAgent::socketConnect() {
 	clientSocket_ = socket(AF_INET, SOCK_STREAM, 0);
 	if (clientSocket_ == -1) {
-		spdlog::error("TestAgent::Connect(), Error creating socket");
+		spdlog::error("TestAgent::socketConnect(), Error creating socket");
 		return 1;
 	}
 
@@ -352,14 +349,14 @@ bool TestAgent::Connect() {
 	inet_pton(AF_INET, Constants::TEST_MANAGER_IP, &(mServerAddress_.sin_addr));
 
 	if (connect(clientSocket_, (struct sockaddr *) &mServerAddress_, sizeof(mServerAddress_)) == -1) {
-		spdlog::error("TestAgent::Connect(), Error connecting to server");
+		spdlog::error("TestAgent::socketConnect(), Error connecting to server");
 		return false;
 	}
 
 	return true;
 }
 
-int TestAgent::DisConnect() {
+int TestAgent::socketDisconnect() {
 	close(clientSocket_);
 	return 0;
 }
@@ -376,7 +373,7 @@ int main(int argc, char *argv[]) {
 	std::string transportType = argv[1];
 
 	TestAgent testAgent = TestAgent(transportType);
-	if (testAgent.Connect()) {
+	if (testAgent.socketConnect()) {
 		std::thread receiveThread = std::thread(&TestAgent::receiveFromTM, &testAgent);
 
 		Document document;

@@ -79,35 +79,21 @@ public:
 	~TestAgent();
 
 	/**
-	 * @brief Callback function called when a message is received from the
-	 * transport layer.
-	 * @param transportUMessage The received message.
-	 * @return The status of the message processing.
-	 */
-	UStatus onReceive(uprotocol::utransport::UMessage &transportUMessage) const;
-
-	/**
 	 * @brief Connects the agent to the test manager.
 	 * @return True if the connection is successful, false otherwise.
 	 */
-	bool Connect();
+	bool socketConnect();
 
 	/**
 	 * @brief Disconnects the agent from the test manager.
 	 * @return The status of the disconnection.
 	 */
-	int DisConnect();
+	int socketDisconnect();
 
 	/**
 	 * @brief Receives data from the test manager.
 	 */
 	void receiveFromTM();
-
-	/**
-	 * @brief Processes the received message.
-	 * @param jsonData The JSON data of the received message.
-	 */
-	void processMessage(Document &jsonData);
 
 	/**
 	 * @brief Sends a message to the test manager.
@@ -125,6 +111,27 @@ public:
 	 * @param strTest_id The ID of the test (optional).
 	 */
 	void sendToTestManager(Document &doc, Value &jsonVal, string action, const string &strTest_id = "") const;
+
+private:
+	// The socket used for communication with the test manager.
+	int                                                clientSocket_;
+	struct sockaddr_in                                 mServerAddress_;  // The address of the test manager.
+	std::shared_ptr<uprotocol::utransport::UTransport> transportPtr_;    // The transport layer used for communication.
+	std::unordered_map<std::string, FunctionType>      actionHandlers_;  // The map of action handlers.
+
+	/**
+	 * @brief Callback function called when a message is received from the
+	 * transport layer.
+	 * @param transportUMessage The received message.
+	 * @return The status of the message processing.
+	 */
+	UStatus onReceive(uprotocol::utransport::UMessage &transportUMessage) const;
+
+	/**
+	 * @brief Processes the received message.
+	 * @param jsonData The JSON data of the received message.
+	 */
+	void processMessage(Document &jsonData);
 
 	/**
 	 * @brief Handles the "sendCommand" command received from the test manager.
@@ -167,13 +174,6 @@ public:
 	 * @param jsonData The JSON data of the command.
 	 */
 	void handleDeserializeUriCommand(Document &jsonData);
-
-private:
-	// The socket used for communication with the test manager.
-	int                                                clientSocket_;
-	struct sockaddr_in                                 mServerAddress_;  // The address of the test manager.
-	std::shared_ptr<uprotocol::utransport::UTransport> transportPtr_;    // The transport layer used for communication.
-	std::unordered_map<std::string, FunctionType>      actionHandlers_;  // The map of action handlers.
 
 	/**
 	 * @brief Creates a transport layer object based on the specified transport

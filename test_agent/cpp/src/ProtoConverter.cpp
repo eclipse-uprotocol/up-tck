@@ -71,8 +71,7 @@ bool isValidBase64(const std::string &input) {
 	return std::regex_match(input, base64Pattern);
 }
 
-Message *ProtoConverter::dictToProto(
-    Value &parentJsonObj, Message &parentProtoObj, Document::AllocatorType &allocator) {
+void ProtoConverter::dictToProto(Value &parentJsonObj, Message &parentProtoObj, Document::AllocatorType &allocator) {
 	// Process JSON object members
 	processNested(parentJsonObj, allocator);
 	// Convert parentJsonObj value to string
@@ -86,8 +85,6 @@ Message *ProtoConverter::dictToProto(
 	if (!status.ok()) {
 		spdlog::error("Error during JSON to Message conversion: {}", status.ToString());
 	}
-
-	return &parentProtoObj;
 }
 
 Value ProtoConverter::convertMessageToJson(const Message &message, Document &doc) {

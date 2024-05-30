@@ -50,9 +50,8 @@ public:
 	 * @param [in] parentJsonObj The JSON object to convert.
 	 * @param [in/out] parentProtoObj The protobuf message to populate with data from the JSON object.
 	 * @param [in] allocator The allocator to use for the conversion.
-	 * @return A pointer to the populated protobuf message.
 	 */
-	static Message *dictToProto(Value &parentJsonObj, Message &parentProtoObj, Document::AllocatorType &allocator);
+	static void dictToProto(Value &parentJsonObj, Message &parentProtoObj, Document::AllocatorType &allocator);
 
 	/**
 	 * @brief Convert a protobuf message to a JSON object.
