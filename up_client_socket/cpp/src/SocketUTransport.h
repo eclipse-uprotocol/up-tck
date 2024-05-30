@@ -84,7 +84,7 @@ public:
 
   /**
    * @brief Sends a UMessage over the transport.
-   * @param transportUMessage The UMessage to send.
+   * @param[in] transportUMessage The UMessage to send.
    * @return The status of the send operation.
    */
   UStatus
@@ -92,8 +92,8 @@ public:
 
   /**
    * @brief Registers a listener for a specific topic.
-   * @param topic The topic to register the listener for.
-   * @param listener The listener to register.
+   * @param[in] topic The topic to register the listener for.
+   * @param[in] listener The listener to register.
    * @return The status of the registration operation.
    */
   UStatus
@@ -102,22 +102,20 @@ public:
 
   /**
    * @brief Unregisters a listener for a specific topic.
-   * @param topic The topic to unregister the listener from.
-   * @param listener The listener to unregister.
+   * @param[in] topic The topic to unregister the listener from.
+   * @param[in] listener The listener to unregister.
    * @return The status of the unregistration operation.
    */
   UStatus
   unregisterListener(const UUri &topic,
                      const uprotocol::utransport::UListener &listener) override;
 
-  // RpcClient API's
-
   /**
    * @brief Invokes a remote method asynchronously and returns a future for the
    * response.
-   * @param topic The topic of the remote method.
-   * @param payload The payload of the remote method.
-   * @param options The call options for the remote method.
+   * @param[in] topic The topic of the remote method.
+   * @param[in] payload The payload of the remote method.
+   * @param[in] options The call options for the remote method.
    * @return A future for the response of the remote method.
    */
   std::future<uprotocol::rpc::RpcResponse>
@@ -128,10 +126,11 @@ public:
   /**
    * @brief Invokes a remote method asynchronously and registers a callback for
    * the response.
-   * @param topic The topic of the remote method.
-   * @param payload The payload of the remote method.
-   * @param options The call options for the remote method.
-   * @param callback The callback to be invoked when the response is received.
+   * @param[in] topic The topic of the remote method.
+   * @param[in] payload The payload of the remote method.
+   * @param[in] options The call options for the remote method.
+   * @param[in] callback The callback to be invoked when the response is
+   * received.
    * @return The status of the invocation operation.
    */
   uprotocol::v1::UStatus
@@ -141,26 +140,31 @@ public:
                const uprotocol::utransport::UListener &callback) override;
 
 private:
+  // The IP address of the dispatcher.
   constexpr static const char *DISPATCHER_IP = "127.0.0.1";
+  // The port number of the dispatcher.
   constexpr static const int DISPATCHER_PORT = 44444;
+  // The maximum length of a message in bytes.
   constexpr static const int BYTES_MSG_LENGTH = 32767;
 
-  static const UUri RESPONSE_URI;
+  static const UUri RESPONSE_URI; // The URI for responses.
+  std::thread processThread;      // The thread for processing messages.
+  int socketFd;                   // The file descriptor for the socket.
+  std::mutex mutex_;              // A mutex for thread synchronization.
+  std::mutex mutex_promise; // A mutex for synchronizing access to promises.
 
-  // static constexpr auto queueSize_ = size_t(20);
-  // static constexpr auto maxNumOfCuncurrentRequests_ = size_t(2);
-  // std::shared_ptr<ThreadPool> threadPool_;
-  std::thread processThread;
-  int socketFd;
-  std::mutex mutex_;
-  std::mutex mutex_promise;
-
+  // A type alias for the key used in the uriToListener map.
   using uuriKey = size_t;
+  // A type alias for the key used in the reqidToFutureUMessage map.
   using uuidStr = std::string;
 
+  // A map from URIs to listeners. Each URI can have multiple listeners.
   std::unordered_map<uuriKey,
                      std::vector<const uprotocol::utransport::UListener *>>
       uriToListener;
+
+  // A map from request IDs to futures. Each request ID corresponds to a future
+  // for a UMessage.
   std::unordered_map<uuidStr, std::promise<uprotocol::rpc::RpcResponse>>
       reqidToFutureUMessage;
 
@@ -171,37 +175,37 @@ private:
 
   /**
    * @brief Handles a publish message received on the socket.
-   * @param umsg The UMessage representing the publish message.
+   * @param[in] umsg The UMessage representing the publish message.
    */
   void handlePublishMessage(UMessage umsg);
 
   /**
    * @brief Handles a request message received on the socket.
-   * @param umsg The UMessage representing the request message.
+   * @param[in] umsg The UMessage representing the request message.
    */
   void handleRequestMessage(UMessage umsg);
 
   /**
    * @brief Handles a response message received on the socket.
-   * @param umsg The UMessage representing the response message.
+   * @param[in] umsg The UMessage representing the response message.
    */
   void handleResponseMessage(UMessage umsg);
 
   /**
    * @brief Notifies the registered listeners for a specific URI about a
    * received message.
-   * @param uri The URI of the received message.
-   * @param umsg The UMessage representing the received message.
+   * @param[in] uri The URI of the received message.
+   * @param[in] umsg The UMessage representing the received message.
    */
   void notifyListeners(UUri uri, UMessage umsg);
 
   /**
    * @brief Counts the timeout for a request and handles the future and promise
    * accordingly.
-   * @param req_id The UUID of the request.
-   * @param resFuture The future for the response.
-   * @param promise The promise for the response.
-   * @param timeout The timeout value in milliseconds.
+   * @param[in] req_id The UUID of the request.
+   * @param[in,out] resFuture The future for the response.
+   * @param[in,out] promise The promise for the response.
+   * @param[in] timeout The timeout value in milliseconds.
    */
   void timeout_counter(UUID &req_id,
                        std::future<uprotocol::rpc::RpcResponse> &resFuture,
