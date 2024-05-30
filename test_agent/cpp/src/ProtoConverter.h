@@ -48,7 +48,7 @@ public:
 	 * @brief Convert a JSON object to a protobuf message.
 	 *
 	 * @param [in] parentJsonObj The JSON object to convert.
-	 * @param [in/out] parentProtoObj The protobuf message to populate with data from the JSON object.
+	 * @param [in,out] parentProtoObj The protobuf message to populate with data from the JSON object.
 	 * @param [in] allocator The allocator to use for the conversion.
 	 */
 	static void dictToProto(Value &parentJsonObj, Message &parentProtoObj, Document::AllocatorType &allocator);
@@ -66,7 +66,7 @@ private:
 	/**
 	 * @brief Process nested JSON objects.
 	 *
-	 * @param [in/out] parentJsonObj The JSON object to process.
+	 * @param [in,out] parentJsonObj The JSON object to process.
 	 * @param [in] allocator The allocator to use for the processing.
 	 */
 	static void processNested(Value &parentJsonObj, Document::AllocatorType &allocator);

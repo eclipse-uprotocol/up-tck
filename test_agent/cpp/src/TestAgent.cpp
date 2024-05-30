@@ -76,11 +76,20 @@ std::shared_ptr<uprotocol::utransport::UTransport> TestAgent::createTransport(co
 	}
 }
 
-void TestAgent::writeDataToTMSocket(Document &responseDoc, string action) const {
-	Value valAction(action.c_str(), responseDoc.GetAllocator());
-	responseDoc.AddMember("action", valAction, responseDoc.GetAllocator());
-	Value valUE("cpp", responseDoc.GetAllocator());
-	responseDoc.AddMember("ue", valUE, responseDoc.GetAllocator());
+rapidjson::Value TestAgent::createRapidJsonStringValue(rapidjson::Document &doc, const std::string &data) const {
+	rapidjson::Value stringValue(rapidjson::kStringType);
+	stringValue.SetString(data.c_str(), doc.GetAllocator());
+	return stringValue;
+}
+
+void TestAgent::writeDataToTMSocket(Document &responseDoc, std::string action) const {
+	rapidjson::Value keyAction = createRapidJsonStringValue(responseDoc, Constants::ACTION);
+	rapidjson::Value valAction(action.c_str(), responseDoc.GetAllocator());
+	responseDoc.AddMember(keyAction, valAction, responseDoc.GetAllocator());
+
+	rapidjson::Value keyUE = createRapidJsonStringValue(responseDoc, Constants::UE);
+	rapidjson::Value valUE(Constants::TEST_AGENT, responseDoc.GetAllocator());
+	responseDoc.AddMember(keyUE, valUE, responseDoc.GetAllocator());
 
 	rapidjson::StringBuffer         buffer;
 	Writer<rapidjson::StringBuffer> writer(buffer);
@@ -88,7 +97,7 @@ void TestAgent::writeDataToTMSocket(Document &responseDoc, string action) const 
 	responseDoc.Accept(writer);
 
 	// Get the JSON data as a C++ string
-	string json = buffer.GetString();
+	std::string json = buffer.GetString();
 	spdlog::info("TestAgent::writeDataToTMSocket(), Sent to TM : {}", json);
 
 	if (send(clientSocket_, json.c_str(), strlen(json.c_str()), 0) == -1) {
@@ -102,30 +111,35 @@ void TestAgent::sendToTestManager(const Message &proto, const string &action, co
 	Value dataValue = ProtoConverter::convertMessageToJson(proto, responseDict);
 	spdlog::info("TestAgent::sendToTestManager(), dataValue is : {}", dataValue.GetString());
 
-	responseDict.AddMember("data", dataValue, responseDict.GetAllocator());
+	rapidjson::Value keyData = createRapidJsonStringValue(responseDict, Constants::DATA);
+	responseDict.AddMember(keyData, dataValue, responseDict.GetAllocator());
+
+	rapidjson::Value keyTestID = createRapidJsonStringValue(responseDict, Constants::TEST_ID);
 
 	if (!strTest_id.empty()) {
 		Value jsonStrValue(rapidjson::kStringType);
 		jsonStrValue.SetString(
 		    strTest_id.c_str(), static_cast<rapidjson::SizeType>(strTest_id.length()), responseDict.GetAllocator());
-		responseDict.AddMember("test_id", jsonStrValue, responseDict.GetAllocator());
+		responseDict.AddMember(keyTestID, jsonStrValue, responseDict.GetAllocator());
 	} else {
-		responseDict.AddMember("test_id", "", responseDict.GetAllocator());
+		responseDict.AddMember(keyTestID, "", responseDict.GetAllocator());
 	}
 
 	writeDataToTMSocket(responseDict, action);
 }
 
 void TestAgent::sendToTestManager(Document &document, Value &jsonData, string action, const string &strTest_id) const {
-	document.AddMember("data", jsonData, document.GetAllocator());
+	rapidjson::Value keyData = createRapidJsonStringValue(document, Constants::DATA);
+	document.AddMember(keyData, jsonData, document.GetAllocator());
+	rapidjson::Value keyTestID = createRapidJsonStringValue(document, Constants::TEST_ID);
 	spdlog::info("TestAgent::sendToTestManager(), jsonData is : {}", jsonData.GetString());
 	if (!strTest_id.empty()) {
 		Value jsonStrValue(rapidjson::kStringType);
 		jsonStrValue.SetString(
 		    strTest_id.c_str(), static_cast<rapidjson::SizeType>(strTest_id.length()), document.GetAllocator());
-		document.AddMember("test_id", jsonStrValue, document.GetAllocator());
+		document.AddMember(keyTestID, jsonStrValue, document.GetAllocator());
 	} else {
-		document.AddMember("test_id", "", document.GetAllocator());
+		document.AddMember(keyTestID, "", document.GetAllocator());
 	}
 
 	writeDataToTMSocket(document, action);
@@ -133,7 +147,7 @@ void TestAgent::sendToTestManager(Document &document, Value &jsonData, string ac
 
 UStatus TestAgent::handleSendCommand(Document &jsonData) {
 	UMessage umsg;
-	ProtoConverter::dictToProto(jsonData["data"], umsg, jsonData.GetAllocator());
+	ProtoConverter::dictToProto(jsonData[Constants::DATA], umsg, jsonData.GetAllocator());
 	spdlog::info("TestAgent::handleSendCommand(), umsg string is: {}", umsg.DebugString());
 
 	auto        payloadData   = umsg.payload();
@@ -155,23 +169,23 @@ UStatus TestAgent::handleSendCommand(Document &jsonData) {
 
 UStatus TestAgent::handleRegisterListenerCommand(Document &jsonData) {
 	UUri uri;
-	ProtoConverter::dictToProto(jsonData["data"], uri, jsonData.GetAllocator());
+	ProtoConverter::dictToProto(jsonData[Constants::DATA], uri, jsonData.GetAllocator());
 	return transportPtr_->registerListener(uri, *this);
 }
 
 UStatus TestAgent::handleUnregisterListenerCommand(Document &jsonData) {
 	UUri uri;
-	ProtoConverter::dictToProto(jsonData["data"], uri, jsonData.GetAllocator());
+	ProtoConverter::dictToProto(jsonData[Constants::DATA], uri, jsonData.GetAllocator());
 	return transportPtr_->unregisterListener(uri, *this);
 }
 
 void TestAgent::handleInvokeMethodCommand(Document &jsonData) {
-	Value      &data       = jsonData["data"];
-	std::string strTest_id = jsonData["test_id"].GetString();
+	Value      &data       = jsonData[Constants::DATA];
+	std::string strTest_id = jsonData[Constants::TEST_ID].GetString();
 
 	// Convert data and payload to protocol buffers
 	UPayload upPay;
-	ProtoConverter::dictToProto(data["payload"], upPay, jsonData.GetAllocator());
+	ProtoConverter::dictToProto(data[Constants::PAYLOAD], upPay, jsonData.GetAllocator());
 	string str = upPay.value();
 	spdlog::debug(
 	    "TestAgent::handleInvokeMethodCommand(), payload in string format is : "
@@ -235,7 +249,7 @@ void TestAgent::handleInvokeMethodCommand(Document &jsonData) {
 
 void TestAgent::handleSerializeUriCommand(Document &jsonData) {
 	UUri uri;
-	ProtoConverter::dictToProto(jsonData["data"], uri, jsonData.GetAllocator());
+	ProtoConverter::dictToProto(jsonData[Constants::DATA], uri, jsonData.GetAllocator());
 
 	Document document;
 	document.SetObject();
@@ -244,7 +258,7 @@ void TestAgent::handleSerializeUriCommand(Document &jsonData) {
 	string strUri = LongUriSerializer::serialize(uri);
 	jsonValue.SetString(strUri.c_str(), static_cast<rapidjson::SizeType>(strUri.length()), document.GetAllocator());
 
-	std::string strTest_id = jsonData["test_id"].GetString();
+	std::string strTest_id = jsonData[Constants::TEST_ID].GetString();
 
 	sendToTestManager(document, jsonValue, Constants::SERIALIZE_URI, strTest_id);
 	return;
@@ -258,7 +272,7 @@ void TestAgent::handleDeserializeUriCommand(Document &jsonData) {
 	string strUri = LongUriSerializer::serialize(LongUriSerializer::deserialize(jsonData["data"].GetString()));
 	jsonValue.SetString(strUri.c_str(), static_cast<rapidjson::SizeType>(strUri.length()), document.GetAllocator());
 
-	std::string strTest_id = jsonData["test_id"].GetString();
+	std::string strTest_id = jsonData[Constants::TEST_ID].GetString();
 
 	sendToTestManager(document, jsonValue, Constants::DESERIALIZE_URI, strTest_id);
 
@@ -266,8 +280,8 @@ void TestAgent::handleDeserializeUriCommand(Document &jsonData) {
 }
 
 void TestAgent::processMessage(Document &json_msg) {
-	std::string action     = json_msg["action"].GetString();
-	std::string strTest_id = json_msg["test_id"].GetString();
+	std::string action     = json_msg[Constants::ACTION].GetString();
+	std::string strTest_id = json_msg[Constants::TEST_ID].GetString();
 
 	spdlog::info("TestAgent::processMessage(), Received action : {}", action);
 
@@ -287,12 +301,15 @@ void TestAgent::processMessage(Document &json_msg) {
 
 			Value strValMsg;
 			strValMsg.SetString(result.message().c_str(), document.GetAllocator());
-			statusObj.AddMember("message", strValMsg, document.GetAllocator());
+			rapidjson::Value keyMessage = createRapidJsonStringValue(document, Constants::MESSAGE);
+			statusObj.AddMember(keyMessage, strValMsg, document.GetAllocator());
 
-			statusObj.AddMember("code", result.code(), document.GetAllocator());
+			rapidjson::Value keyCode = createRapidJsonStringValue(document, Constants::CODE);
+			statusObj.AddMember(keyCode, result.code(), document.GetAllocator());
 
+			rapidjson::Value keyDetails = createRapidJsonStringValue(document, Constants::DETAILS);
 			rapidjson::Value detailsArray(rapidjson::kArrayType);
-			statusObj.AddMember("details", detailsArray, document.GetAllocator());
+			statusObj.AddMember(keyDetails, detailsArray, document.GetAllocator());
 
 			sendToTestManager(document, statusObj, action, strTest_id);
 		} else {
@@ -312,7 +329,7 @@ void TestAgent::receiveFromTM() {
 			if (bytes_received < 1) {
 				spdlog::error("TestAgent::receiveFromTM(), no data received, exiting the CPP Test Agent ...");
 				socketDisconnect();
-				return;
+				break;
 			}
 
 			recv_data[bytes_received] = '\0';
@@ -341,7 +358,7 @@ bool TestAgent::socketConnect() {
 	clientSocket_ = socket(AF_INET, SOCK_STREAM, 0);
 	if (clientSocket_ == -1) {
 		spdlog::error("TestAgent::socketConnect(), Error creating socket");
-		return 1;
+		return false;
 	}
 
 	mServerAddress_.sin_family = AF_INET;
@@ -356,9 +373,8 @@ bool TestAgent::socketConnect() {
 	return true;
 }
 
-int TestAgent::socketDisconnect() {
+void TestAgent::socketDisconnect() {
 	close(clientSocket_);
-	return 0;
 }
 
 int main(int argc, char *argv[]) {

@@ -69,7 +69,7 @@ class TestAgent : public uprotocol::utransport::UListener {
 public:
 	/**
 	 * @brief Constructs a TestAgent object with the specified transport type.
-	 * @param transportType The type of transport to be used by the agent.
+	 * @param[in] transportType The type of transport to be used by the agent.
 	 */
 	TestAgent(std::string transportType);
 
@@ -85,30 +85,24 @@ public:
 	bool socketConnect();
 
 	/**
-	 * @brief Disconnects the agent from the test manager.
-	 * @return The status of the disconnection.
-	 */
-	int socketDisconnect();
-
-	/**
 	 * @brief Receives data from the test manager.
 	 */
 	void receiveFromTM();
 
 	/**
 	 * @brief Sends a message to the test manager.
-	 * @param proto The message to be sent.
-	 * @param action The action associated with the message.
-	 * @param strTest_id The ID of the test (optional).
+	 * @param[in] proto The message to be sent.
+	 * @param[in] action The action associated with the message.
+	 * @param[in] strTest_id The ID of the test (optional).
 	 */
 	void sendToTestManager(const Message &proto, const string &action, const string &strTest_id = "") const;
 
 	/**
 	 * @brief Sends a message to the test manager.
-	 * @param doc The JSON document to be sent.
-	 * @param jsonVal The JSON value to be sent.
-	 * @param action The action associated with the message.
-	 * @param strTest_id The ID of the test (optional).
+	 * @param[in] doc The JSON document to be sent.
+	 * @param[in] jsonVal The JSON value to be sent.
+	 * @param[in] action The action associated with the message.
+	 * @param[in] strTest_id The ID of the test (optional).
 	 */
 	void sendToTestManager(Document &doc, Value &jsonVal, string action, const string &strTest_id = "") const;
 
@@ -122,20 +116,26 @@ private:
 	/**
 	 * @brief Callback function called when a message is received from the
 	 * transport layer.
-	 * @param transportUMessage The received message.
+	 * @param[in] transportUMessage The received message.
 	 * @return The status of the message processing.
 	 */
 	UStatus onReceive(uprotocol::utransport::UMessage &transportUMessage) const;
 
 	/**
 	 * @brief Processes the received message.
-	 * @param jsonData The JSON data of the received message.
+	 * @param[in] jsonData The JSON data of the received message.
 	 */
 	void processMessage(Document &jsonData);
 
 	/**
+	 * @brief Disconnects the agent from the test manager.
+	 * @return The status of the disconnection.
+	 */
+	void socketDisconnect();
+
+	/**
 	 * @brief Handles the "sendCommand" command received from the test manager.
-	 * @param jsonData The JSON data of the command.
+	 * @param[in] jsonData The JSON data of the command.
 	 * @return The status of the command handling.
 	 */
 	UStatus handleSendCommand(Document &jsonData);
@@ -143,7 +143,7 @@ private:
 	/**
 	 * @brief Handles the "registerListener" command received from the test
 	 * manager.
-	 * @param jsonData The JSON data of the command.
+	 * @param[in] jsonData The JSON data of the command.
 	 * @return The status of the command handling.
 	 */
 	UStatus handleRegisterListenerCommand(Document &jsonData);
@@ -151,44 +151,55 @@ private:
 	/**
 	 * @brief Handles the "unregisterListener" command received from the test
 	 * manager.
-	 * @param jsonData The JSON data of the command.
+	 * @param[in] jsonData The JSON data of the command.
 	 * @return The status of the command handling.
 	 */
 	UStatus handleUnregisterListenerCommand(Document &jsonData);
 
 	/**
 	 * @brief Handles the "invokeMethod" command received from the test manager.
-	 * @param jsonData The JSON data of the command.
+	 * @param[in] jsonData The JSON data of the command.
 	 */
 	void handleInvokeMethodCommand(Document &jsonData);
 
 	/**
 	 * @brief Handles the "serializeUri" command received from the test manager.
-	 * @param jsonData The JSON data of the command.
+	 * @param[in] jsonData The JSON data of the command.
 	 */
 	void handleSerializeUriCommand(Document &jsonData);
 
 	/**
 	 * @brief Handles the "deserializeUri" command received from the test
 	 * manager.
-	 * @param jsonData The JSON data of the command.
+	 * @param[in] jsonData The JSON data of the command.
 	 */
 	void handleDeserializeUriCommand(Document &jsonData);
 
 	/**
 	 * @brief Creates a transport layer object based on the specified transport
 	 * type.
-	 * @param transportType The type of transport to be created.
+	 * @param[in] transportType The type of transport to be created.
 	 * @return A shared pointer to the created transport layer object.
 	 */
 	std::shared_ptr<uprotocol::utransport::UTransport> createTransport(const std::string &transportType);
 
 	/**
 	 * @brief Writes data to the test manager socket.
-	 * @param responseDoc The JSON document containing the response data.
-	 * @param action The action associated with the response.
+	 * @param[in,out] responseDoc The JSON document containing the response data.
+	 * @param[in] action The action associated with the response.
 	 */
 	void writeDataToTMSocket(Document &responseDoc, string action) const;
+
+	/**
+	 * @brief Creates a string value for a RapidJSON document.
+	 * @param[in,out] doc The RapidJSON document to which the string value will be added.
+	 * @param[in] data The string data to be converted into a RapidJSON value.
+	 * @return A rapidjson::Value object containing the string data.
+	 * This function takes a RapidJSON document and a string as parameters,
+	 * creates a RapidJSON value from the string, and returns it.
+	 * The returned value can be added to a RapidJSON document as either a key or a value.
+	 */
+	rapidjson::Value createRapidJsonStringValue(rapidjson::Document &doc, const std::string &data) const;
 };
 
 #endif /*_TEST_AGENT_H_*/

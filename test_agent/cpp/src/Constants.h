@@ -60,6 +60,14 @@ public:
 	constexpr static const char *EMPTY         = " ";
 	constexpr static const char *COMPLETED     = "COMPLETED";
 	constexpr static const char *IP_ADDRESS    = "ip-address";
+	constexpr static const char *ACTION        = "action";
+	constexpr static const char *TEST_AGENT    = "cpp";
+	constexpr static const char *UE            = "ue";
+	constexpr static const char *DATA          = "data";
+	constexpr static const char *TEST_ID       = "test_id";
+	constexpr static const char *PAYLOAD       = "payload";
+	constexpr static const char *MESSAGE       = "message";
+	constexpr static const char *DETAILS       = "details";
 };
 
 #endif /* _CONSTANTS_H_ */
