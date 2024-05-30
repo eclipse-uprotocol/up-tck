@@ -80,12 +80,20 @@ jobs:
           var feature_json = JSON.parse(fs.readFileSync('./test_manager/testData/workflow_test_data.json', 'utf8'));
           const command_list = [];
           for(var feature_file_name in feature_json){
-            for (var language in feature_json[feature_file_name]["ues"]){
+            for (var language in feature_json[feature_file_name]["ue1"]){
               for (var transport in feature_json[feature_file_name]["transports"]){
-                var port_language = feature_json[feature_file_name]["ues"][language]
+                var port_language = feature_json[feature_file_name]["ue1"][language]
                 var port_transport = feature_json[feature_file_name]["transports"][transport]
-                var command_str = "behave --define uE1=" + port_language + " --define transport=" + port_transport + " --format json --outfile './reports/" + feature_file_name + "_" + port_language + ".json' --format html --outfile './reports/" + feature_file_name + "_" + port_language + ".html' './features/tests/" + feature_json[feature_file_name]["path"] + "/" + feature_file_name + ".feature'"
-                command_list.push(command_str);
+                if ("ue2" in feature_json[feature_file_name]){
+                  for (var language_two in feature_json[feature_file_name]["ue2"]){
+                    var second_ue = feature_json[feature_file_name]["ue2"][language_two]
+                    var command_str = "behave --define uE1=" + port_language + " --define uE2=" + second_ue + " --define transport=" + port_transport + " --format json --outfile './reports/" + feature_file_name + "_" + port_language + ".json' --format html --outfile './reports/" + feature_file_name + "_" + port_language + ".html' './features/tests/" + feature_json[feature_file_name]["path"] + "/" + feature_file_name + ".feature'"
+                    command_list.push(command_str);
+                  }
+                } else {
+                  var command_str = "behave --define uE1=" + port_language + " --define transport=" + port_transport + " --format json --outfile './reports/" + feature_file_name + "_" + port_language + ".json' --format html --outfile './reports/" + feature_file_name + "_" + port_language + ".html' './features/tests/" + feature_json[feature_file_name]["path"] + "/" + feature_file_name + ".feature'"
+                  command_list.push(command_str);
+                }
               }
             }
           }
