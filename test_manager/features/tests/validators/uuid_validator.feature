@@ -35,16 +35,16 @@ Feature: UUID Validation
 
     Examples:
       | uuid_type      | validator_type                 | expected_status    | expected_message                                              |
-      | uprotocol      | get_validator                  | True               | none                                                          |
-      | uprotocol      | uprotocol                      | True               | none                                                          |
+      | uprotocol      | get_validator                  | True               | OK                                                            |
+      | uprotocol      | uprotocol                      | True               | OK                                                            |
       | invalid        | get_validator                  | False              | Invalid UUID Version,Invalid UUID Variant,Invalid UUID Time   |
       | uprotocol_time | uprotocol                      | False              | Invalid UUID Time                                             |
       |                | uprotocol                      | False              | Invalid UUIDv8 Version,Invalid UUID Time                      |
       | uuidv6         | uprotocol                      | False              | Invalid UUIDv8 Version                                        |
       | invalid        | uprotocol                      | False              | Invalid UUIDv8 Version,Invalid UUID Time                      |
       | uuidv4         | uprotocol                      | False              | Invalid UUIDv8 Version,Invalid UUID Time                      |
-      | uuidv6         | get_validator_is_uuidv6        | True               | none                                                          |
-      | uuidv6         | get_validator                  | True               | none                                                          |
+      | uuidv6         | get_validator_is_uuidv6        | True               |                                                               |
+      | uuidv6         | get_validator                  | True               | OK                                                            |
       | invalid        | uuidv6                         | False              | Not a UUIDv6 Version,Invalid UUIDv6 variant,Invalid UUID Time |
       |                | uuidv6                         | False              | Not a UUIDv6 Version,Invalid UUIDv6 variant,Invalid UUID Time |
       | uprotocol      | uuidv6                         | False              | Not a UUIDv6 Version                                          |
