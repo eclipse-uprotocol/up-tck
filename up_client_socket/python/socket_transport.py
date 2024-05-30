@@ -23,7 +23,11 @@ from collections import defaultdict
 from concurrent.futures import Future
 from threading import Lock
 
-from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType, CallOptions
+from uprotocol.proto.uattributes_pb2 import (
+    UPriority,
+    UMessageType,
+    CallOptions,
+)
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload
 from uprotocol.proto.uri_pb2 import UEntity, UUri
@@ -39,15 +43,24 @@ from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 logger = logging.getLogger(__name__)
 DISPATCHER_ADDR: tuple = ("127.0.0.1", 44444)
 BYTES_MSG_LENGTH: int = 32767
-RESPONSE_URI = UUri(entity=UEntity(name="test_agent_py", version_major=1), resource=UResourceBuilder.for_rpc_response())
+RESPONSE_URI = UUri(
+    entity=UEntity(name="test_agent_py", version_major=1),
+    resource=UResourceBuilder.for_rpc_response(),
+)
 
 
 def timeout_counter(response, req_id, timeout):
     time.sleep(timeout / 1000)
     if not response.done():
         response.set_exception(
-            TimeoutError('Not received response for request ' + LongUuidSerializer.instance().serialize(
-                req_id) + ' within ' + str(timeout / 1000) + ' seconds'))
+            TimeoutError(
+                "Not received response for request "
+                + LongUuidSerializer.instance().serialize(req_id)
+                + " within "
+                + str(timeout / 1000)
+                + " seconds"
+            )
+        )
 
 
 class SocketUTransport(UTransport, RpcClient):
@@ -124,7 +137,9 @@ class SocketUTransport(UTransport, RpcClient):
                 for listener in listeners:
                     listener.on_receive(umsg)
             else:
-                logger.info(f"{self.__class__.__name__} Uri not found in Listener Map, discarding...")
+                logger.info(
+                    f"{self.__class__.__name__} Uri not found in Listener Map, discarding..."
+                )
 
     def _handle_response_message(self, umsg):
         """
@@ -143,7 +158,9 @@ class SocketUTransport(UTransport, RpcClient):
         umsg_serialized: bytes = message.SerializeToString()
         try:
             self.socket.sendall(umsg_serialized)
-            logger.info("uMessage Sent to dispatcher from python socket transport")
+            logger.info(
+                "uMessage Sent to dispatcher from python socket transport"
+            )
         except OSError as e:
             logger.exception(f"INTERNAL ERROR: {e}")
             return UStatus(code=UCode.INTERNAL, message=f"INTERNAL ERROR: {e}")
@@ -179,21 +196,29 @@ class SocketUTransport(UTransport, RpcClient):
                 del self.uri_to_listener[uri]
             return UStatus(code=UCode.OK, message="OK")
 
-        return UStatus(code=UCode.NOT_FOUND, message="Listener not found for the given UUri")
+        return UStatus(
+            code=UCode.NOT_FOUND,
+            message="Listener not found for the given UUri",
+        )
 
-    def invoke_method(self, method_uri: UUri, request_payload: UPayload, options: CallOptions) -> Future:
+    def invoke_method(
+        self, method_uri: UUri, request_payload: UPayload, options: CallOptions
+    ) -> Future:
         """
         Invokes a method with the provided URI, request payload, and options.
         """
-        attributes = UAttributesBuilder.request(RESPONSE_URI, method_uri, UPriority.UPRIORITY_CS4,
-                                                options.ttl).build()
+        attributes = UAttributesBuilder.request(
+            RESPONSE_URI, method_uri, UPriority.UPRIORITY_CS4, options.ttl
+        ).build()
         # Get uAttributes's request id
         request_id = attributes.id
 
         response = Future()
         self.reqid_to_future[request_id.SerializeToString()] = response
         # Start a thread to count the timeout
-        timeout_thread = threading.Thread(target=timeout_counter, args=(response, request_id, options.ttl))
+        timeout_thread = threading.Thread(
+            target=timeout_counter, args=(response, request_id, options.ttl)
+        )
         timeout_thread.start()
 
         umsg = UMessage(payload=request_payload, attributes=attributes)

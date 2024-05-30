@@ -38,7 +38,7 @@ import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
 
 public class ProtoConverter {
-	
+
     public static Message dictToProto(Map<String, Object> parentJsonObj, Message.Builder parentProtoObj) {
         populateFields(parentJsonObj, parentProtoObj);
         return parentProtoObj.build();
@@ -57,12 +57,7 @@ public class ProtoConverter {
     }
 
     private static void setFieldValue(Message.Builder protoObj, Descriptors.FieldDescriptor fieldDescriptor,
-                                      Object value) {
-
-        if (value instanceof String && ((String) value).startsWith("BYTES:")) {
-            String byteString = ((String) value).substring(6); // Remove 'BYTES:' prefix
-            value = ByteString.copyFromUtf8(byteString);
-        }
+            Object value) {
 
         try {
             switch (fieldDescriptor.getJavaType()) {
@@ -75,10 +70,10 @@ public class ProtoConverter {
                     break;
                 case LONG:
                     long longVal = Caster.toLong(value);
-                    protoObj.setField(fieldDescriptor, longVal);     
+                    protoObj.setField(fieldDescriptor, longVal);
                     break;
                 case FLOAT:
-                    float f = Caster.toFloat(value); 
+                    float f = Caster.toFloat(value);
                     protoObj.setField(fieldDescriptor, f);
                     break;
                 case DOUBLE:
@@ -93,6 +88,12 @@ public class ProtoConverter {
                     protoObj.setField(fieldDescriptor, value);
                     break;
                 case BYTE_STRING:
+                    if (value instanceof String && ((String) value).startsWith("BYTES:")) {
+                        String byteString = ((String) value).substring(6); // Remove 'BYTES:' prefix
+                        value = ByteString.copyFromUtf8(byteString);
+                    } else if (value instanceof String) {
+                        value = ByteString.copyFromUtf8((String) value);
+                    }
                     protoObj.setField(fieldDescriptor, value);
                     break;
                 case ENUM:
@@ -103,113 +104,104 @@ public class ProtoConverter {
                         Message.Builder nestedBuilder = protoObj.newBuilderForField(fieldDescriptor);
                         populateFields((Map<String, Object>) value, nestedBuilder);
                         protoObj.setField(fieldDescriptor, nestedBuilder.build());
-                    }
-                    else {
-                        throw new IllegalArgumentException("If given a protobuf key, should be expecting a map/json typed value");
+                    } else {
+                        throw new IllegalArgumentException(
+                                "If given a protobuf key, should be expecting a map/json typed value");
                     }
                     break;
                 default:
                     break;
             }
-        }catch (NumberFormatException e) {
+        } catch (NumberFormatException e) {
             throw new IllegalArgumentException("incorrect value type to field type");
         }
     }
 
     public static JSONObject convertMessageToJSON(Message message) {
-    	JSONObject result = new JSONObject();
-    	
-    	List<FieldDescriptor> allFields = message.getDescriptorForType().getFields();
-    	for (FieldDescriptor field : allFields) {
-    		String fieldName = field.getName();
-    		Object defaultOrSetValue = message.getField(field);
-    		Object value = getattr(message, field, defaultOrSetValue);
+        JSONObject result = new JSONObject();
 
-    		if (value instanceof byte[]) {
-    			value = new String((byte[]) value, StandardCharsets.UTF_8);
-    		}
+        List<FieldDescriptor> allFields = message.getDescriptorForType().getFields();
+        for (FieldDescriptor field : allFields) {
+            String fieldName = field.getName();
+            Object defaultOrSetValue = message.getField(field);
+            Object value = getattr(message, field, defaultOrSetValue);
 
-    		if (value instanceof Message) {
-    			result.put(fieldName, convertMessageToJSON((Message) value));
-    		}
-    		else if (field.isRepeated()) {
-    			JSONArray repeated = new JSONArray();
-    			for(Object subMsg: (List<Object>) value) {
-    				if (subMsg instanceof Message) {
-    					repeated.put( convertMessageToJSON((Message) subMsg) );
-    				}
-    				else{
-    					repeated.put(subMsg);
-    				}
-    			}
-    			result.put(fieldName, repeated);
+            if (value instanceof byte[]) {
+                value = new String((byte[]) value, StandardCharsets.UTF_8);
+            }
 
-    		}
-    		else if (field.isRequired() || field.isOptional()) {
-    			result.put(fieldName, value);
-    		}
-    	}
-    	
-    	return result;
+            if (value instanceof Message) {
+                result.put(fieldName, convertMessageToJSON((Message) value));
+            } else if (field.isRepeated()) {
+                JSONArray repeated = new JSONArray();
+                for (Object subMsg : (List<Object>) value) {
+                    if (subMsg instanceof Message) {
+                        repeated.put(convertMessageToJSON((Message) subMsg));
+                    } else {
+                        repeated.put(subMsg);
+                    }
+                }
+                result.put(fieldName, repeated);
+
+            } else if (field.isRequired() || field.isOptional()) {
+                result.put(fieldName, value);
+            }
+        }
+
+        return result;
     }
-    
+
     public static Map<String, Object> convertMessageToMap(Message message) {
-    	Map<String, Object> result = new HashMap<>();
-    	
-    	List<FieldDescriptor> allFields = message.getDescriptorForType().getFields();
-    	for (FieldDescriptor field : allFields) {
-    		String fieldName = field.getName();
-    		Object defaultOrSetValue = message.getField(field);
-    		Object value = getattr(message, field, defaultOrSetValue);
-    		if (value instanceof EnumValueDescriptor) {
-    			value = ((EnumValueDescriptor) value).getNumber();
-    		}
-    		
-    		if (value instanceof ByteString) {
-    			value = ((ByteString) value).toStringUtf8();
-    		}
-			
+        Map<String, Object> result = new HashMap<>();
 
-    		if (value instanceof Message) {
-    			result.put(fieldName, convertMessageToMap((Message) value));
-    		}
-    		else if (field.isRepeated()) {
-    			List<Object> repeated = new ArrayList<>();
-    			for(Object subMsg: (List<Object>) value) {
-    				if (subMsg instanceof Message) {
-    					repeated.add( convertMessageToMap((Message) subMsg) );
-    				}
-    				else{
-    					repeated.add(subMsg);
-    				}
-    			}
-    			result.put(fieldName, repeated);
+        List<FieldDescriptor> allFields = message.getDescriptorForType().getFields();
+        for (FieldDescriptor field : allFields) {
+            String fieldName = field.getName();
+            Object defaultOrSetValue = message.getField(field);
+            Object value = getattr(message, field, defaultOrSetValue);
+            if (value instanceof EnumValueDescriptor) {
+                value = ((EnumValueDescriptor) value).getNumber();
+            }
 
-    		}
-    		else if (field.isRequired() || field.isOptional()) {
-    			result.put(fieldName, value);
-    		}
-    	}
-    	
-    	return result;
+            if (value instanceof ByteString) {
+                value = ((ByteString) value).toStringUtf8();
+            }
+
+            if (value instanceof Message) {
+                result.put(fieldName, convertMessageToMap((Message) value));
+            } else if (field.isRepeated()) {
+                List<Object> repeated = new ArrayList<>();
+                for (Object subMsg : (List<Object>) value) {
+                    if (subMsg instanceof Message) {
+                        repeated.add(convertMessageToMap((Message) subMsg));
+                    } else {
+                        repeated.add(subMsg);
+                    }
+                }
+                result.put(fieldName, repeated);
+
+            } else if (field.isRequired() || field.isOptional()) {
+                result.put(fieldName, value);
+            }
+        }
+
+        return result;
     }
-    
+
     public static Object getattr(Message message, FieldDescriptor field, Object defaultValue) {
-    	try {
-    		Map<FieldDescriptor, Object> fields2Values = message.getAllFields();
+        try {
+            Map<FieldDescriptor, Object> fields2Values = message.getAllFields();
             Object value = fields2Values.get(field);
-            
+
             if (value == null) {
-            	return defaultValue;
+                return defaultValue;
+            } else {
+                return value;
             }
-            else {
-            	return value;
-            }
-            
-    	}catch (Exception e) {
+
+        } catch (Exception e) {
             return defaultValue;
         }
     }
-
 
 }
