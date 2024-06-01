@@ -77,7 +77,7 @@ class SocketUTransport(UTransport, RpcClient):
         self.uri_to_listener = defaultdict(list)
         self.lock = Lock()
         thread = threading.Thread(target=self.__listen)
-        thread.start()  
+        thread.start()
 
     def __listen(self):
         """

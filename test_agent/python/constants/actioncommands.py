@@ -34,6 +34,7 @@ VALIDATE_UATTRIBUTES = "uattributes_validate"
 MICRO_SERIALIZE_URI = "micro_serialize_uri"
 MICRO_DESERIALIZE_URI = "micro_deserialize_uri"
 
+
 class UAttributeBuilderCommands(Enum):
     PUBLISH = "build_uattribute_publish"
     NOTIFICATION = "build_uattribute_notification"

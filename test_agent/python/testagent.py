@@ -174,6 +174,7 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
         parent_json_obj (Dict[str, Any]): root/beginning json data struct
         parent_proto_obj (Message): root/beginning protobuf data struct
     """
+
     def populate_fields(json_obj: Dict[str, Any], proto_obj):
         for field_name, value in json_obj.items():
             # check if incoming json request is a "bytes" type with prepended prefix
@@ -196,7 +197,9 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
                             if value == "":
                                 value = value.encode("utf-8")
                             else:
-                                raise ValueError("bytes json data MUST have prepended 'BYTES:' when sent value as a str")
+                                raise ValueError(
+                                    "bytes json data MUST have prepended 'BYTES:' when sent value as a str"
+                                )
 
                     except Exception:
                         pass
@@ -211,7 +214,10 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
 
     return parent_proto_obj
 
-def check_proto_enum_value(value: Any, proto_enum: EnumTypeWrapper) -> Optional[Any]:
+
+def check_proto_enum_value(
+    value: Any, proto_enum: EnumTypeWrapper
+) -> Optional[Any]:
     """checks if value exists within the enum protobuf
 
     Args:
@@ -227,8 +233,9 @@ def check_proto_enum_value(value: Any, proto_enum: EnumTypeWrapper) -> Optional[
     except:
         return None
 
+
 def handle_send_command(json_msg: Dict[str, Any]) -> UStatus:
-    """converts json data to UMessage protobuf, and sends umsg to a Test Agent 
+    """converts json data to UMessage protobuf, and sends umsg to a Test Agent
     using UTransport
 
     Args:
@@ -417,7 +424,7 @@ def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
 
 
 def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
-    """Given encoded micro serialized UUri data, decode str into bytes, 
+    """Given encoded micro serialized UUri data, decode str into bytes,
     then micro deserialize to UUri proto and send to Test Manager
 
     Args:
@@ -561,9 +568,11 @@ def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
     )
 
 
-def build_UAttributes(builder: UAttributesBuilder, requested_uattribute_data: Dict[str, Any]) -> Union[UAttributes, str]:
+def build_UAttributes(
+    builder: UAttributesBuilder, requested_uattribute_data: Dict[str, Any]
+) -> Union[UAttributes, str]:
     """sets requested_uattribute_data json into UAttributesBuilder and builds,
-    or returns an error message 
+    or returns an error message
 
     Args:
         builder (UAttributesBuilder): initial UAttributesBuilder w/ preset data
@@ -574,11 +583,11 @@ def build_UAttributes(builder: UAttributesBuilder, requested_uattribute_data: Di
     """
     for uattr_field_name, uattr_value in requested_uattribute_data.items():
         try:
-            builder_field_value = getattr(builder, uattr_field_name) 
+            builder_field_value = getattr(builder, uattr_field_name)
         except AttributeError:
             # if attribute does not exist in UAttributesBuilder, ignore it
             continue
-        
+
         if builder_field_value is None:  # if builder field is empty
             try:
                 if uattr_field_name in ["source", "sink"]:
@@ -586,44 +595,61 @@ def build_UAttributes(builder: UAttributesBuilder, requested_uattribute_data: Di
                 elif uattr_field_name == "reqid":
                     uattr_value: UUID = dict_to_proto(uattr_value, UUID())
                 elif uattr_field_name == "commstatus":
-                    uattr_value: Optional[int] = check_proto_enum_value(uattr_value, UCode)
+                    uattr_value: Optional[int] = check_proto_enum_value(
+                        uattr_value, UCode
+                    )
                     if uattr_value is None:
                         raise ValueError("enum value out of bound!")
                 elif uattr_field_name == "ttl" or uattr_field_name == "plevel":
                     if not isinstance(uattr_value, int):
-                        raise TypeError(f"{uattr_field_name} should be int type")
+                        raise TypeError(
+                            f"{uattr_field_name} should be int type"
+                        )
                     elif uattr_value < 0:
                         raise ValueError(f"{uattr_field_name} should be >= 0")
-                elif uattr_field_name == "token" or uattr_field_name == "traceparent":
+                elif (
+                    uattr_field_name == "token"
+                    or uattr_field_name == "traceparent"
+                ):
                     if not isinstance(uattr_value, str):
-                        raise TypeError(f"{uattr_field_name} should be str type")
+                        raise TypeError(
+                            f"{uattr_field_name} should be str type"
+                        )
 
             except TypeError:
-                attributes = UAttributeBuilderErrors.bad_data_type(uattr_field_name)
+                attributes = UAttributeBuilderErrors.bad_data_type(
+                    uattr_field_name
+                )
                 return attributes
             except ValueError:
-                attributes = UAttributeBuilderErrors.bad_data_value(uattr_field_name)
+                attributes = UAttributeBuilderErrors.bad_data_value(
+                    uattr_field_name
+                )
                 return attributes
             except AttributeError:
-                attributes = UAttributeBuilderErrors.bad_data_type(uattr_field_name)
+                attributes = UAttributeBuilderErrors.bad_data_type(
+                    uattr_field_name
+                )
                 return attributes
-                
+
             setattr(builder, uattr_field_name, uattr_value)
-    
+
     attributes: UAttributes = builder.build()
     return attributes
 
 
-def get_uuri(field_name: str, 
-             uattributes_data: Dict[str, Any], 
-             command: str,  
-             test_id: str) -> UUri:
+def get_uuri(
+    field_name: str,
+    uattributes_data: Dict[str, Any],
+    command: str,
+    test_id: str,
+) -> UUri:
     """populates UUri proto or sends error message to Test Manager
 
     Args:
         field_name (str): "source" or "sink" key names
         uattributes_data (Dict[str, Any]): given UAttributes json data
-        command (str): which UAttribute builder command failed when 
+        command (str): which UAttribute builder command failed when
             respond w/ error message
         test_id (str): respective message test id to respond w/ error message
 
@@ -631,37 +657,46 @@ def get_uuri(field_name: str,
         UUri: UUri proto
     """
     if field_name not in uattributes_data:
-        send_to_test_manager(UAttributeBuilderErrors.not_given(field_name), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.not_given(field_name),
+            command,
+            received_test_id=test_id,
+        )
         return
     try:
         source: UUri = dict_to_proto(uattributes_data[field_name], UUri())
         return source
     except TypeError:
-        send_to_test_manager(UAttributeBuilderErrors.bad_data_type(field_name), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.bad_data_type(field_name),
+            command,
+            received_test_id=test_id,
+        )
         return
     except ValueError:
-        send_to_test_manager(UAttributeBuilderErrors.bad_data_value(field_name), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.bad_data_value(field_name),
+            command,
+            received_test_id=test_id,
+        )
         return
     except AttributeError:
-        send_to_test_manager(UAttributeBuilderErrors.bad_data_type(field_name), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.bad_data_type(field_name),
+            command,
+            received_test_id=test_id,
+        )
         return
 
-def get_priority(uattributes_data: Dict[str, Any], 
-                 command: str,  
-                 test_id: str) -> int:
+
+def get_priority(
+    uattributes_data: Dict[str, Any], command: str, test_id: str
+) -> int:
     """Get the priority from given UAttr json data
 
     Args:
         uattributes_data (Dict[str, Any]): given UAttributes json data
-        command (str): which UAttribute builder command failed when 
+        command (str): which UAttribute builder command failed when
             respond w/ error message
         test_id (str): respective message test id to respond w/ error message
 
@@ -669,27 +704,34 @@ def get_priority(uattributes_data: Dict[str, Any],
         int: uPriority enum value
     """
     if "priority" not in uattributes_data:
-        send_to_test_manager(UAttributeBuilderErrors.not_given("priority"), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.not_given("priority"),
+            command,
+            received_test_id=test_id,
+        )
         return
-    priority: Optional[int] = check_proto_enum_value(uattributes_data["priority"], UPriority)
+    priority: Optional[int] = check_proto_enum_value(
+        uattributes_data["priority"], UPriority
+    )
     if priority is None:
-        send_to_test_manager(UAttributeBuilderErrors.bad_data_value("priority"), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.bad_data_value("priority"),
+            command,
+            received_test_id=test_id,
+        )
         return
-    
+
     return priority
 
-def get_ttl(uattributes_data: Dict[str, Any], 
-            command: str,  
-            test_id: str) -> int:
+
+def get_ttl(
+    uattributes_data: Dict[str, Any], command: str, test_id: str
+) -> int:
     """Get the ttl from given UAttr json data
 
     Args:
         uattributes_data (Dict[str, Any]): given UAttributes json data
-        command (str): which UAttribute builder command failed when 
+        command (str): which UAttribute builder command failed when
             respond w/ error message
         test_id (str): respective message test id to respond w/ error message
 
@@ -697,40 +739,46 @@ def get_ttl(uattributes_data: Dict[str, Any],
         int: the ttl
     """
     if "ttl" not in uattributes_data:
-        send_to_test_manager(UAttributeBuilderErrors.not_given("ttl"),
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.not_given("ttl"),
+            command,
+            received_test_id=test_id,
+        )
         return
-    
-    try:        
+
+    try:
         if not isinstance(uattributes_data["ttl"], int):
             raise TypeError("ttl should be int type")
         elif uattributes_data["ttl"] < 0:
             raise ValueError("ttl should be >= 0")
-        
-        ttl: int = int(uattributes_data["ttl"])   
+
+        ttl: int = int(uattributes_data["ttl"])
     except TypeError:
-        send_to_test_manager(UAttributeBuilderErrors.bad_data_type("ttl"), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.bad_data_type("ttl"),
+            command,
+            received_test_id=test_id,
+        )
         return
     except ValueError:
-        send_to_test_manager(UAttributeBuilderErrors.bad_data_value("ttl"), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.bad_data_value("ttl"),
+            command,
+            received_test_id=test_id,
+        )
         return
-        
-    
+
     return ttl
 
-def get_reqid(uattributes_data: Dict[str, Any], 
-              command: str,  
-              test_id: str) -> UUID:
+
+def get_reqid(
+    uattributes_data: Dict[str, Any], command: str, test_id: str
+) -> UUID:
     """Get the reqid from given UAttr json data
 
     Args:
         uattributes_data (Dict[str, Any]): given UAttributes json data
-        command (str): which UAttribute builder command failed when 
+        command (str): which UAttribute builder command failed when
             respond w/ error message
         test_id (str): respective message test id to respond w/ error message
 
@@ -738,27 +786,35 @@ def get_reqid(uattributes_data: Dict[str, Any],
         UUID: the reqid
     """
     if "reqid" not in uattributes_data:
-        send_to_test_manager(UAttributeBuilderErrors.not_given("reqid"), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.not_given("reqid"),
+            command,
+            received_test_id=test_id,
+        )
         return
     try:
-        reqid: UUID = dict_to_proto(uattributes_data["reqid"], UUID()) 
+        reqid: UUID = dict_to_proto(uattributes_data["reqid"], UUID())
         return reqid
     except TypeError:
-        send_to_test_manager(UAttributeBuilderErrors.bad_data_type("reqid"), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.bad_data_type("reqid"),
+            command,
+            received_test_id=test_id,
+        )
         return
     except ValueError:
-        send_to_test_manager(UAttributeBuilderErrors.bad_data_value("reqid"), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.bad_data_value("reqid"),
+            command,
+            received_test_id=test_id,
+        )
         return
     except AttributeError:
-        send_to_test_manager(UAttributeBuilderErrors.bad_data_type("reqid"), 
-                             command, 
-                             received_test_id=test_id)
+        send_to_test_manager(
+            UAttributeBuilderErrors.bad_data_type("reqid"),
+            command,
+            received_test_id=test_id,
+        )
         return
 
 
@@ -770,21 +826,31 @@ def build_publish_uattributes(json_msg: Dict[str, Any]):
     """
     uattributes_data: Dict[str, Any] = json_msg["data"]
     test_id: str = json_msg["test_id"]
-    
-    source: UUri = get_uuri("source", uattributes_data, UAttributeBuilderCommands.PUBLISH.value, test_id)
+
+    source: UUri = get_uuri(
+        "source",
+        uattributes_data,
+        UAttributeBuilderCommands.PUBLISH.value,
+        test_id,
+    )
     if source is None:
         return
-    
-    priority: UPriority = get_priority(uattributes_data, UAttributeBuilderCommands.PUBLISH.value, test_id)
+
+    priority: UPriority = get_priority(
+        uattributes_data, UAttributeBuilderCommands.PUBLISH.value, test_id
+    )
     if priority is None:
         return
-    
+
     builder: UAttributesBuilder = UAttributesBuilder.publish(source, priority)
 
     attributes = build_UAttributes(builder, uattributes_data)
-    
-    send_to_test_manager(attributes, UAttributeBuilderCommands.PUBLISH.value, 
-                         received_test_id=json_msg["test_id"])
+
+    send_to_test_manager(
+        attributes,
+        UAttributeBuilderCommands.PUBLISH.value,
+        received_test_id=json_msg["test_id"],
+    )
 
 
 def build_notification_uattributes(json_msg: Dict[str, Any]):
@@ -795,26 +861,42 @@ def build_notification_uattributes(json_msg: Dict[str, Any]):
     """
     uattributes_data: Dict[str, Any] = json_msg["data"]
     test_id: str = json_msg["test_id"]
-    
-    source: UUri = get_uuri("source", uattributes_data, UAttributeBuilderCommands.NOTIFICATION.value, test_id)
+
+    source: UUri = get_uuri(
+        "source",
+        uattributes_data,
+        UAttributeBuilderCommands.NOTIFICATION.value,
+        test_id,
+    )
     if source is None:
         return
-    
-    priority: UPriority = get_priority(uattributes_data, UAttributeBuilderCommands.NOTIFICATION.value, test_id)
+
+    priority: UPriority = get_priority(
+        uattributes_data, UAttributeBuilderCommands.NOTIFICATION.value, test_id
+    )
     if priority is None:
         return
-    
-    sink: UUri = get_uuri("sink", uattributes_data, UAttributeBuilderCommands.NOTIFICATION.value, test_id)
+
+    sink: UUri = get_uuri(
+        "sink",
+        uattributes_data,
+        UAttributeBuilderCommands.NOTIFICATION.value,
+        test_id,
+    )
     if sink is None:
         return
 
-    builder: UAttributesBuilder = UAttributesBuilder.notification(source, sink, priority)
+    builder: UAttributesBuilder = UAttributesBuilder.notification(
+        source, sink, priority
+    )
 
     attributes = build_UAttributes(builder, uattributes_data)
-    
-    send_to_test_manager(attributes, UAttributeBuilderCommands.NOTIFICATION.value, 
-                         received_test_id=json_msg["test_id"])
 
+    send_to_test_manager(
+        attributes,
+        UAttributeBuilderCommands.NOTIFICATION.value,
+        received_test_id=json_msg["test_id"],
+    )
 
 
 def build_request_uattributes(json_msg: Dict[str, Any]):
@@ -823,31 +905,50 @@ def build_request_uattributes(json_msg: Dict[str, Any]):
     Args:
         json_msg (Dict[str, Any]): incoming json data
     """
-    uattributes_data: Dict[str, Any] = json_msg["data"]    
+    uattributes_data: Dict[str, Any] = json_msg["data"]
     test_id: str = json_msg["test_id"]
-    
-    source: UUri = get_uuri("source", uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id)
+
+    source: UUri = get_uuri(
+        "source",
+        uattributes_data,
+        UAttributeBuilderCommands.REQUEST.value,
+        test_id,
+    )
     if source is None:
         return
-    
-    priority: UPriority = get_priority(uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id)
+
+    priority: UPriority = get_priority(
+        uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id
+    )
     if priority is None:
         return
-    
-    sink: UUri = get_uuri("sink", uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id)
+
+    sink: UUri = get_uuri(
+        "sink",
+        uattributes_data,
+        UAttributeBuilderCommands.REQUEST.value,
+        test_id,
+    )
     if sink is None:
         return
 
-    ttl: int = get_ttl(uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id)
+    ttl: int = get_ttl(
+        uattributes_data, UAttributeBuilderCommands.REQUEST.value, test_id
+    )
     if ttl is None:
         return
-    
-    builder: UAttributesBuilder = UAttributesBuilder.request(source, sink, priority, ttl)
+
+    builder: UAttributesBuilder = UAttributesBuilder.request(
+        source, sink, priority, ttl
+    )
 
     attributes = build_UAttributes(builder, uattributes_data)
-    
-    send_to_test_manager(attributes, UAttributeBuilderCommands.REQUEST.value, 
-                         received_test_id=json_msg["test_id"])
+
+    send_to_test_manager(
+        attributes,
+        UAttributeBuilderCommands.REQUEST.value,
+        received_test_id=json_msg["test_id"],
+    )
 
 
 def build_response_uattributes(json_msg: Dict[str, Any]):
@@ -858,30 +959,49 @@ def build_response_uattributes(json_msg: Dict[str, Any]):
     """
     uattributes_data: Dict[str, Any] = json_msg["data"]
     test_id: str = json_msg["test_id"]
-    
-    source: UUri = get_uuri("source", uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id)
+
+    source: UUri = get_uuri(
+        "source",
+        uattributes_data,
+        UAttributeBuilderCommands.RESPONSE.value,
+        test_id,
+    )
     if source is None:
         return
-    
-    priority: UPriority = get_priority(uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id)
+
+    priority: UPriority = get_priority(
+        uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id
+    )
     if priority is None:
         return
-    
-    sink: UUri = get_uuri("sink", uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id)
+
+    sink: UUri = get_uuri(
+        "sink",
+        uattributes_data,
+        UAttributeBuilderCommands.RESPONSE.value,
+        test_id,
+    )
     if sink is None:
         return
-    
-    reqid: UUID = get_reqid(uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id)
-    if reqid is None: 
+
+    reqid: UUID = get_reqid(
+        uattributes_data, UAttributeBuilderCommands.RESPONSE.value, test_id
+    )
+    if reqid is None:
         return
-    
-    builder: UAttributesBuilder = UAttributesBuilder.response(source, sink, priority, reqid)
+
+    builder: UAttributesBuilder = UAttributesBuilder.response(
+        source, sink, priority, reqid
+    )
 
     attributes = build_UAttributes(builder, uattributes_data)
 
-    send_to_test_manager(attributes, UAttributeBuilderCommands.RESPONSE.value, 
-                         received_test_id=json_msg["test_id"])
-    
+    send_to_test_manager(
+        attributes,
+        UAttributeBuilderCommands.RESPONSE.value,
+        received_test_id=json_msg["test_id"],
+    )
+
 
 action_handlers = {
     ACTION_COMMANDS.SEND_COMMAND: handle_send_command,
@@ -900,8 +1020,7 @@ action_handlers = {
     UAttributeBuilderCommands.PUBLISH.value: build_publish_uattributes,
     UAttributeBuilderCommands.NOTIFICATION.value: build_notification_uattributes,
     UAttributeBuilderCommands.REQUEST.value: build_request_uattributes,
-    UAttributeBuilderCommands.RESPONSE.value: build_response_uattributes
-
+    UAttributeBuilderCommands.RESPONSE.value: build_response_uattributes,
 }
 
 

@@ -112,6 +112,7 @@ class DictWithQueue:
     """
     maps a unique topic/keys to a queue for ordered messaging
     """
+
     def __init__(self) -> None:
         self.key_to_queue: Dict[str, Deque[Dict[str, Any]]] = defaultdict(
             deque
@@ -197,11 +198,13 @@ class TestManager:
 
         json_str: str = recv_data.decode("utf-8")
         logger.info(f"json_str: {json_str}")
-        
-        def convert_json_str_to_list_of_nested_dictionaries(flat_concatenated_json: str) -> List[Dict[str, Any]]:
+
+        def convert_json_str_to_list_of_nested_dictionaries(
+            flat_concatenated_json: str,
+        ) -> List[Dict[str, Any]]:
             """in case if json messages are concatenated, we are splitting the json data and handling it separately
             eg: {json, action: ..., messge: "...."}{json, action: status messge: "...."}
-            
+
             Args:
                 flat_concatenated_json (str): looks like "{json, action: ..., messge: ....}"
 
@@ -214,23 +217,29 @@ class TestManager:
             for i, char in enumerate(flat_concatenated_json):
                 if char == "}":
                     open_curly_brace_count -= 1
-                    
-                    if open_curly_brace_count == 0:  # if found an entire nested dict,
+
+                    if (
+                        open_curly_brace_count == 0
+                    ):  # if found an entire nested dict,
                         end_nested_dict_index: int = i + 1
-                        
+
                         # get sub json string
-                        sub_flat_json: str = flat_concatenated_json[start_nested_dict_index : end_nested_dict_index]
+                        sub_flat_json: str = flat_concatenated_json[
+                            start_nested_dict_index:end_nested_dict_index
+                        ]
                         nested_dict: Dict[str, Any] = json.loads(sub_flat_json)
                         list_of_nested_dictionaries.append(nested_dict)
-                        
+
                         # start to find next nested dictionary in jsonstring
                         start_nested_dict_index = end_nested_dict_index
                 elif char == "{":
                     open_curly_brace_count += 1
 
             return list_of_nested_dictionaries
-        
-        received_jsons: List[Dict[str, Any]] = convert_json_str_to_list_of_nested_dictionaries(json_str)
+
+        received_jsons: List[Dict[str, Any]] = (
+            convert_json_str_to_list_of_nested_dictionaries(json_str)
+        )
         for json_data in received_jsons:
             logger.info("Received from test agent: %s", json_data)
             if json_data.get("test_id") is not None:
@@ -300,14 +309,20 @@ class TestManager:
         logger.info(f"Waiting test_id {test_id}")
         start_time: float = time.time()
         wait_time_sec: float = 10.0
-        while not self.action_type_to_response_queue.contains(
-            action, "test_id", test_id
-        ) and time.time() - start_time <= wait_time_sec:
+        while (
+            not self.action_type_to_response_queue.contains(
+                action, "test_id", test_id
+            )
+            and time.time() - start_time <= wait_time_sec
+        ):
             pass
-        
+
         if time.time() - start_time > wait_time_sec:
-            return {"error", f"timed out: did not get an UStatus response within {wait_time_sec} seconds"}
-            
+            return {
+                "error",
+                f"timed out: did not get an UStatus response within {wait_time_sec} seconds",
+            }
+
         logger.info(f"Received test_id {test_id}")
 
         # Get response
@@ -319,12 +334,18 @@ class TestManager:
     def get_onreceive(self, test_agent_name: str) -> Dict[str, Any]:
         start_time: float = time.time()
         wait_time_sec: float = 10.0
-        while not self.action_type_to_response_queue.contains(
-            "onreceive", "ue", test_agent_name
-        ) and time.time() - start_time <= wait_time_sec:
+        while (
+            not self.action_type_to_response_queue.contains(
+                "onreceive", "ue", test_agent_name
+            )
+            and time.time() - start_time <= wait_time_sec
+        ):
             pass
         if time.time() - start_time > wait_time_sec:
-            return {"error", f"timed out: did not get an OnReceive message within {wait_time_sec} seconds"}
+            return {
+                "error",
+                f"timed out: did not get an OnReceive message within {wait_time_sec} seconds",
+            }
 
         return self.action_type_to_response_queue.popleft("onreceive")
 
