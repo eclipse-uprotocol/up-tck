@@ -50,9 +50,7 @@ jobs:
         python install_dependencies.py
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
         flake8 . --exclude scripts/up-python --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 --ignore E203,E402,W503,W504,F811 . --exclude scripts/up-python --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Get Behave Scripts
       uses: actions/github-script@v6
@@ -78,27 +76,40 @@ jobs:
           
           traverseDir("./test_manager/features/tests");
           fs.writeFileSync('./test_manager/feature_file_list.json', JSON.stringify(feature_file_list));
+          
+          var feature_json = JSON.parse(fs.readFileSync('./test_manager/testData/workflow_test_data.json', 'utf8'));
+          const command_list = [];
+          for(var feature_file_name in feature_json){
+            for (var language in feature_json[feature_file_name]["ue1"]){
+              for (var transport in feature_json[feature_file_name]["transports"]){
+                var port_language = feature_json[feature_file_name]["ue1"][language]
+                var port_transport = feature_json[feature_file_name]["transports"][transport]
+                if ("ue2" in feature_json[feature_file_name]){
+                  for (var language_two in feature_json[feature_file_name]["ue2"]){
+                    var second_ue = feature_json[feature_file_name]["ue2"][language_two]
+                    var command_str = "behave --define uE1=" + port_language + " --define uE2=" + second_ue + " --define transport=" + port_transport + " --format json --outfile './reports/" + feature_file_name + "_" + port_language + ".json' --format html --outfile './reports/" + feature_file_name + "_" + port_language + ".html' './features/tests/" + feature_json[feature_file_name]["path"] + "/" + feature_file_name + ".feature'"
+                    command_list.push(command_str);
+                  }
+                } else {
+                  var command_str = "behave --define uE1=" + port_language + " --define transport=" + port_transport + " --format json --outfile './reports/" + feature_file_name + "_" + port_language + ".json' --format html --outfile './reports/" + feature_file_name + "_" + port_language + ".html' './features/tests/" + feature_json[feature_file_name]["path"] + "/" + feature_file_name + ".feature'"
+                  command_list.push(command_str);
+                }
+              }
+            }
+          }
+          fs.writeFileSync('./test_manager/command_list.json', JSON.stringify(command_list));
+
     - name: TCK Behave Tests
       run: |
-        pwd
-        ls -l
         cd test_manager
-        # Read JSON file content
-        content=$(<./feature_file_list.json)
-
-        # Loop through each JSON object
+        content=$(<./command_list.json)
         echo "$content" | jq -c '.[]' | while IFS='' read -r obj; do
-            # Extract filename and full path from the current JSON object
-            filename=$(echo "$obj" | jq -r '.filename')
-            full_path=$(echo "$obj" | jq -r '.path')
-            
-            # Run behave command
-            echo "Running Test: $filename"
-            behave --define uE1=python --define uE2=java --define transport=socket --format json --outfile "./reports/${filename}_python.json" --format html --outfile "./reports/${filename}_python.html" "$full_path"
-            behave --define uE1=java --define uE2=python --define transport=socket --format json --outfile "./reports/${filename}_java.json" --format html --outfile "./reports/${filename}_java.html" "$full_path"
-            echo "Finished Test: $filename"
+            obj=$(sed -e 's/^"//' -e 's/"$//' <<< "$obj")
+            echo "Running Test: $obj"
+            eval "$obj"
+            echo "Finished Test: $obj"
         done
-    - name: Get Behave Scripts
+    - name: Read Behave Results
       uses: actions/github-script@v6
       with:
         result-encoding: string

@@ -1641,7 +1641,7 @@ checksum = "68f5e5f3158ecfd4b8ff6fe086db7c8467a2dfdac97fe420f2b7c4aa97af66d6"
 [[package]]
 name = "up-rust"
 version = "0.1.5"
-source = "git+https://github.com/eclipse-uprotocol/up-rust?rev=897ebc3d8d8cd4ad0082ff6899a9e0b217bbd06a#897ebc3d8d8cd4ad0082ff6899a9e0b217bbd06a"
+source = "git+https://github.com/eclipse-uprotocol/up-rust?rev=c705ac97602ad6917a93d23651e8a504ec7bb718#c705ac97602ad6917a93d23651e8a504ec7bb718"
 dependencies = [
  "async-trait",
  "bytes",

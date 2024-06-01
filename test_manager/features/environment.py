@@ -64,7 +64,8 @@ def after_all(context: Context):
     context.tm.close_test_agent("python")
     context.tm.close_test_agent("java")
     context.tm.close()
-    context.dispatcher["socket"].close()
+    if context.transport.get("transport") == "socket":
+        context.dispatcher["socket"].close()
 
     context.logger.info("Closed All Test Agents and Test Manager...")
     try:
