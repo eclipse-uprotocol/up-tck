@@ -1,46 +1,100 @@
-# -------------------------------------------------------------------------
-#
-# Copyright (c) 2024 General Motors GTO LLC
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-# SPDX-FileType: SOURCE
-# SPDX-FileCopyrightText: 2024 General Motors GTO LLC
-# SPDX-License-Identifier: Apache-2.0
-#
-# -------------------------------------------------------------------------
+"""
+SPDX-FileCopyrightText: Copyright (c) 2024 Contributors to the Eclipse Foundation
+See the NOTICE file(s) distributed with this work for additional
+information regarding copyright ownership.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+SPDX-FileType: SOURCE
+SPDX-License-Identifier: Apache-2.0
+"""
+
 import base64
 import codecs
+import time
+import sys
+import os
+import subprocess
+import parse
 from typing import Any, Dict, Union
 from uprotocol.proto.ustatus_pb2 import UCode
+from threading import Thread
+from typing import List
 from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
 
-from behave import when, then, given
+from behave import when, then, given, register_type
 from behave.runner import Context
 from hamcrest import assert_that, equal_to
+import git
+
+PYTHON_TA_PATH = "/test_agent/python/testagent.py"
+JAVA_TA_PATH = (
+    "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
+)
+RUST_TA_PATH = "/test_agent/rust/target/debug/rust_tck"
+DISPATCHER_PATH = "/dispatcher/dispatcher.py"
+
+repo = git.Repo(".", search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
+
+from dispatcher.dispatcher import Dispatcher
+
+
+def create_command(filepath_from_root_repo: str) -> List[str]:
+    command: List[str] = []
+
+    if filepath_from_root_repo.endswith(".jar"):
+        command.append("java")
+        command.append("-jar")
+    elif filepath_from_root_repo.endswith(".py"):
+        if sys.platform == "win32":
+            command.append("python")
+        elif (
+            sys.platform == "linux"
+            or sys.platform == "linux2"
+            or sys.platform == "darwin"
+        ):
+            command.append("python3")
+    command.append(
+        os.path.abspath(
+            os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo
+        )
+    )
+    return command
+
+
+def create_subprocess(command: List[str]) -> subprocess.Popen:
+    if sys.platform == "win32":
+        process = subprocess.Popen(command, shell=True)
+    elif (
+        sys.platform == "linux"
+        or sys.platform == "linux2"
+        or sys.platform == "darwin"
+    ):
+        process = subprocess.Popen(command)
+    else:
+        print(sys.platform)
+        raise Exception("only handle Windows and Linux commands for now")
+    return process
 
 
 def cast_data_to_jsonable_bytes(value: str):
     return "BYTES:" + value
 
+
 def cast_data_to_bytes(value: str):
     return value.encode()
 
-def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, bool, float]:
+
+def cast(
+    value: str, data_type: str, jsonable: bool = True
+) -> Union[str, int, bool, float]:
     """
     Cast value to a specific type represented as a string
     @param value The original value as string data type
@@ -59,13 +113,13 @@ def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, b
         enum_member: str = value.split(".")[1]
         value = getattr(UCode, enum_member)
 
-    if data_type == "int": 
+    if data_type == "int":
         value = int(value)
-    elif data_type == "str": 
+    elif data_type == "str":
         pass
-    elif data_type == "bool": 
+    elif data_type == "bool":
         value = bool(value)
-    elif data_type == "float": 
+    elif data_type == "float":
         value = float(value)
     elif data_type == "bytes":
         if jsonable:
@@ -77,31 +131,84 @@ def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, b
 
     return value
 
+
+@parse.with_pattern(r".*")
+def parse_nullable_string(text):
+    return text
+
+
+# creates behave's input data type to be empty/blank/""
+register_type(NullableString=parse_nullable_string)
+
+
 @given('"{sdk_name}" creates data for "{command}"')
 @when('"{sdk_name}" creates data for "{command}"')
 def create_sdk_data(context, sdk_name: str, command: str):
     context.json_dict = {}
 
     if sdk_name == "uE1":
-        sdk_name = context.config.userdata['uE1']
+        sdk_name = context.config.userdata["uE1"]
+    elif sdk_name == "uE2":
+        sdk_name = context.config.userdata["uE2"]
+
+    if context.transport == {}:
+        context.transport["transport"] = context.config.userdata["transport"]
+        if context.transport["transport"] == "socket":
+            dispatcher = Dispatcher()
+            thread = Thread(target=dispatcher.listen_for_client_connections)
+            thread.start()
+            context.dispatcher[context.transport["transport"]] = dispatcher
+            time.sleep(5)
+        else:
+            raise ValueError("Invalid transport")
+
+    if sdk_name not in context.ues:
+        context.logger.info(f"Creating {sdk_name} process...")
+
+        if sdk_name == "python":
+            run_command = create_command(PYTHON_TA_PATH)
+        elif sdk_name == "java":
+            run_command = create_command(JAVA_TA_PATH)
+        elif sdk_name == "rust":
+            run_command = create_command(RUST_TA_PATH)
+
+        process = create_subprocess(run_command)
+        if sdk_name in ["python", "java", "rust"]:
+            context.ues.setdefault(sdk_name, []).append(process)
+        else:
+            raise ValueError("Invalid SDK name")
 
     while not context.tm.has_sdk_connection(sdk_name):
         continue
 
+    try:
+        context.rust_sender
+    except AttributeError:
+        context.rust_sender = False
+
+    if sdk_name == "rust" and command == "send":
+        context.rust_sender = True
+
     context.ue = sdk_name
     context.action = command
-    
+
     # if feature file provides step-table data in step definition ...
     if context.table is not None:
         for row in context.table:
             field_name: str = row["protobuf_field_names"]
-            value: str = row["protobuf_field_values"] 
-            
-            value = cast(value, row["protobuf_field_type"] )
+            value: str = row["protobuf_field_values"]
+
+            value = cast(value, row["protobuf_field_type"])
             context.json_dict[field_name] = value
-        
-        context.logger.info("context.json_dict")  
-        context.logger.info(context.json_dict)  
+
+        context.logger.info("context.json_dict")
+        context.logger.info(context.json_dict)
+
+
+@when('sets "{key}" to previous response data')
+def sets_key_to_previous_response(context, key: str):
+    if key not in context.json_dict:
+        context.json_dict[key] = context.response_data
 
 
 @then('the serialized uri received is "{expected_uri}"')
@@ -133,8 +240,10 @@ def serialized_uuid_received(context, expected_uuid: str):
         raise ValueError(f"Exception occurred. {ae}")
 
 
-@then('receives validation result as "{expected_result}"')
+@then('receives validation result as "{expected_result: NullableString}"')
 def receive_validation_result(context, expected_result):
+    if expected_result == "none":
+        return
     try:
         expected_result = expected_result.strip()
         actual_val_res = context.response_data["result"]
@@ -148,10 +257,8 @@ def receive_validation_result(context, expected_result):
         raise ValueError(f"Exception occurred. {ae}")
 
 
-@then('receives validation message as "{expected_message}"')
+@then('receives validation message as "{expected_message:NullableString}"')
 def receive_validation_result(context, expected_message):
-    if expected_message == "none":
-        return
     try:
         expected_message = expected_message.strip()
         actual_val_msg = context.response_data["message"]
@@ -165,14 +272,15 @@ def receive_validation_result(context, expected_message):
         raise ValueError(f"Exception occurred. {ae}")
 
 
-@when('sends a "{command}" request with serialized input "{serialized}"')
+@when(
+    'sends a "{command}" request with serialized input "{serialized:NullableString}"'
+)
 def send_serialized_command(context, command: str, serialized: str):
     context.logger.info(f"Json request for {command} -> {serialized}")
     response_json: Dict[str, Any] = context.tm.request(
         context.ue, context.action, serialized
     )
     context.logger.info(f"Response Json {command} -> {response_json}")
-
     if response_json is None:
         raise AssertionError("Response from Test Manager is None")
     elif "data" not in response_json:
@@ -291,7 +399,7 @@ def receive_status(context, field_name: str, expected_value: str):
     try:
         actual_value: str = context.response_data[field_name]
         expected_value: int = getattr(UCode, expected_value)
-        assert_that(expected_value, equal_to(actual_value))
+        assert_that(expected_value, equal_to(int(actual_value)))
     except AssertionError:
         raise AssertionError(
             f"Assertion error. Expected is {expected_value} but "
@@ -314,16 +422,38 @@ def receive_value_as_bytes(
             sender_sdk_name
         )
         context.logger.info(f"got on_receive_msg:  {on_receive_msg}")
-        val = access_nested_dict(on_receive_msg["data"], field_name)
+        if sender_sdk_name == "rust":
+            val = on_receive_msg["data"]["data"]
+            rec_field_value = bytes(
+                val.split("value")[1]
+                .replace('"', "")
+                .replace(":", "")
+                .replace("\\", "")
+                .replace("x", "\\x")
+                .replace("}", "")
+                .strip()[1:],
+                "utf-8",
+            )
+        else:
+            val = access_nested_dict(on_receive_msg["data"], field_name)
+            if context.rust_sender:
+                context.rust_sender = False
+                decoded_string = (
+                    val.replace('"', "")
+                    .replace("\\", "")
+                    .replace("x", "\\x")[1:]
+                )
+                rec_field_value = bytes(decoded_string, "utf-8")
+            else:
+                rec_field_value: bytes = val.encode("utf-8")
         context.logger.info(f"val {field_name}:  {val}")
 
-        rec_field_value = val.encode("utf-8")
         assert (
             rec_field_value.split(b"googleapis.com/")[1]
             == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
         )
 
-    except AssertionError:
+    except AssertionError as ae:
         raise AssertionError(
             f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
             f"received {rec_field_value}"
@@ -337,10 +467,34 @@ def receive_rpc_response_as_bytes(
     context, sdk_name, field_name: str, expected_value: str
 ):
     try:
-        actual_value: str = access_nested_dict(
-            context.response_data, field_name
-        )
-        actual_value: bytes = actual_value.encode("utf-8")
+        if sdk_name == "rust":
+            actual_value = context.response_data["data"]
+            actual_value = bytes(
+                actual_value.split("value")[1]
+                .replace('"', "")
+                .replace(":", "")
+                .replace("\\", "")
+                .replace("x", "\\x")
+                .replace("}", "")
+                .strip()[1:],
+                "utf-8",
+            )
+        else:
+            actual_value: str = access_nested_dict(
+                context.response_data, field_name
+            )
+            if context.rust_sender:
+                context.rust_sender = False
+                actual_value = base64.b64decode(actual_value.encode("utf-8"))
+                decoded_string = actual_value.decode("utf-8")
+                decoded_string = (
+                    decoded_string.replace('"', "")
+                    .replace("\\", "")
+                    .replace("x", "\\x")[1:]
+                )
+                actual_value = bytes(decoded_string, "utf-8")
+            else:
+                actual_value: bytes = actual_value.encode("utf-8")
 
         # Convert bytes to byte string with escape sequences
         actual_value = codecs.encode(
@@ -350,9 +504,9 @@ def receive_rpc_response_as_bytes(
             actual_value.split(b"googleapis.com/")[1]
             == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
         )
-    except KeyError:
+    except KeyError as ke:
         raise KeyError(f"Key error. {sdk_name} has not received rpc response.")
-    except AssertionError:
+    except AssertionError as ae:
         raise AssertionError(
             f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
             f"received {repr(actual_value)}"
@@ -419,11 +573,12 @@ def send_micro_serialized_command(
     context.logger.info(f"Response Json {command} -> {response_json}")
     context.response_data = response_json["data"]
 
+
 def access_nested_dict(dictionary, keys):
     if keys == "":
         return dictionary
-    
-    keys = keys.split('.')
+
+    keys = keys.split(".")
     value = dictionary
     for key in keys:
         value = value[key]
@@ -454,17 +609,21 @@ def unflatten_dict(d, delimiter="."):
     return unflattened
 
 
-@then(u'receives json with following set fields')
+@then("receives json with following set fields")
 def generic_expected_and_actual_json_comparison(context):
     for row in context.table:
         field_name: str = row["protobuf_field_names"]
-        expected_value: str = row["protobuf_field_values"] 
-        expected_value = cast(expected_value, row["protobuf_field_type"], jsonable=False)
-        
+        expected_value: str = row["protobuf_field_values"]
+        expected_value = cast(
+            expected_value, row["protobuf_field_type"], jsonable=False
+        )
+
         # get the field_name's value from incoming context.response_data
         actual_value = access_nested_dict(context.response_data, field_name)
         if row["protobuf_field_type"] == "bytes":
             actual_value = actual_value.encode()
-            
-        context.logger.info(f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}")
-        assert_that( actual_value, equal_to(expected_value))
+
+        context.logger.info(
+            f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}"
+        )
+        assert_that(actual_value, equal_to(expected_value))

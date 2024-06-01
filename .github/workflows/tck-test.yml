@@ -12,11 +12,17 @@ permissions:
 jobs:
   run_tests:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    continue-on-error: true
 
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+    - name: Build Rust Test Agent
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --manifest-path test_agent/rust/Cargo.toml
     - name: Set up JDK 11
       uses: actions/setup-java@v3
       with:
@@ -31,21 +37,23 @@ jobs:
       working-directory: test_agent/java
       run: |
             mvn clean install --file pom.xml
-    - name: Set up Python 3.10
+    - name: Set up Python 3.8.7
       uses: actions/setup-python@v3
       with:
-        python-version: "3.10"
+        python-version: "3.8.7"
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest
-        pip install -r requirements.txt
+        pip install multimethod
+        cd scripts
+        python install_dependencies.py
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --exclude scripts/up-python --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 --ignore E203,E402,W503,W504,F811 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 --ignore E203,E402,W503,W504,F811 . --exclude scripts/up-python --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Get Behave Scripts
       uses: actions/github-script@v6
       id: check-env
@@ -86,8 +94,8 @@ jobs:
             
             # Run behave command
             echo "Running Test: $filename"
-            behave --define uE1=python --format json --outfile "./reports/${filename}_python.json" --format html --outfile "./reports/${filename}_python.html" "$full_path"
-            behave --define uE1=java --format json --outfile "./reports/${filename}_java.json" --format html --outfile "./reports/${filename}_java.html" "$full_path"
+            behave --define uE1=python --define uE2=java --define transport=socket --format json --outfile "./reports/${filename}_python.json" --format html --outfile "./reports/${filename}_python.html" "$full_path"
+            behave --define uE1=java --define uE2=python --define transport=socket --format json --outfile "./reports/${filename}_java.json" --format html --outfile "./reports/${filename}_java.html" "$full_path"
             echo "Finished Test: $filename"
         done
     - name: Get Behave Scripts

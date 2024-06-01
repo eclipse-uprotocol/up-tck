@@ -1,28 +1,20 @@
-# -------------------------------------------------------------------------
-#
-# Copyright (c) 2024 General Motors GTO LLC
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-# SPDX-FileType: SOURCE
-# SPDX-FileCopyrightText: 2024 General Motors GTO LLC
-# SPDX-License-Identifier: Apache-2.0
-#
-# -------------------------------------------------------------------------
+"""
+SPDX-FileCopyrightText: Copyright (c) 2024 Contributors to the Eclipse Foundation
+See the NOTICE file(s) distributed with this work for additional
+information regarding copyright ownership.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+SPDX-FileType: SOURCE
+SPDX-License-Identifier: Apache-2.0
+"""
+
 from collections import defaultdict, deque
 import json
 import logging
@@ -117,6 +109,9 @@ class TestAgentConnectionDatabase:
 
 
 class DictWithQueue:
+    """
+    maps a unique topic/keys to a queue for ordered messaging
+    """
     def __init__(self) -> None:
         self.key_to_queue: Dict[str, Deque[Dict[str, Any]]] = defaultdict(
             deque
@@ -203,9 +198,16 @@ class TestManager:
         json_str: str = recv_data.decode("utf-8")
         logger.info(f"json_str: {json_str}")
         
-        # in case if json messages are concatenated, we are splitting the json data and handling it separately
-        # eg: {json, action: ..., messge: "...."}{json, action: status messge: "...."}
         def convert_json_str_to_list_of_nested_dictionaries(flat_concatenated_json: str) -> List[Dict[str, Any]]:
+            """in case if json messages are concatenated, we are splitting the json data and handling it separately
+            eg: {json, action: ..., messge: "...."}{json, action: status messge: "...."}
+            
+            Args:
+                flat_concatenated_json (str): looks like "{json, action: ..., messge: ....}"
+
+            Returns:
+                List[Dict[str, Any]]: list of jsons [{...}, {...}, ...]
+            """
             list_of_nested_dictionaries: List[Dict[str, Any]] = []
             open_curly_brace_count: int = 0  # x >= 0
             start_nested_dict_index: int = 0  # x >= 0
@@ -231,6 +233,8 @@ class TestManager:
         received_jsons: List[Dict[str, Any]] = convert_json_str_to_list_of_nested_dictionaries(json_str)
         for json_data in received_jsons:
             logger.info("Received from test agent: %s", json_data)
+            if json_data.get("test_id") is not None:
+                json_data["test_id"] = json_data["test_id"].strip('"')
             self._process_receive_message(json_data, test_agent)
 
     def _process_receive_message(
@@ -268,7 +272,9 @@ class TestManager:
         data: Dict[str, AnyType],
         payload: Dict[str, AnyType] = None,
     ):
-        """Sends a blocking request message to sdk Test Agent (ex: Java, Rust, C++ Test Agent)"""
+        """
+        Sends a blocking request message to sdk Test Agent (ex: Java, Rust, C++ Test Agent)
+        """
         # Get Test Agent's socket
         test_agent_name = test_agent_name.lower().strip()
         test_agent_socket: socket.socket = self.test_agent_database.get(

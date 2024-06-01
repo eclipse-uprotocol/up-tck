@@ -1,33 +1,26 @@
-# -------------------------------------------------------------------------
-#
-# Copyright (c) 2024 General Motors GTO LLC
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-# SPDX-FileType: SOURCE
-# SPDX-FileCopyrightText: 2024 General Motors GTO LLC
-# SPDX-License-Identifier: Apache-2.0
-#
-# -------------------------------------------------------------------------
+"""
+SPDX-FileCopyrightText: Copyright (c) 2024 Contributors to the Eclipse Foundation
+See the NOTICE file(s) distributed with this work for additional
+information regarding copyright ownership.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+SPDX-FileType: SOURCE
+SPDX-License-Identifier: Apache-2.0
+"""
+
 from concurrent.futures import Future
 import json
 import logging
 import socket
 import sys
+import time
 import git
 from threading import Thread
 from typing import Any, Dict, List, Optional, Union
@@ -42,7 +35,11 @@ from uprotocol.proto.uattributes_pb2 import (
     UPriority,
     UMessageType,
     CallOptions,
-    UAttributes
+    UAttributes,
+)
+from uprotocol.transport.validate import uattributesvalidator
+from uprotocol.transport.validate.uattributesvalidator import (
+    UAttributesValidator,
 )
 from uprotocol.proto.umessage_pb2 import UMessage
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
@@ -56,12 +53,15 @@ from uprotocol.uri.serializer.microuriserializer import MicroUriSerializer
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.uri.validator.urivalidator import UriValidator
+from uprotocol.validation.validationresult import ValidationResult
 from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
 from uprotocol.uuid.factory.uuidutils import UUIDUtils
 from uprotocol.proto.ustatus_pb2 import UCode
 
-import constants as CONSTANTS
-from constants import UAttributeBuilderCommands, UAttributeBuilderErrors
+import constants.constants as CONSTANTS
+import constants.actioncommands as ACTION_COMMANDS
+from constants.actioncommands import UAttributeBuilderCommands
+from constants.error_messages import UAttributeBuilderErrors
 
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
@@ -77,6 +77,11 @@ logger.setLevel(logging.DEBUG)
 class SocketUListener(UListener):
 
     def on_receive(self, umsg: UMessage) -> None:
+        """When receives a message, responds to TA or TM with own message
+
+        Args:
+            umsg (UMessage): request message
+        """
         logger.info("Listener received")
         if umsg.attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
             attributes = UAttributesBuilder.response(
@@ -96,7 +101,7 @@ class SocketUListener(UListener):
             )
             transport.send(res_msg)
         else:
-            send_to_test_manager(umsg, CONSTANTS.RESPONSE_ON_RECEIVE)
+            send_to_test_manager(umsg, ACTION_COMMANDS.RESPONSE_ON_RECEIVE)
 
 
 def message_to_dict(message: Message) -> Dict[str, Any]:
@@ -163,13 +168,19 @@ def send_to_test_manager(
 
 
 def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
+    """converts a json/dict to a proto type with filled fields
+
+    Args:
+        parent_json_obj (Dict[str, Any]): root/beginning json data struct
+        parent_proto_obj (Message): root/beginning protobuf data struct
+    """
     def populate_fields(json_obj: Dict[str, Any], proto_obj):
         for field_name, value in json_obj.items():
             # check if incoming json request is a "bytes" type with prepended prefix
-            if isinstance(value, str) and 'BYTES:' in value:
+            if isinstance(value, str) and "BYTES:" in value:
                 value = value.replace("BYTES:", "")
                 value = value.encode("utf-8")
-                
+
             if hasattr(proto_obj, field_name):
                 if isinstance(value, dict):
                     # Recursively update the nested message object
@@ -181,9 +192,15 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
                             value = int(value)
                         elif field_type == float:
                             value = float(value)
+                        elif isinstance(value, str) and field_type == bytes:
+                            if value == "":
+                                value = value.encode("utf-8")
+                            else:
+                                raise ValueError("bytes json data MUST have prepended 'BYTES:' when sent value as a str")
+
                     except Exception:
                         pass
-                    
+
                     setattr(proto_obj, field_name, value)
         return proto_obj
 
@@ -191,45 +208,84 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
         populate_fields(parent_json_obj, parent_proto_obj)
     else:
         raise TypeError("variable parent_json_obj is not a Dict type")
-    
+
     return parent_proto_obj
 
 def check_proto_enum_value(value: Any, proto_enum: EnumTypeWrapper) -> Optional[Any]:
+    """checks if value exists within the enum protobuf
+
+    Args:
+        value (Any): a value protobuf enum can hold
+        proto_enum (EnumTypeWrapper): protobuf enum with specific keys/values
+
+    Returns:
+        Optional[Any]: returns inputted value if value exists in protobuf enum
+    """
     try:
         proto_enum.Name(value)
         return value
     except:
         return None
 
-def handle_send_command(json_msg):
+def handle_send_command(json_msg: Dict[str, Any]) -> UStatus:
+    """converts json data to UMessage protobuf, and sends umsg to a Test Agent 
+    using UTransport
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+    Returns:
+        UStatus: the response after sending
+    """
     umsg = dict_to_proto(json_msg["data"], UMessage())
     umsg.attributes.id.CopyFrom(Factories.UPROTOCOL.create())
     return transport.send(umsg)
 
 
-def handle_register_listener_command(json_msg) -> UStatus:
+def handle_register_listener_command(json_msg: Dict[str, Any]) -> UStatus:
+    """Current Test Agent subscribes/registers to given UUri topic
+    and when receive data to subbed topic, then acts w SocketUlistener listener
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+
+    Returns:
+        UStatus: the response after subscribing
+    """
     uri = dict_to_proto(json_msg["data"], UUri())
     status: UStatus = transport.register_listener(uri, listener)
     return status
 
 
-def handle_unregister_listener_command(json_msg):
+def handle_unregister_listener_command(json_msg: Dict[str, Any]) -> UStatus:
+    """Current Test Agent unsubscribes/unregisters to given UUri topic
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+
+    Returns:
+        UStatus: the response after unsubscribing
+    """
     uri = dict_to_proto(json_msg["data"], UUri())
     return transport.unregister_listener(uri, listener)
 
 
-def handle_invoke_method_command(json_msg):
+def handle_invoke_method_command(json_msg: Dict[str, Any]):
+    """sends req to Test Agents subbed to UUri topic and calls the UListener
+    in each subbed Test Agent, then gets a response from the UListener
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+    """
     uri = dict_to_proto(json_msg["data"], UUri())
     payload = dict_to_proto(json_msg["data"]["payload"], UPayload())
     res_future: Future = transport.invoke_method(
         uri, payload, CallOptions(ttl=10000)
     )
 
-    def handle_response(message):
+    def handle_response(message: Future):
         message: Message = message.result()
         send_to_test_manager(
             message,
-            CONSTANTS.INVOKE_METHOD_COMMAND,
+            ACTION_COMMANDS.INVOKE_METHOD_COMMAND,
             received_test_id=json_msg["test_id"],
         )
 
@@ -237,42 +293,76 @@ def handle_invoke_method_command(json_msg):
 
 
 def handle_long_serialize_uuri(json_msg: Dict[str, Any]):
+    """Given uuri data, then long serialize and return it back to Test Manager
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+    """
     uri: UUri = dict_to_proto(json_msg["data"], UUri())
     serialized_uuri: str = LongUriSerializer().serialize(uri)
     send_to_test_manager(
         serialized_uuri,
-        CONSTANTS.SERIALIZE_URI,
+        ACTION_COMMANDS.SERIALIZE_URI,
         received_test_id=json_msg["test_id"],
     )
 
 
 def handle_long_deserialize_uri(json_msg: Dict[str, Any]):
+    """Given serialized uuri data, then long deserialize and return UUri proto
+    back to Test Manager
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+    """
     uuri: UUri = LongUriSerializer().deserialize(json_msg["data"])
     send_to_test_manager(
-        uuri, CONSTANTS.DESERIALIZE_URI, received_test_id=json_msg["test_id"]
-    )
-
-
-def handle_long_deserialize_uuid(json_msg: Dict[str, Any]):
-    uuid: UUID = LongUuidSerializer().deserialize(json_msg["data"])
-    send_to_test_manager(
-        uuid, CONSTANTS.DESERIALIZE_UUID, received_test_id=json_msg["test_id"]
-    )
-
-
-def handle_long_serialize_uuid(json_msg: Dict[str, Any]):
-    uuid: UUID = dict_to_proto(json_msg["data"], UUID())
-    serialized_uuid: str = LongUuidSerializer().serialize(uuid)
-    send_to_test_manager(
-        serialized_uuid,
-        CONSTANTS.SERIALIZE_UUID,
+        uuri,
+        ACTION_COMMANDS.DESERIALIZE_URI,
         received_test_id=json_msg["test_id"],
     )
 
 
-def handle_uri_validate_command(json_msg):
-    val_type = json_msg["data"]["type"]
-    uri = LongUriSerializer().deserialize(json_msg["data"].get("uri"))
+def handle_long_deserialize_uuid(json_msg: Dict[str, Any]):
+    """Given serialized UUID data, then long deserialize and return UUID proto
+    back to Test Manager
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+    """
+    uuid: UUID = LongUuidSerializer().deserialize(json_msg["data"])
+    send_to_test_manager(
+        uuid,
+        ACTION_COMMANDS.DESERIALIZE_UUID,
+        received_test_id=json_msg["test_id"],
+    )
+
+
+def handle_long_serialize_uuid(json_msg: Dict[str, Any]):
+    """Given serialized UUID data, then long deserialize and return UUID proto
+    back to Test Manager
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+    """
+    uuid: UUID = dict_to_proto(json_msg["data"], UUID())
+    serialized_uuid: str = LongUuidSerializer().serialize(uuid)
+    send_to_test_manager(
+        serialized_uuid,
+        ACTION_COMMANDS.SERIALIZE_UUID,
+        received_test_id=json_msg["test_id"],
+    )
+
+
+def handle_uri_validate_command(json_msg: Dict[str, Any]):
+    """Given uuri and validation type, then validate and send response to TM
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+    """
+    val_type: str = json_msg["data"]["validation_type"]
+    uuri_data: Dict[str, Any] = json_msg["data"]["uuri"]
+
+    uuri: UUri = dict_to_proto(uuri_data, UUri())
 
     validator_func = {
         "uri": UriValidator.validate,
@@ -281,13 +371,11 @@ def handle_uri_validate_command(json_msg):
         "is_empty": UriValidator.is_empty,
         "is_resolved": UriValidator.is_resolved,
         "is_micro_form": UriValidator.is_micro_form,
-        "is_long_form_uuri": UriValidator.is_long_form,
-        "is_long_form_uauthority": UriValidator.is_long_form,
-        "is_local": UriValidator.is_local,
+        "is_long_form": UriValidator.is_long_form,
     }.get(val_type)
 
     if validator_func:
-        status = validator_func(uri)
+        status: Union[bool, ValidationResult] = validator_func(uuri)
         if isinstance(status, bool):
             result = str(status)
             message = ""
@@ -296,31 +384,57 @@ def handle_uri_validate_command(json_msg):
             message = status.get_message()
         send_to_test_manager(
             {"result": result, "message": message},
-            CONSTANTS.VALIDATE_URI,
+            ACTION_COMMANDS.VALIDATE_URI,
+            received_test_id=json_msg["test_id"],
+        )
+    else:
+        send_to_test_manager(
+            {
+                "result": "False",
+                "message": "Nonexistent UriValidator function",
+            },
+            ACTION_COMMANDS.VALIDATE_URI,
             received_test_id=json_msg["test_id"],
         )
 
+
 def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
+    """Given Uuri data, micro serialize into bytes, then encode to utf-8 str
+    so can send response back to Test Manager
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+    """
     uri: UUri = dict_to_proto(json_msg["data"], UUri())
     serialized_uuri: bytes = MicroUriSerializer().serialize(uri)
     # Use "iso-8859-1" to decode bytes -> str, so no UnicodeDecodeError if "utf-8" decode
     serialized_uuri_json_packed: str = serialized_uuri.decode("iso-8859-1")
     send_to_test_manager(
-        serialized_uuri_json_packed, 
-        CONSTANTS.MICRO_SERIALIZE_URI, 
-        received_test_id=json_msg["test_id"]
+        serialized_uuri_json_packed,
+        ACTION_COMMANDS.MICRO_SERIALIZE_URI,
+        received_test_id=json_msg["test_id"],
     )
 
+
 def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
+    """Given encoded micro serialized UUri data, decode str into bytes, 
+    then micro deserialize to UUri proto and send to Test Manager
+
+    Args:
+        json_msg (Dict[str, Any]): given data as a json
+    """
     sent_micro_serialized_uuri: str = json_msg["data"]
     # Incoming micro serialized uuri is sent as an "iso-8859-1" str
-    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("iso-8859-1")
+    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode(
+        "iso-8859-1"
+    )
     uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
     send_to_test_manager(
-        uuri, 
-        CONSTANTS.MICRO_DESERIALIZE_URI, 
-        received_test_id=json_msg["test_id"]
+        uuri,
+        ACTION_COMMANDS.MICRO_DESERIALIZE_URI,
+        received_test_id=json_msg["test_id"],
     )
+
 
 def handle_uuid_validate_command(json_msg):
     uuid_type = json_msg["data"].get("uuid_type")
@@ -354,12 +468,110 @@ def handle_uuid_validate_command(json_msg):
 
     send_to_test_manager(
         {"result": result, "message": message},
-        CONSTANTS.VALIDATE_UUID,
+        ACTION_COMMANDS.VALIDATE_UUID,
+        received_test_id=json_msg["test_id"],
+    )
+
+
+def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
+    data = json_msg["data"]
+    val_method = data.get("validation_method")
+    val_type = data.get("validation_type")
+    if data.get("attributes"):
+        attributes = dict_to_proto(data["attributes"], UAttributes())
+        if attributes.sink.authority.name == "default":
+            attributes.sink.CopyFrom(UUri())
+    else:
+        attributes = UAttributes()
+
+    if data.get("id") == "uprotocol":
+        attributes.id.CopyFrom(Factories.UPROTOCOL.create())
+    elif data.get("id") == "uuid":
+        attributes.id.CopyFrom(Factories.UUIDV6.create())
+
+    if data.get("reqid") == "uprotocol":
+        attributes.reqid.CopyFrom(Factories.UPROTOCOL.create())
+    elif data.get("reqid") == "uuid":
+        attributes.reqid.CopyFrom(Factories.UUIDV6.create())
+
+    validator_type = {
+        "get_validator": UAttributesValidator.get_validator,
+    }.get(val_type)
+
+    pub_val = uattributesvalidator.Validators.PUBLISH.validator()
+    req_val = uattributesvalidator.Validators.REQUEST.validator()
+    res_val = uattributesvalidator.Validators.RESPONSE.validator()
+    not_val = uattributesvalidator.Validators.NOTIFICATION.validator()
+
+    validator_method = {
+        "publish_validator": {
+            "is_expired": pub_val.is_expired,
+            "validate_ttl": pub_val.validate_ttl,
+            "validate_sink": pub_val.validate_sink,
+            "validate_req_id": pub_val.validate_req_id,
+            "validate_id": pub_val.validate_id,
+            "validate_permission_level": pub_val.validate_permission_level,
+        }.get(val_type, pub_val.validate),
+        "request_validator": {
+            "is_expired": req_val.is_expired,
+            "validate_ttl": req_val.validate_ttl,
+            "validate_sink": req_val.validate_sink,
+            "validate_req_id": req_val.validate_req_id,
+            "validate_id": req_val.validate_id,
+        }.get(val_type, req_val.validate),
+        "response_validator": {
+            "is_expired": res_val.is_expired,
+            "validate_ttl": res_val.validate_ttl,
+            "validate_sink": res_val.validate_sink,
+            "validate_req_id": res_val.validate_req_id,
+            "validate_id": res_val.validate_id,
+        }.get(val_type, res_val.validate),
+        "notification_validator": {
+            "is_expired": not_val.is_expired,
+            "validate_ttl": not_val.validate_ttl,
+            "validate_sink": not_val.validate_sink,
+            "validate_req_id": not_val.validate_req_id,
+            "validate_id": not_val.validate_id,
+            "validate_type": not_val.validate_type,
+        }.get(val_type, not_val.validate),
+    }.get(val_method)
+
+    if attributes.ttl == 1:
+        time.sleep(0.8)
+
+    if val_type == "get_validator":
+        status = validator_type(attributes)
+    if validator_method is not None:
+        status = validator_method(attributes)
+
+    if isinstance(status, ValidationResult):
+        result = str(status.is_success())
+        message = status.get_message()
+    elif isinstance(status, bool):
+        result = str(status)
+        message = ""
+    else:
+        result = ""
+        message = str(status)
+
+    send_to_test_manager(
+        {"result": result, "message": message},
+        ACTION_COMMANDS.VALIDATE_UATTRIBUTES,
         received_test_id=json_msg["test_id"],
     )
 
 
 def build_UAttributes(builder: UAttributesBuilder, requested_uattribute_data: Dict[str, Any]) -> Union[UAttributes, str]:
+    """sets requested_uattribute_data json into UAttributesBuilder and builds,
+    or returns an error message 
+
+    Args:
+        builder (UAttributesBuilder): initial UAttributesBuilder w/ preset data
+        requested_uattribute_data (Dict[str, Any]): given json data
+
+    Returns:
+        Union[UAttributes, str]: UAttributes proto or error message
+    """
     for uattr_field_name, uattr_value in requested_uattribute_data.items():
         try:
             builder_field_value = getattr(builder, uattr_field_name) 
@@ -402,7 +614,22 @@ def build_UAttributes(builder: UAttributesBuilder, requested_uattribute_data: Di
     return attributes
 
 
-def get_uuri(field_name: str, uattributes_data: Dict[str, Any], command: str,  test_id: str) -> UUri:
+def get_uuri(field_name: str, 
+             uattributes_data: Dict[str, Any], 
+             command: str,  
+             test_id: str) -> UUri:
+    """populates UUri proto or sends error message to Test Manager
+
+    Args:
+        field_name (str): "source" or "sink" key names
+        uattributes_data (Dict[str, Any]): given UAttributes json data
+        command (str): which UAttribute builder command failed when 
+            respond w/ error message
+        test_id (str): respective message test id to respond w/ error message
+
+    Returns:
+        UUri: UUri proto
+    """
     if field_name not in uattributes_data:
         send_to_test_manager(UAttributeBuilderErrors.not_given(field_name), 
                              command, 
@@ -427,7 +654,20 @@ def get_uuri(field_name: str, uattributes_data: Dict[str, Any], command: str,  t
                              received_test_id=test_id)
         return
 
-def get_priority(uattributes_data: Dict[str, Any], command: str,  test_id: str) -> str:
+def get_priority(uattributes_data: Dict[str, Any], 
+                 command: str,  
+                 test_id: str) -> int:
+    """Get the priority from given UAttr json data
+
+    Args:
+        uattributes_data (Dict[str, Any]): given UAttributes json data
+        command (str): which UAttribute builder command failed when 
+            respond w/ error message
+        test_id (str): respective message test id to respond w/ error message
+
+    Returns:
+        int: uPriority enum value
+    """
     if "priority" not in uattributes_data:
         send_to_test_manager(UAttributeBuilderErrors.not_given("priority"), 
                              command, 
@@ -442,7 +682,20 @@ def get_priority(uattributes_data: Dict[str, Any], command: str,  test_id: str) 
     
     return priority
 
-def get_ttl(uattributes_data: Dict[str, Any], command: str,  test_id: str) -> int:
+def get_ttl(uattributes_data: Dict[str, Any], 
+            command: str,  
+            test_id: str) -> int:
+    """Get the ttl from given UAttr json data
+
+    Args:
+        uattributes_data (Dict[str, Any]): given UAttributes json data
+        command (str): which UAttribute builder command failed when 
+            respond w/ error message
+        test_id (str): respective message test id to respond w/ error message
+
+    Returns:
+        int: the ttl
+    """
     if "ttl" not in uattributes_data:
         send_to_test_manager(UAttributeBuilderErrors.not_given("ttl"),
                              command, 
@@ -470,7 +723,20 @@ def get_ttl(uattributes_data: Dict[str, Any], command: str,  test_id: str) -> in
     
     return ttl
 
-def get_reqid(uattributes_data: Dict[str, Any], command: str,  test_id: str):
+def get_reqid(uattributes_data: Dict[str, Any], 
+              command: str,  
+              test_id: str) -> UUID:
+    """Get the reqid from given UAttr json data
+
+    Args:
+        uattributes_data (Dict[str, Any]): given UAttributes json data
+        command (str): which UAttribute builder command failed when 
+            respond w/ error message
+        test_id (str): respective message test id to respond w/ error message
+
+    Returns:
+        UUID: the reqid
+    """
     if "reqid" not in uattributes_data:
         send_to_test_manager(UAttributeBuilderErrors.not_given("reqid"), 
                              command, 
@@ -522,6 +788,11 @@ def build_publish_uattributes(json_msg: Dict[str, Any]):
 
 
 def build_notification_uattributes(json_msg: Dict[str, Any]):
+    """Builds UAttribute protobuf and replies back to Test Manager
+    Prerequisite: incoming keys in json_msg["data"] MUST match with UAttributesBuilder's fields
+    Args:
+        json_msg (Dict[str, Any]): incoming json data
+    """
     uattributes_data: Dict[str, Any] = json_msg["data"]
     test_id: str = json_msg["test_id"]
     
@@ -547,6 +818,11 @@ def build_notification_uattributes(json_msg: Dict[str, Any]):
 
 
 def build_request_uattributes(json_msg: Dict[str, Any]):
+    """Builds UAttribute protobuf and replies back to Test Manager
+    Prerequisite: incoming keys in json_msg["data"] MUST match with UAttributesBuilder's fields
+    Args:
+        json_msg (Dict[str, Any]): incoming json data
+    """
     uattributes_data: Dict[str, Any] = json_msg["data"]    
     test_id: str = json_msg["test_id"]
     
@@ -575,6 +851,11 @@ def build_request_uattributes(json_msg: Dict[str, Any]):
 
 
 def build_response_uattributes(json_msg: Dict[str, Any]):
+    """Builds UAttribute protobuf and replies back to Test Manager
+    Prerequisite: incoming keys in json_msg["data"] MUST match with UAttributesBuilder's fields
+    Args:
+        json_msg (Dict[str, Any]): incoming json data
+    """
     uattributes_data: Dict[str, Any] = json_msg["data"]
     test_id: str = json_msg["test_id"]
     
@@ -603,22 +884,24 @@ def build_response_uattributes(json_msg: Dict[str, Any]):
     
 
 action_handlers = {
-    CONSTANTS.SEND_COMMAND: handle_send_command,
-    CONSTANTS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
-    CONSTANTS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
-    CONSTANTS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
-    CONSTANTS.SERIALIZE_URI: handle_long_serialize_uuri,
-    CONSTANTS.DESERIALIZE_URI: handle_long_deserialize_uri,
-    CONSTANTS.SERIALIZE_UUID: handle_long_serialize_uuid,
-    CONSTANTS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
-    CONSTANTS.VALIDATE_URI: handle_uri_validate_command,
-    CONSTANTS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
-    CONSTANTS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
-    CONSTANTS.VALIDATE_UUID: handle_uuid_validate_command,
+    ACTION_COMMANDS.SEND_COMMAND: handle_send_command,
+    ACTION_COMMANDS.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
+    ACTION_COMMANDS.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
+    ACTION_COMMANDS.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
+    ACTION_COMMANDS.SERIALIZE_URI: handle_long_serialize_uuri,
+    ACTION_COMMANDS.DESERIALIZE_URI: handle_long_deserialize_uri,
+    ACTION_COMMANDS.SERIALIZE_UUID: handle_long_serialize_uuid,
+    ACTION_COMMANDS.DESERIALIZE_UUID: handle_long_deserialize_uuid,
+    ACTION_COMMANDS.VALIDATE_URI: handle_uri_validate_command,
+    ACTION_COMMANDS.VALIDATE_UATTRIBUTES: handle_uattributes_validate_command,
+    ACTION_COMMANDS.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
+    ACTION_COMMANDS.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
+    ACTION_COMMANDS.VALIDATE_UUID: handle_uuid_validate_command,
     UAttributeBuilderCommands.PUBLISH.value: build_publish_uattributes,
     UAttributeBuilderCommands.NOTIFICATION.value: build_notification_uattributes,
     UAttributeBuilderCommands.REQUEST.value: build_request_uattributes,
     UAttributeBuilderCommands.RESPONSE.value: build_response_uattributes
+
 }
 
 

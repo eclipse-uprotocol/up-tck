@@ -1,24 +1,21 @@
-/*
- * Copyright (c) 2024 General Motors GTO LLC
+/**
+ * SPDX-FileCopyrightText: Copyright (c) 2024 Contributors to the Eclipse Foundation
  *
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *     http: *www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  * SPDX-FileType: SOURCE
- * SPDX-FileCopyrightText: 2024 General Motors GTO LLC
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -33,6 +30,7 @@ import org.eclipse.uprotocol.Constants.Constant;
 import org.eclipse.uprotocol.Constants.UAttributesBuilderErrors;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
+import org.eclipse.uprotocol.transport.validate.UAttributesValidator;
 import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
 import org.eclipse.uprotocol.uri.validator.UriValidator;
 import org.eclipse.uprotocol.validation.ValidationResult;
@@ -77,6 +75,7 @@ public class TestAgent {
         actionHandlers.put(ActionCommands.DESERIALIZE_URI, TestAgent::handleLongDeserializeUriCommand);
         actionHandlers.put(ActionCommands.VALIDATE_URI, TestAgent::handleValidateUriCommand);
         actionHandlers.put(ActionCommands.VALIDATE_UUID, TestAgent::handleValidateUuidCommand);
+        actionHandlers.put(ActionCommands.VALIDATE_UATTRIBUTES, TestAgent::handleUAttributesValidateCommand);
         actionHandlers.put(ActionCommands.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
         actionHandlers.put(ActionCommands.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
         actionHandlers.put(ActionCommands.MICRO_SERIALIZE_URI, TestAgent::handleMicroSerializeUuriCommand);
@@ -150,7 +149,8 @@ public class TestAgent {
     private static UStatus handleSendCommand(Map<String, Object> jsonData) {
         UMessage uMessage = (UMessage) ProtoConverter.dictToProto((Map<String, Object>) jsonData.get("data"),
                 UMessage.newBuilder());
-        UAttributes uAttributesWithId = uMessage.getAttributes().toBuilder().setId(UuidFactory.Factories.UPROTOCOL.factory().create()).build();
+        UAttributes uAttributesWithId = uMessage.getAttributes().toBuilder()
+                .setId(UuidFactory.Factories.UPROTOCOL.factory().create()).build();
         UMessage uMessageWithId = uMessage.toBuilder().setAttributes(uAttributesWithId).build();
         return transport.send(uMessageWithId);
     }
@@ -189,7 +189,7 @@ public class TestAgent {
     }
 
     private static Object handleLongDeserializeUriCommand(Map<String, Object> jsonData) {
-    	UUri uri = LongUriSerializer.instance().deserialize(jsonData.get("data").toString());
+        UUri uri = LongUriSerializer.instance().deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uri, ActionCommands.DESERIALIZE_URI, testID);
         return null;
@@ -197,10 +197,10 @@ public class TestAgent {
 
     private static Object handleValidateUriCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
-        String valType = (String) data.get("type");
-        String uriValue = (String) data.get("uri");
+        String valType = (String) data.get("validation_type");
+        Map<String, Object> uriValue = (Map<String, Object>) data.get("uuri");
 
-        UUri uri = LongUriSerializer.instance().deserialize(uriValue);
+        UUri uri = (UUri) ProtoConverter.dictToProto(uriValue, UUri.newBuilder());
 
         Function<UUri, ValidationResult> validatorFunc = null;
         Function<UUri, Boolean> validatorFuncBool = null;
@@ -224,33 +224,193 @@ public class TestAgent {
             case "is_micro_form":
                 validatorFuncBool = UriValidator::isMicroForm;
                 break;
-            case "is_long_form_uuri":
-                validatorFuncBool = UriValidator::isLongForm;
-                break;
-            case "is_long_form_uauthority":
+            case "is_long_form":
                 validatorFuncBool = UriValidator::isLongForm;
                 break;
         }
 
+        String testID = (String) jsonData.get("test_id");
         if (validatorFunc != null) {
             ValidationResult status = validatorFunc.apply(uri);
             String result = status.isSuccess() ? "True" : "False";
             String message = status.getMessage();
-            String testID = (String) jsonData.get("test_id");
             sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_URI, testID);
         } else if (validatorFuncBool != null) {
             Boolean status = validatorFuncBool.apply(uri);
             String result = status ? "True" : "False";
-            String testID = (String) jsonData.get("test_id");
             sendToTestManager(Map.of("result", result, "message", ""), ActionCommands.VALIDATE_URI, testID);
         }
 
         return null;
     }
 
+    public static Object handleUAttributesValidateCommand(Map<String, Object> jsonData) {
+        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
+        String valMethod = (String) data.getOrDefault("validation_method", "default");
+        String valType = (String) data.getOrDefault("validation_type", "default");
+
+        UAttributes attributes = null;
+        if (data.get("attributes") != null) {
+            attributes = (UAttributes) ProtoConverter.dictToProto((Map<String, Object>) data.get("attributes"),
+                    UAttributes.newBuilder());
+            if ("default".equals(attributes.getSink().getAuthority().getName())) {
+                attributes = attributes.toBuilder().setSink(UUri.getDefaultInstance()).build();
+            }
+        } else {
+            attributes = UAttributes.newBuilder().build();
+        }
+
+        if ("uprotocol".equals(data.get("id"))) {
+            attributes = attributes.toBuilder().setId(UuidFactory.Factories.UPROTOCOL.factory().create()).build();
+        } else if ("uuid".equals(data.get("id"))) {
+            attributes = attributes.toBuilder().setId(UuidFactory.Factories.UUIDV6.factory().create()).build();
+        }
+
+        if ("uprotocol".equals(data.get("reqid"))) {
+            attributes = attributes.toBuilder().setReqid(UuidFactory.Factories.UPROTOCOL.factory().create()).build();
+        } else if ("uuid".equals(data.get("reqid"))) {
+            attributes = attributes.toBuilder().setReqid(UuidFactory.Factories.UUIDV6.factory().create()).build();
+        }
+
+        String str_result = null;
+        Boolean bool_result = null;
+        ValidationResult val_result = null;
+
+        UAttributesValidator pub_val = UAttributesValidator.Validators.PUBLISH.validator();
+        UAttributesValidator req_val = UAttributesValidator.Validators.REQUEST.validator();
+        UAttributesValidator res_val = UAttributesValidator.Validators.RESPONSE.validator();
+        UAttributesValidator not_val = UAttributesValidator.Validators.NOTIFICATION.validator();
+
+        if (attributes != null && attributes.getTtl() == 1) {
+            try {
+                Thread.sleep(800);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (valType.equals("get_validator")) {
+            str_result = UAttributesValidator.getValidator(attributes).toString();
+        }
+
+        switch (valMethod) {
+            case "publish_validator":
+                switch (valType) {
+                    case "is_expired":
+                        bool_result = pub_val.isExpired(attributes);
+                        break;
+                    case "validate_ttl":
+                        val_result = pub_val.validateTtl(attributes);
+                        break;
+                    case "validate_sink":
+                        val_result = pub_val.validateSink(attributes);
+                        break;
+                    case "validate_req_id":
+                        val_result = pub_val.validateReqId(attributes);
+                        break;
+                    case "validate_id":
+                        val_result = pub_val.validateId(attributes);
+                        break;
+                    case "validate_permission_level":
+                        val_result = pub_val.validatePermissionLevel(attributes);
+                        break;
+                    default:
+                        val_result = pub_val.validate(attributes);
+                }
+                break;
+            case "request_validator":
+                switch (valType) {
+                    case "is_expired":
+                        bool_result = req_val.isExpired(attributes);
+                        break;
+                    case "validate_ttl":
+                        val_result = req_val.validateTtl(attributes);
+                        break;
+                    case "validate_sink":
+                        val_result = req_val.validateSink(attributes);
+                        break;
+                    case "validate_req_id":
+                        val_result = req_val.validateReqId(attributes);
+                        break;
+                    case "validate_id":
+                        val_result = req_val.validateId(attributes);
+                        break;
+                    default:
+                        val_result = req_val.validate(attributes);
+                }
+                break;
+            case "response_validator":
+                switch (valType) {
+                    case "is_expired":
+                        bool_result = res_val.isExpired(attributes);
+                        break;
+                    case "validate_ttl":
+                        val_result = res_val.validateTtl(attributes);
+                        break;
+                    case "validate_sink":
+                        val_result = res_val.validateSink(attributes);
+                        break;
+                    case "validate_req_id":
+                        val_result = res_val.validateReqId(attributes);
+                        break;
+                    case "validate_id":
+                        val_result = res_val.validateId(attributes);
+                        break;
+                    default:
+                        val_result = res_val.validate(attributes);
+                }
+                break;
+            case "notification_validator":
+                switch (valType) {
+                    case "is_expired":
+                        bool_result = not_val.isExpired(attributes);
+                        break;
+                    case "validate_ttl":
+                        val_result = not_val.validateTtl(attributes);
+                        break;
+                    case "validate_sink":
+                        val_result = not_val.validateSink(attributes);
+                        break;
+                    case "validate_req_id":
+                        val_result = not_val.validateReqId(attributes);
+                        break;
+                    case "validate_id":
+                        val_result = not_val.validateId(attributes);
+                        break;
+                    case "validate_type":
+                        val_result = not_val.validateType(attributes);
+                        break;
+                    default:
+                        val_result = not_val.validate(attributes);
+                }
+                break;
+            default:
+                break;
+        }
+
+        String result = "";
+        String message = "";
+
+        if (bool_result != null) {
+            result = bool_result ? "True" : "False";
+            message = "";
+        } else if (val_result != null) {
+            result = val_result.isSuccess() ? "True" : "False";
+            message = val_result.getMessage();
+        } else if (str_result != null) {
+            result = "";
+            message = str_result;
+        }
+
+        String testID = (String) jsonData.get("test_id");
+        sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_UATTRIBUTES, testID);
+        return null;
+    }
+
     public static Object handleValidateUuidCommand(Map<String, Object> jsonData) {
         String uuidType = ((Map<String, Object>) jsonData.get("data")).getOrDefault("uuid_type", "default").toString();
-        String validatorType = ((Map<String, Object>) jsonData.get("data")).getOrDefault("validator_type", "default").toString();
+        String validatorType = ((Map<String, Object>) jsonData.get("data")).getOrDefault("validator_type", "default")
+                .toString();
 
         UUID uuid;
         switch (uuidType) {
@@ -311,7 +471,7 @@ public class TestAgent {
     }
 
     private static Object handleLongDeserializeUuidCommand(Map<String, Object> jsonData) {
-    	UUID uuid = LongUuidSerializer.instance().deserialize(jsonData.get("data").toString());
+        UUID uuid = LongUuidSerializer.instance().deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uuid, ActionCommands.DESERIALIZE_UUID, testID);
         return null;
@@ -325,7 +485,6 @@ public class TestAgent {
         try {
             serializedUuriAsStr = new String(serializedUuri, "ISO-8859-1");
         } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
             return null;
         }
@@ -335,8 +494,8 @@ public class TestAgent {
     }
 
     private static Object handleMicroDeserializeUuriCommand(Map<String, Object> jsonData) {
-    	String microSerializedUuriAsStr = (String) jsonData.get("data");
-    	byte[] microSerializedUuri = microSerializedUuriAsStr.getBytes(StandardCharsets.ISO_8859_1);
+        String microSerializedUuriAsStr = (String) jsonData.get("data");
+        byte[] microSerializedUuri = microSerializedUuriAsStr.getBytes(StandardCharsets.ISO_8859_1);
         UUri uri = MicroUriSerializer.instance().deserialize(microSerializedUuri);
 
         String testID = (String) jsonData.get("test_id");
@@ -721,6 +880,5 @@ public class TestAgent {
     private interface ActionHandler {
         Object handle(Map<String, Object> jsonData);
     }
-
 
 }

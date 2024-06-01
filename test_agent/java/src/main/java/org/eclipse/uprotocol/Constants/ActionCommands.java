@@ -33,6 +33,7 @@ public class ActionCommands {
     public static final String RESPONSE_RPC = "rpcresponse";
     public static final String VALIDATE_URI = "uri_validate";
     public static final String VALIDATE_UUID = "uuid_validate";
+    public static final String VALIDATE_UATTRIBUTES = "uattributes_validate";
 
     public static final String SERIALIZE_URI = "uri_serialize";
     public static final String DESERIALIZE_URI = "uri_deserialize";

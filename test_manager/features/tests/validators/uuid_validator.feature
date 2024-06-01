@@ -1,25 +1,23 @@
 # -------------------------------------------------------------------------
 #
-# Copyright (c) 2024 General Motors GTO LLC
+# SPDX-FileCopyrightText: Copyright (c) 2024 Contributors to 
+# the Eclipse Foundation
 #
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# License); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# AS IS BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
+#  http: *www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # SPDX-FileType: SOURCE
-# SPDX-FileCopyrightText: 2024 General Motors GTO LLC
 # SPDX-License-Identifier: Apache-2.0
 #
 # -------------------------------------------------------------------------
@@ -37,16 +35,16 @@ Feature: UUID Validation
 
     Examples:
       | uuid_type      | validator_type                 | expected_status    | expected_message                                              |
-      | uprotocol      | get_validator                  | True               | none                                                          |
-      | uprotocol      | uprotocol                      | True               | none                                                          |
+      | uprotocol      | get_validator                  | True               | OK                                                            |
+      | uprotocol      | uprotocol                      | True               | OK                                                            |
       | invalid        | get_validator                  | False              | Invalid UUID Version,Invalid UUID Variant,Invalid UUID Time   |
       | uprotocol_time | uprotocol                      | False              | Invalid UUID Time                                             |
       |                | uprotocol                      | False              | Invalid UUIDv8 Version,Invalid UUID Time                      |
       | uuidv6         | uprotocol                      | False              | Invalid UUIDv8 Version                                        |
       | invalid        | uprotocol                      | False              | Invalid UUIDv8 Version,Invalid UUID Time                      |
       | uuidv4         | uprotocol                      | False              | Invalid UUIDv8 Version,Invalid UUID Time                      |
-      | uuidv6         | get_validator_is_uuidv6        | True               | none                                                          |
-      | uuidv6         | get_validator                  | True               | none                                                          |
+      | uuidv6         | get_validator_is_uuidv6        | True               |                                                               |
+      | uuidv6         | get_validator                  | True               | OK                                                            |
       | invalid        | uuidv6                         | False              | Not a UUIDv6 Version,Invalid UUIDv6 variant,Invalid UUID Time |
       |                | uuidv6                         | False              | Not a UUIDv6 Version,Invalid UUIDv6 variant,Invalid UUID Time |
       | uprotocol      | uuidv6                         | False              | Not a UUIDv6 Version                                          |
