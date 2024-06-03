@@ -34,9 +34,7 @@ from hamcrest import assert_that, equal_to
 import git
 
 PYTHON_TA_PATH = "/test_agent/python/testagent.py"
-JAVA_TA_PATH = (
-    "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
-)
+JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
 RUST_TA_PATH = "/test_agent/rust/target/debug/rust_tck"
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
 
@@ -55,17 +53,9 @@ def create_command(context, filepath_from_root_repo: str) -> List[str]:
     elif filepath_from_root_repo.endswith(".py"):
         if sys.platform == "win32":
             command.append("python")
-        elif (
-            sys.platform == "linux"
-            or sys.platform == "linux2"
-            or sys.platform == "darwin"
-        ):
+        elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
             command.append("python3")
-    command.append(
-        os.path.abspath(
-            os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo
-        )
-    )
+    command.append(os.path.abspath(os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo))
 
     command.append("--transport")
     command.append(context.transport["transport"])
@@ -75,11 +65,7 @@ def create_command(context, filepath_from_root_repo: str) -> List[str]:
 def create_subprocess(command: List[str]) -> subprocess.Popen:
     if sys.platform == "win32":
         process = subprocess.Popen(command, shell=True)
-    elif (
-        sys.platform == "linux"
-        or sys.platform == "linux2"
-        or sys.platform == "darwin"
-    ):
+    elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
         process = subprocess.Popen(command)
     else:
         print(sys.platform)
@@ -95,9 +81,7 @@ def cast_data_to_bytes(value: str):
     return value.encode()
 
 
-def cast(
-    value: str, data_type: str, jsonable: bool = True
-) -> Union[str, int, bool, float]:
+def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, bool, float]:
     """
     Cast value to a specific type represented as a string
     @param value The original value as string data type
@@ -222,10 +206,7 @@ def serialized_uri_received(context, expected_uri: str):
         actual_uri: str = context.response_data
         assert_that(expected_uri, equal_to(actual_uri))
     except AssertionError:
-        raise AssertionError(
-            f"Assertion error. Expected is {expected_uri} but "
-            f"received {actual_uri}"
-        )
+        raise AssertionError(f"Assertion error. Expected is {expected_uri} but " f"received {actual_uri}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
@@ -237,10 +218,7 @@ def serialized_uuid_received(context, expected_uuid: str):
 
         assert_that(expected_uuid, equal_to(actual_uuid))
     except AssertionError:
-        raise AssertionError(
-            f"Assertion error. Expected is {expected_uuid} but "
-            f"received {actual_uuid}"
-        )
+        raise AssertionError(f"Assertion error. Expected is {expected_uuid} but " f"received {actual_uuid}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
@@ -254,10 +232,7 @@ def receive_validation_result(context, expected_result):
         actual_val_res = context.response_data["result"]
         assert_that(expected_result, equal_to(actual_val_res))
     except AssertionError:
-        raise AssertionError(
-            f"Assertion error. Expected is {expected_result} but "
-            f"received {repr(actual_val_res)}"
-        )
+        raise AssertionError(f"Assertion error. Expected is {expected_result} but " f"received {repr(actual_val_res)}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
@@ -269,29 +244,20 @@ def receive_validation_result(context, expected_message):
         actual_val_msg = context.response_data["message"]
         assert_that(expected_message, equal_to(actual_val_msg))
     except AssertionError:
-        raise AssertionError(
-            f"Assertion error. Expected is {expected_message} but "
-            f"received {repr(actual_val_msg)}"
-        )
+        raise AssertionError(f"Assertion error. Expected is {expected_message} but " f"received {repr(actual_val_msg)}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
 
-@when(
-    'sends a "{command}" request with serialized input "{serialized:NullableString}"'
-)
+@when('sends a "{command}" request with serialized input "{serialized:NullableString}"')
 def send_serialized_command(context, command: str, serialized: str):
     context.logger.info(f"Json request for {command} -> {serialized}")
-    response_json: Dict[str, Any] = context.tm.request(
-        context.ue, context.action, serialized
-    )
+    response_json: Dict[str, Any] = context.tm.request(context.ue, context.action, serialized)
     context.logger.info(f"Response Json {command} -> {response_json}")
     if response_json is None:
         raise AssertionError("Response from Test Manager is None")
     elif "data" not in response_json:
-        raise AssertionError(
-            '"data" field name doesn\'t exist on top response JSON level'
-        )
+        raise AssertionError('"data" field name doesn\'t exist on top response JSON level')
     context.response_data = response_json["data"]
 
 
@@ -315,18 +281,13 @@ def verify_uri_received_properties(context):
         for row in context.table:
             field: str = row["Field"]
             expected_value: str = row["Value"]
-            context.logger.info(
-                f"field {field}; {deserialized_uri[field]} vs. {expected_value}"
-            )
+            context.logger.info(f"field {field}; {deserialized_uri[field]} vs. {expected_value}")
             if len(expected_value) > 0:
-
                 if field in int_type_fields:
                     expected_value = int(expected_value)
                 elif field in bytes_type_fields:
                     expected_value: bytes = expected_value.encode()
-                    deserialized_uri[field] = str(
-                        deserialized_uri[field]
-                    ).encode()
+                    deserialized_uri[field] = str(deserialized_uri[field]).encode()
                 assert_that(deserialized_uri[field], equal_to(expected_value))
             else:
                 assert_that(
@@ -340,9 +301,7 @@ def verify_uri_received_properties(context):
 
 @then("the deserialized uuid received should have the following properties")
 def verify_uuid_received_properties(context):
-    context.logger.info(
-        f"deserialized context.response_data -> {context.response_data}"
-    )
+    context.logger.info(f"deserialized context.response_data -> {context.response_data}")
 
     deserialized_uuid: Dict[str, int] = flatten_dict(context.response_data)
     context.logger.info(f"deserialized_uuid_dict -> {deserialized_uuid}")
@@ -353,9 +312,7 @@ def verify_uuid_received_properties(context):
         for row in context.table:
             field = row["Field"]
             expected_value = row["Value"]
-            assert_that(
-                field in deserialized_uuid, equal_to(len(expected_value) > 0)
-            )
+            assert_that(field in deserialized_uuid, equal_to(len(expected_value) > 0))
 
             if len(expected_value) > 0:
                 if field in int_type_fields:
@@ -388,13 +345,9 @@ def set_key_to_bytes(context, key: str, value: str):
 @when('sends "{command}" request')
 def send_command_request(context, command: str):
     context.json_dict = unflatten_dict(context.json_dict)
-    context.logger.info(
-        f"Json request for {command} -> {str(context.json_dict)}"
-    )
+    context.logger.info(f"Json request for {command} -> {str(context.json_dict)}")
 
-    response_json: Dict[str, Any] = context.tm.request(
-        context.ue, command, context.json_dict
-    )
+    response_json: Dict[str, Any] = context.tm.request(context.ue, command, context.json_dict)
     context.logger.info(f"Response Json {command} -> {response_json}")
     context.response_data = response_json["data"]
 
@@ -407,25 +360,18 @@ def receive_status(context, field_name: str, expected_value: str):
         assert_that(expected_value, equal_to(int(actual_value)))
     except AssertionError:
         raise AssertionError(
-            f"Assertion error. Expected is {expected_value} but "
-            f"received {context.response_data[field_name]}"
+            f"Assertion error. Expected is {expected_value} but " f"received {context.response_data[field_name]}"
         )
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
 
-@then(
-    '"{sender_sdk_name}" sends onreceive message with field "{field_name}" as b"{expected_value}"'
-)
-def receive_value_as_bytes(
-    context, sender_sdk_name: str, field_name: str, expected_value: str
-):
+@then('"{sender_sdk_name}" sends onreceive message with field "{field_name}" as b"{expected_value}"')
+def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expected_value: str):
     try:
         expected_value = expected_value.strip()
         context.logger.info(f"getting on_receive_msg from {sender_sdk_name}")
-        on_receive_msg: Dict[str, Any] = context.tm.get_onreceive(
-            sender_sdk_name
-        )
+        on_receive_msg: Dict[str, Any] = context.tm.get_onreceive(sender_sdk_name)
         context.logger.info(f"got on_receive_msg:  {on_receive_msg}")
         if sender_sdk_name == "rust":
             val = on_receive_msg["data"]["data"]
@@ -443,34 +389,26 @@ def receive_value_as_bytes(
             val = access_nested_dict(on_receive_msg["data"], field_name)
             if context.rust_sender:
                 context.rust_sender = False
-                decoded_string = (
-                    val.replace('"', "")
-                    .replace("\\", "")
-                    .replace("x", "\\x")[1:]
-                )
+                decoded_string = val.replace('"', "").replace("\\", "").replace("x", "\\x")[1:]
                 rec_field_value = bytes(decoded_string, "utf-8")
             else:
                 rec_field_value: bytes = val.encode("utf-8")
         context.logger.info(f"val {field_name}:  {val}")
 
         assert (
-            rec_field_value.split(b"googleapis.com/")[1]
-            == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
+            rec_field_value.split(b"googleapis.com/")[1] == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
         )
 
     except AssertionError as ae:
         raise AssertionError(
-            f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
-            f"received {rec_field_value}"
+            f"Assertion error. Expected is {expected_value.encode('utf-8')} but " f"received {rec_field_value}"
         )
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
 
 @then('"{sdk_name}" receives data field "{field_name}" as b"{expected_value}"')
-def receive_rpc_response_as_bytes(
-    context, sdk_name, field_name: str, expected_value: str
-):
+def receive_rpc_response_as_bytes(context, sdk_name, field_name: str, expected_value: str):
     try:
         if sdk_name == "rust":
             actual_value = context.response_data["data"]
@@ -485,36 +423,24 @@ def receive_rpc_response_as_bytes(
                 "utf-8",
             )
         else:
-            actual_value: str = access_nested_dict(
-                context.response_data, field_name
-            )
+            actual_value: str = access_nested_dict(context.response_data, field_name)
             if context.rust_sender:
                 context.rust_sender = False
                 actual_value = base64.b64decode(actual_value.encode("utf-8"))
                 decoded_string = actual_value.decode("utf-8")
-                decoded_string = (
-                    decoded_string.replace('"', "")
-                    .replace("\\", "")
-                    .replace("x", "\\x")[1:]
-                )
+                decoded_string = decoded_string.replace('"', "").replace("\\", "").replace("x", "\\x")[1:]
                 actual_value = bytes(decoded_string, "utf-8")
             else:
                 actual_value: bytes = actual_value.encode("utf-8")
 
         # Convert bytes to byte string with escape sequences
-        actual_value = codecs.encode(
-            actual_value.decode("utf-8"), "unicode_escape"
-        )
-        assert (
-            actual_value.split(b"googleapis.com/")[1]
-            == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
-        )
+        actual_value = codecs.encode(actual_value.decode("utf-8"), "unicode_escape")
+        assert actual_value.split(b"googleapis.com/")[1] == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
     except KeyError as ke:
         raise KeyError(f"Key error. {sdk_name} has not received rpc response.")
     except AssertionError as ae:
         raise AssertionError(
-            f"Assertion error. Expected is {expected_value.encode('utf-8')} but "
-            f"received {repr(actual_value)}"
+            f"Assertion error. Expected is {expected_value.encode('utf-8')} but " f"received {repr(actual_value)}"
         )
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
@@ -541,39 +467,24 @@ def receive_micro_serialized_uuri(context, expected_bytes_as_base64_str: str):
         actual_bytes_as_str: str = context.response_data
         actual_bytes: bytes = actual_bytes_as_str.encode("iso-8859-1")
 
-        context.logger.info(
-            f"actual: {actual_bytes} | expect: {expected_bytes}"
-        )
+        context.logger.info(f"actual: {actual_bytes} | expect: {expected_bytes}")
         assert_that(expected_bytes, equal_to(actual_bytes))
     except AssertionError:
-        raise AssertionError(
-            f"Assertion error. Expected is {expected_bytes} but "
-            f"received {actual_bytes}"
-        )
+        raise AssertionError(f"Assertion error. Expected is {expected_bytes} but " f"received {actual_bytes}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
 
-@when(
-    'sends a "{command}" request with micro serialized input "{micro_serialized_uri_as_base64_str}"'
-)
-def send_micro_serialized_command(
-    context, command: str, micro_serialized_uri_as_base64_str: str
-):
+@when('sends a "{command}" request with micro serialized input "{micro_serialized_uri_as_base64_str}"')
+def send_micro_serialized_command(context, command: str, micro_serialized_uri_as_base64_str: str):
     if micro_serialized_uri_as_base64_str == "<empty>":
         micro_serialized_uri_as_base64_str = ""
 
-    micro_serialized_uri: bytes = base64_str_to_bytes(
-        micro_serialized_uri_as_base64_str
-    )
-    context.logger.info(
-        f"Json request for {command} -> {micro_serialized_uri}"
-    )
+    micro_serialized_uri: bytes = base64_str_to_bytes(micro_serialized_uri_as_base64_str)
+    context.logger.info(f"Json request for {command} -> {micro_serialized_uri}")
 
     micro_serialized_uri_as_str = micro_serialized_uri.decode("iso-8859-1")
-    response_json: Dict[str, Any] = context.tm.request(
-        context.ue, command, micro_serialized_uri_as_str
-    )
+    response_json: Dict[str, Any] = context.tm.request(context.ue, command, micro_serialized_uri_as_str)
 
     context.logger.info(f"Response Json {command} -> {response_json}")
     context.response_data = response_json["data"]
@@ -619,16 +530,12 @@ def generic_expected_and_actual_json_comparison(context):
     for row in context.table:
         field_name: str = row["protobuf_field_names"]
         expected_value: str = row["protobuf_field_values"]
-        expected_value = cast(
-            expected_value, row["protobuf_field_type"], jsonable=False
-        )
+        expected_value = cast(expected_value, row["protobuf_field_type"], jsonable=False)
 
         # get the field_name's value from incoming context.response_data
         actual_value = access_nested_dict(context.response_data, field_name)
         if row["protobuf_field_type"] == "bytes":
             actual_value = actual_value.encode()
 
-        context.logger.info(
-            f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}"
-        )
+        context.logger.info(f"field_name ({field_name})  actual: {actual_value} | expect: {expected_value}")
         assert_that(actual_value, equal_to(expected_value))

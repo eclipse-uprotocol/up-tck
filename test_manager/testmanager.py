@@ -27,9 +27,7 @@ import uuid
 from multimethod import multimethod
 import sys
 
-logging.basicConfig(
-    format="%(levelname)s| %(filename)s:%(lineno)s %(message)s"
-)
+logging.basicConfig(format="%(levelname)s| %(filename)s:%(lineno)s %(message)s")
 logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 BYTES_MSG_LENGTH: int = 32767
@@ -53,9 +51,7 @@ def is_close_socket_signal(received_data: bytes) -> bool:
 
 class TestAgentConnectionDatabase:
     def __init__(self) -> None:
-        self.test_agent_address_to_name: Dict[tuple[str, int], str] = (
-            defaultdict(str)
-        )
+        self.test_agent_address_to_name: Dict[tuple[str, int], str] = defaultdict(str)
         self.test_agent_name_to_address: Dict[str, socket.socket] = {}
         self.lock = Lock()
 
@@ -63,12 +59,8 @@ class TestAgentConnectionDatabase:
         test_agent_address: tuple[str, int] = test_agent_socket.getpeername()
 
         with self.lock:
-            self.test_agent_address_to_name[test_agent_address] = (
-                test_agent_name
-            )
-            self.test_agent_name_to_address[test_agent_name] = (
-                test_agent_socket
-            )
+            self.test_agent_address_to_name[test_agent_address] = test_agent_name
+            self.test_agent_name_to_address[test_agent_name] = test_agent_socket
 
     @multimethod
     def get(self, address: Tuple[str, int]) -> socket.socket:
@@ -92,9 +84,7 @@ class TestAgentConnectionDatabase:
     @multimethod
     def close(self, test_agent_socket: socket.socket):
         test_agent_address: tuple[str, int] = test_agent_socket.getpeername()
-        test_agent_name: str = self.test_agent_address_to_name.get(
-            test_agent_address, None
-        )
+        test_agent_name: str = self.test_agent_address_to_name.get(test_agent_address, None)
 
         if test_agent_name is None:
             return
@@ -108,9 +98,7 @@ class TestAgentConnectionDatabase:
 
 class DictWithQueue:
     def __init__(self) -> None:
-        self.key_to_queue: Dict[str, Deque[Dict[str, Any]]] = defaultdict(
-            deque
-        )
+        self.key_to_queue: Dict[str, Deque[Dict[str, Any]]] = defaultdict(deque)
         self.lock = Lock()
 
     def append(self, key: str, msg: Dict[str, Any]) -> None:
@@ -118,9 +106,7 @@ class DictWithQueue:
             self.key_to_queue[key].append(msg)
             logger.info(f"self.key_to_queue append {self.key_to_queue}")
 
-    def contains(
-        self, key: str, inner_key: str, inner_expected_value: str
-    ) -> bool:
+    def contains(self, key: str, inner_key: str, inner_expected_value: str) -> bool:
         queue: Deque[Dict[str, Any]] = self.key_to_queue[key]
         if len(queue) == 0:
             return False
@@ -133,9 +119,7 @@ class DictWithQueue:
     def popleft(self, key: str) -> Any:
         with self.lock:
             onreceive: Any = self.key_to_queue[key].popleft()
-            logger.info(
-                f'self.key_to_queue popleft {onreceive["action"]} {self.key_to_queue}'
-            )
+            logger.info(f'self.key_to_queue popleft {onreceive["action"]} {self.key_to_queue}')
         return onreceive
 
 
@@ -160,9 +144,7 @@ class TestManager:
         logger.info("TM server is running/listening")
 
         # Register server socket for accepting connections
-        self.socket_event_receiver.register(
-            self.server, selectors.EVENT_READ, self._accept_client_conn
-        )
+        self.socket_event_receiver.register(self.server, selectors.EVENT_READ, self._accept_client_conn)
 
     def _accept_client_conn(self, server: socket.socket):
         """
@@ -174,9 +156,7 @@ class TestManager:
         logger.info(f"accepted conn. {ta_socket.getpeername()}")
 
         # Register socket for receiving data
-        self.socket_event_receiver.register(
-            ta_socket, selectors.EVENT_READ, self._receive_from_test_agent
-        )
+        self.socket_event_receiver.register(ta_socket, selectors.EVENT_READ, self._receive_from_test_agent)
 
     def _receive_from_test_agent(self, test_agent: socket.socket):
         """
@@ -195,13 +175,9 @@ class TestManager:
             json_data["test_id"] = json_data["test_id"].strip('"')
         self._process_receive_message(json_data, test_agent)
 
-    def _process_receive_message(
-        self, response_json: Dict[str, Any], ta_socket: socket.socket
-    ):
+    def _process_receive_message(self, response_json: Dict[str, Any], ta_socket: socket.socket):
         if response_json["action"] == "initialize":
-            test_agent_sdk: str = (
-                response_json["data"]["SDK_name"].lower().strip()
-            )
+            test_agent_sdk: str = response_json["data"]["SDK_name"].lower().strip()
             self.test_agent_database.add(ta_socket, test_agent_sdk)
             return
 
@@ -233,9 +209,7 @@ class TestManager:
         """Sends a blocking request message to sdk Test Agent (ex: Java, Rust, C++ Test Agent)"""
         # Get Test Agent's socket
         test_agent_name = test_agent_name.lower().strip()
-        test_agent_socket: socket.socket = self.test_agent_database.get(
-            test_agent_name
-        )
+        test_agent_socket: socket.socket = self.test_agent_database.get(test_agent_name)
 
         # Create a request json to send to specific Test Agent
         test_id: str = str(uuid.uuid4())
@@ -252,22 +226,16 @@ class TestManager:
 
         # Wait until get response
         logger.info(f"Waiting test_id {test_id}")
-        while not self.action_type_to_response_queue.contains(
-            action, "test_id", test_id
-        ):
+        while not self.action_type_to_response_queue.contains(action, "test_id", test_id):
             pass
         logger.info(f"Received test_id {test_id}")
 
         # Get response
-        response_json: Dict[str, Any] = (
-            self.action_type_to_response_queue.popleft(action)
-        )
+        response_json: Dict[str, Any] = self.action_type_to_response_queue.popleft(action)
         return response_json
 
     def _wait_for_onreceive(self, test_agent_name: str):
-        while not self.action_type_to_response_queue.contains(
-            "onreceive", "ue", test_agent_name
-        ):
+        while not self.action_type_to_response_queue.contains("onreceive", "ue", test_agent_name):
             pass
 
     def get_onreceive(self, test_agent_name: str) -> Dict[str, Any]:
@@ -284,9 +252,7 @@ class TestManager:
     @multimethod
     def close_test_agent(self, test_agent_name: str):
         if self.test_agent_database.contains(test_agent_name):
-            test_agent: socket.socket = self.test_agent_database.get(
-                test_agent_name
-            )
+            test_agent: socket.socket = self.test_agent_database.get(test_agent_name)
             self.close_test_agent(test_agent)
 
     def close(self):

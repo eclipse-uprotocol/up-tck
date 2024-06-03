@@ -27,7 +27,6 @@ LOG_DIR = "logs"
 
 # Logger configuration settings
 LOG_SETTINGS = {
-
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {},
@@ -39,7 +38,7 @@ LOG_SETTINGS = {
             'format': '',
         },
     },
-    'loggers': {}
+    'loggers': {},
 }
 
 

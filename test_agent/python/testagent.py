@@ -64,15 +64,12 @@ repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 from up_client_socket.python.socket_transport import SocketUTransport
 
-logging.basicConfig(
-    format="%(levelname)s| %(filename)s:%(lineno)s %(message)s"
-)
+logging.basicConfig(format="%(levelname)s| %(filename)s:%(lineno)s %(message)s")
 logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 
 
 class SocketUListener(UListener):
-
     def on_receive(self, umsg: UMessage) -> None:
         logger.info("Listener received")
         if umsg.attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
@@ -109,7 +106,6 @@ def message_to_dict(message: Message) -> Dict[str, Any]:
 
     all_fields: List[FieldDescriptor] = message.DESCRIPTOR.fields
     for field in all_fields:
-
         value = getattr(message, field.name, field.default_value)
         if isinstance(value, bytes):
             value: str = value.decode()
@@ -129,10 +125,7 @@ def message_to_dict(message: Message) -> Dict[str, Any]:
             result[field.name] = repeated
 
         # If the field is not a protobuf object (e.g. primitive type)
-        elif (
-            field.label == FieldDescriptor.LABEL_REQUIRED
-            or field.label == FieldDescriptor.LABEL_OPTIONAL
-        ):
+        elif field.label == FieldDescriptor.LABEL_REQUIRED or field.label == FieldDescriptor.LABEL_OPTIONAL:
             result[field.name] = value
 
     return result
@@ -216,9 +209,7 @@ def handle_unregister_listener_command(json_msg):
 def handle_invoke_method_command(json_msg):
     uri = dict_to_proto(json_msg["data"], UUri())
     payload = dict_to_proto(json_msg["data"]["payload"], UPayload())
-    res_future: Future = transport.invoke_method(
-        uri, payload, CallOptions(ttl=10000)
-    )
+    res_future: Future = transport.invoke_method(uri, payload, CallOptions(ttl=10000))
 
     def handle_response(message):
         message: Message = message.result()
@@ -324,9 +315,7 @@ def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
 def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
     sent_micro_serialized_uuri: str = json_msg["data"]
     # Incoming micro serialized uuri is sent as an "iso-8859-1" str
-    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode(
-        "iso-8859-1"
-    )
+    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("iso-8859-1")
     uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
     send_to_test_manager(
         uuri,
@@ -342,13 +331,9 @@ def handle_uuid_validate_command(json_msg):
     uuid = {
         "uprotocol": Factories.UPROTOCOL.create(),
         "invalid": UUID(msb=0, lsb=0),
-        "uprotocol_time": Factories.UPROTOCOL.create(
-            datetime.utcfromtimestamp(0).replace(tzinfo=timezone.utc)
-        ),
+        "uprotocol_time": Factories.UPROTOCOL.create(datetime.utcfromtimestamp(0).replace(tzinfo=timezone.utc)),
         "uuidv6": Factories.UUIDV6.create(),
-        "uuidv4": LongUuidSerializer().deserialize(
-            "195f9bd1-526d-4c28-91b1-ff34c8e3632d"
-        ),
+        "uuidv4": LongUuidSerializer().deserialize("195f9bd1-526d-4c28-91b1-ff34c8e3632d"),
     }.get(uuid_type)
 
     status = {
@@ -485,9 +470,7 @@ def process_message(json_data):
 
     # For UTransport interface methods
     if status is not None:
-        send_to_test_manager(
-            status, action, received_test_id=json_data["test_id"]
-        )
+        send_to_test_manager(status, action, received_test_id=json_data["test_id"])
 
 
 def receive_from_tm():
