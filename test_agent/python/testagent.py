@@ -15,50 +15,48 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
-from concurrent.futures import Future
 import json
 import logging
 import socket
 import sys
-import git
+import time
+from concurrent.futures import Future
+from datetime import datetime, timezone
 from threading import Thread
 from typing import Any, Dict, List, Union
-import time
-from datetime import datetime, timezone
 
+import constants.actioncommands as ACTION_COMMANDS
+import constants.constants as CONSTANTS
+import git
 from google.protobuf import any_pb2
-from google.protobuf.message import Message
 from google.protobuf.descriptor import FieldDescriptor
+from google.protobuf.message import Message
 from google.protobuf.wrappers_pb2 import StringValue
 from uprotocol.proto.uattributes_pb2 import (
-    UPriority,
-    UMessageType,
     CallOptions,
     UAttributes,
+    UMessageType,
+    UPriority,
 )
+from uprotocol.proto.umessage_pb2 import UMessage
+from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
+from uprotocol.proto.uri_pb2 import UUri
+from uprotocol.proto.ustatus_pb2 import UCode, UStatus
+from uprotocol.proto.uuid_pb2 import UUID
+from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
+from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.validate import uattributesvalidator
 from uprotocol.transport.validate.uattributesvalidator import (
     UAttributesValidator,
 )
-from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.proto.ustatus_pb2 import UStatus
-from uprotocol.proto.uri_pb2 import UUri
-from uprotocol.proto.uuid_pb2 import UUID
-from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
-from uprotocol.transport.ulistener import UListener
 from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
 from uprotocol.uri.serializer.microuriserializer import MicroUriSerializer
-from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
-from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.uri.validator.urivalidator import UriValidator
-from uprotocol.validation.validationresult import ValidationResult
-from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
+from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.uuid.factory.uuidutils import UUIDUtils
-from uprotocol.proto.ustatus_pb2 import UCode
-
-import constants.constants as CONSTANTS
-import constants.actioncommands as ACTION_COMMANDS
+from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
+from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
+from uprotocol.validation.validationresult import ValidationResult
 
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)

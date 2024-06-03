@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: UTF-8 -*-
 
-from hamcrest import assert_that, equal_to, none, not_none, contains_string
+from hamcrest import assert_that, contains_string, equal_to, none, not_none
 
 
 class Assert(object):

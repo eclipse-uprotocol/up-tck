@@ -15,17 +15,18 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
-from collections import defaultdict, deque
 import json
 import logging
 import selectors
 import socket
+import sys
+import uuid
+from collections import defaultdict, deque
+from threading import Lock
 from typing import Any, Deque, Dict, Tuple
 from typing import Any as AnyType
-from threading import Lock
-import uuid
+
 from multimethod import multimethod
-import sys
 
 logging.basicConfig(format="%(levelname)s| %(filename)s:%(lineno)s %(message)s")
 logger = logging.getLogger("File:Line# Debugger")

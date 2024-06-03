@@ -17,21 +17,20 @@ SPDX-License-Identifier: Apache-2.0
 
 import base64
 import codecs
-import time
-import sys
 import os
 import subprocess
-import parse
-from typing import Any, Dict, Union
-from uprotocol.proto.ustatus_pb2 import UCode
+import sys
+import time
 from threading import Thread
-from typing import List
-from uprotocol.proto.uattributes_pb2 import UPriority, UMessageType
+from typing import Any, Dict, List, Union
 
-from behave import when, then, given, register_type
+import git
+import parse
+from behave import given, register_type, then, when
 from behave.runner import Context
 from hamcrest import assert_that, equal_to
-import git
+from uprotocol.proto.uattributes_pb2 import UMessageType, UPriority
+from uprotocol.proto.ustatus_pb2 import UCode
 
 PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
@@ -399,7 +398,7 @@ def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expec
             rec_field_value.split(b"googleapis.com/")[1] == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
         )
 
-    except AssertionError as ae:
+    except AssertionError:
         raise AssertionError(
             f"Assertion error. Expected is {expected_value.encode('utf-8')} but " f"received {rec_field_value}"
         )
@@ -436,9 +435,9 @@ def receive_rpc_response_as_bytes(context, sdk_name, field_name: str, expected_v
         # Convert bytes to byte string with escape sequences
         actual_value = codecs.encode(actual_value.decode("utf-8"), "unicode_escape")
         assert actual_value.split(b"googleapis.com/")[1] == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
-    except KeyError as ke:
+    except KeyError:
         raise KeyError(f"Key error. {sdk_name} has not received rpc response.")
-    except AssertionError as ae:
+    except AssertionError:
         raise AssertionError(
             f"Assertion error. Expected is {expected_value.encode('utf-8')} but " f"received {repr(actual_value)}"
         )

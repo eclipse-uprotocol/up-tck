@@ -15,10 +15,9 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
+import os
 import subprocess
 import sys
-import os
-import shutil
 
 
 def run_command(command):
