@@ -34,3 +34,12 @@ indent-style = "space"
 docstring-code-format = true
 docstring-code-line-length = 100
 
+[lint.per-file-ignores]
+# Ignore N999 in the specified folder
+"*" = ["N999"] # Invalid module name:
+# Ignore E402 in specific files
+"testagent.py" = ["E402"]
+"environment.py" = ["E402"]
+"tck_step_implementations.py" = ["E402"]
+
+

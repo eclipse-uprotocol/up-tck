@@ -39,9 +39,9 @@ jobs:
 
       - name: Lint Python Code with Ruff
         run: |
-          ruff check --config .\.github\ruff.toml
+          ruff check --config .github/ruff.toml
 
       - name: Check Python Code Formatting with Ruff
         run: |
-          ruff format --check --config .\.github\ruff.toml
+          ruff format --check --config .github/ruff.toml
 

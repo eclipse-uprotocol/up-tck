@@ -35,14 +35,14 @@ def run_command(command):
 
 def main():
     # Define the repository and desired branch or commit
-    REPO_URL = "https://github.com/eclipse-uprotocol/up-python.git"
-    BRANCH = "main"
+    repo_url = "https://github.com/eclipse-uprotocol/up-python.git"
+    branch = "main"
 
     # Directory to be removed and cloned
     repo_dir = "up-python"
 
     # Clone the repository
-    run_command(f"git clone -b {BRANCH} {REPO_URL}")
+    run_command(f"git clone -b {branch} {repo_url}")
 
     # Change directory into the repository
     os.chdir(repo_dir)
