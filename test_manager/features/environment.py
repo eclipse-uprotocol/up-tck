@@ -15,7 +15,6 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
-import subprocess
 import sys
 from threading import Thread
 
@@ -25,8 +24,8 @@ from behave.runner import Context
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from test_manager.testmanager import TestManager
 from test_manager.features.utils import loggerutils
+from test_manager.testmanager import TestManager
 
 
 def before_all(context):

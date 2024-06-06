@@ -19,7 +19,6 @@ SPDX-License-Identifier: Apache-2.0
 
 import logging
 import time
-
 from logging.config import dictConfig
 
 # Log folder directory
@@ -27,7 +26,6 @@ LOG_DIR = "logs"
 
 # Logger configuration settings
 LOG_SETTINGS = {
-
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {},
@@ -39,7 +37,7 @@ LOG_SETTINGS = {
             'format': '',
         },
     },
-    'loggers': {}
+    'loggers': {},
 }
 
 

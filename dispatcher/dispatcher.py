@@ -22,9 +22,7 @@ import sys
 from threading import Lock
 from typing import Set
 
-logging.basicConfig(
-    format="%(levelname)s| %(filename)s:%(lineno)s %(message)s"
-)
+logging.basicConfig(format="%(levelname)s| %(filename)s:%(lineno)s %(message)s")
 logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 DISPATCHER_ADDR = ("127.0.0.1", 44444)
@@ -54,9 +52,7 @@ class Dispatcher:
         logger.info("Dispatcher server is running/listening")
 
         # Register server socket for accepting connections
-        self.selector.register(
-            self.server, selectors.EVENT_READ, self._accept_client_conn
-        )
+        self.selector.register(self.server, selectors.EVENT_READ, self._accept_client_conn)
 
         # Cleanup essentials
         self.dispatcher_exit = False
@@ -88,7 +84,6 @@ class Dispatcher:
         :param up_client_socket: The client socket.
         """
         try:
-
             recv_data: bytes = up_client_socket.recv(BYTES_MSG_LENGTH)
 
             if recv_data == b"":
@@ -112,9 +107,7 @@ class Dispatcher:
             try:
                 up_client_socket.sendall(data)
             except ConnectionAbortedError as e:
-                logger.error(
-                    f"Error sending data to {up_client_socket.getpeername()}: {e}"
-                )
+                logger.error(f"Error sending data to {up_client_socket.getpeername()}: {e}")
                 self._close_connected_socket(up_client_socket)
 
     def listen_for_client_connections(self):

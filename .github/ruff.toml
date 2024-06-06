@@ -1,0 +1,45 @@
+# ruff.toml
+
+line-length = 120
+
+# Exclude specific files or directories.
+exclude = [
+    "build/",
+    "dist/",
+    ".venv/",
+    "__pycache__/",
+]
+
+[lint]
+# Enable all basic PEP 8 checks and other common linting rules.
+select = [
+    "E",    # PEP 8 rules (formatting issues)
+    "F",    # Pyflakes rules (undefined names, etc.)
+    "W",    # Additional PEP 8 rules (warning-level issues)
+    "I",    # Import order checker (ensuring imports are ordered correctly)
+    "ERA",  # flake8-eradicate (identifying commented-out code)
+    "N"     # Naming convention rules
+]
+
+ignore = [
+    "F811", # Ignore the error for multimethod function
+]
+
+[lint.flake8-annotations]
+allow-star-arg-any = true
+
+[format]
+quote-style = "preserve"
+indent-style = "space"
+docstring-code-format = true
+docstring-code-line-length = 100
+
+[lint.per-file-ignores]
+# Ignore N999 in the specified folder
+"*" = ["N999"] # Invalid module name:
+# Ignore E402 in specific files
+"testagent.py" = ["E402"]
+"environment.py" = ["E402"]
+"tck_step_implementations.py" = ["E402"]
+
+
