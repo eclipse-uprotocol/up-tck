@@ -43,7 +43,8 @@ using namespace google::protobuf;
 using namespace std;
 using namespace rapidjson;
 
-using FunctionType = std::variant<std::function<UStatus(Document &)>, std::function<void(Document &)>>;
+using FunctionType = std::variant<std::function<UStatus(Document&)>,
+                                  std::function<void(Document&)>>;
 
 /// @class TestAgent
 /// @brief Represents a test agent that communicates with a test manager.
@@ -72,31 +73,35 @@ public:
 	/// @param[in] proto The message to be sent.
 	/// @param[in] action The action associated with the message.
 	/// @param[in] strTest_id The ID of the test (optional).
-	void sendToTestManager(const Message &proto, const string &action, const string &strTest_id = "") const;
+	void sendToTestManager(const Message& proto, const string& action,
+	                       const string& strTest_id = "") const;
 
 	/// @brief Sends a message to the test manager.
 	/// @param[in,out] doc The JSON document to be sent.
 	/// @param[in,out] jsonVal The JSON value to be sent.
 	/// @param[in] action The action associated with the message.
 	/// @param[in] strTest_id The ID of the test (optional).
-	void sendToTestManager(Document &doc, Value &jsonVal, const string action, const string &strTest_id = "") const;
+	void sendToTestManager(Document& doc, Value& jsonVal, const string action,
+	                       const string& strTest_id = "") const;
 
 private:
 	// The socket used for communication with the test manager.
-	int                                                clientSocket_;
-	struct sockaddr_in                                 mServerAddress_;  // The address of the test manager.
-	std::shared_ptr<uprotocol::utransport::UTransport> transportPtr_;    // The transport layer used for communication.
-	std::unordered_map<std::string, FunctionType>      actionHandlers_;  // The map of action handlers.
+	int clientSocket_;
+	struct sockaddr_in mServerAddress_;  // The address of the test manager.
+	std::shared_ptr<uprotocol::utransport::UTransport>
+	    transportPtr_;  // The transport layer used for communication.
+	std::unordered_map<std::string, FunctionType>
+	    actionHandlers_;  // The map of action handlers.
 
 	/// @brief Callback function called when a message is received from the
 	/// transport layer.
 	/// @param[in] transportUMessage The received message.
 	/// @return The status of the message processing.
-	UStatus onReceive(uprotocol::utransport::UMessage &transportUMessage) const;
+	UStatus onReceive(uprotocol::utransport::UMessage& transportUMessage) const;
 
 	/// @brief Processes the received message.
 	/// @param[in,out] jsonData The JSON data of the received message.
-	void processMessage(Document &jsonData);
+	void processMessage(Document& jsonData);
 
 	/// @brief Disconnects the agent from the test manager.
 	/// @return The status of the disconnection.
@@ -105,44 +110,47 @@ private:
 	/// @brief Handles the "sendCommand" command received from the test manager.
 	/// @param[in,out] jsonData The JSON data of the command.
 	/// @return The status of the command handling.
-	UStatus handleSendCommand(Document &jsonData);
+	UStatus handleSendCommand(Document& jsonData);
 
 	/// @brief Handles the "registerListener" command received from the test
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
 	/// @return The status of the command handling.
-	UStatus handleRegisterListenerCommand(Document &jsonData);
+	UStatus handleRegisterListenerCommand(Document& jsonData);
 
 	/// @brief Handles the "unregisterListener" command received from the test
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
 	/// @return The status of the command handling.
-	UStatus handleUnregisterListenerCommand(Document &jsonData);
+	UStatus handleUnregisterListenerCommand(Document& jsonData);
 
-	/// @brief Handles the "invokeMethod" command received from the test manager.
+	/// @brief Handles the "invokeMethod" command received from the test
+	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
-	void handleInvokeMethodCommand(Document &jsonData);
+	void handleInvokeMethodCommand(Document& jsonData);
 
-	/// @brief Handles the "serializeUri" command received from the test manager.
+	/// @brief Handles the "serializeUri" command received from the test
+	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
-	void handleSerializeUriCommand(Document &jsonData);
+	void handleSerializeUriCommand(Document& jsonData);
 
 	/// @brief Handles the "deserializeUri" command received from the test
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
-	void handleDeserializeUriCommand(Document &jsonData);
+	void handleDeserializeUriCommand(Document& jsonData);
 
 	/// @brief Creates a transport layer object based on the specified transport
 	/// type.
 	/// @param[in] transportType The type of transport to be created.
 	/// @return A shared pointer to the created transport layer object.
-	std::shared_ptr<uprotocol::utransport::UTransport> createTransport(const std::string &transportType);
+	std::shared_ptr<uprotocol::utransport::UTransport> createTransport(
+	    const std::string& transportType);
 
 	/// @brief Writes data to the test manager socket.
 	/// @param[in,out] responseDoc The JSON document containing the response
 	/// data.
 	/// @param[in] action The action associated with the response.
-	void writeDataToTMSocket(Document &responseDoc, const string action) const;
+	void writeDataToTMSocket(Document& responseDoc, const string action) const;
 
 	/// @brief Creates a string value for a RapidJSON document.
 	/// @param[in,out] doc The RapidJSON document to which the string value will
@@ -153,7 +161,8 @@ private:
 	/// creates a RapidJSON value from the string, and returns it.
 	/// The returned value can be added to a RapidJSON document as either a key
 	/// or a value.
-	Value createRapidJsonStringValue(Document &doc, const std::string &data) const;
+	Value createRapidJsonStringValue(Document& doc,
+	                                 const std::string& data) const;
 };
 
 #endif  //_TEST_AGENT_H_
