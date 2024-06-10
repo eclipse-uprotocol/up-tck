@@ -72,3 +72,4 @@ Feature: Testing Publish and Subscribe Functionality - Zenoh
     Examples:
       | uE1    | uE2    |
       | rust   | rust   |
+      | cpp    | cpp    |

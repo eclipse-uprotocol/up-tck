@@ -80,3 +80,4 @@ Feature: Testing Publish and Subscribe Functionality
       | java   | java   |
       | java   | python |
       | python | java   |
+      | cpp    | cpp    |

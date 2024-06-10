@@ -22,10 +22,11 @@ import subprocess
 import sys
 import time
 from threading import Thread
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 
 import git
 import parse
+import json
 from behave import given, register_type, then, when
 from behave.runner import Context
 from hamcrest import assert_that, equal_to
@@ -35,6 +36,7 @@ from uprotocol.proto.ustatus_pb2 import UCode
 PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
 RUST_TA_PATH = "/test_agent/rust/target/debug/rust_tck"
+CPP_TA_PATH = "/test_agent/cpp/target/bin/test_agent_cpp"
 DISPATCHER_PATH = "/dispatcher/dispatcher.py"
 
 repo = git.Repo(".", search_parent_directories=True)
@@ -46,6 +48,10 @@ from dispatcher.dispatcher import Dispatcher
 def create_command(context, filepath_from_root_repo: str) -> List[str]:
     command: List[str] = []
 
+    full_path = os.path.abspath(
+        os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo
+    )
+
     if filepath_from_root_repo.endswith(".jar"):
         command.append("java")
         command.append("-jar")
@@ -54,7 +60,13 @@ def create_command(context, filepath_from_root_repo: str) -> List[str]:
             command.append("python")
         elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
             command.append("python3")
-    command.append(os.path.abspath(os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo))
+    elif os.access(full_path, os.X_OK):
+        # This is an executable file
+        pass
+    else:
+        raise Exception("only accept .jar, .py, and executable files")
+
+    command.append(full_path)
 
     command.append("--transport")
     command.append(context.transport["transport"])
@@ -153,15 +165,19 @@ def create_sdk_data(context, sdk_name: str, command: str):
     if sdk_name not in context.ues:
         context.logger.info(f"Creating {sdk_name} process...")
 
-        if sdk_name == "python":
-            run_command = create_command(context, PYTHON_TA_PATH)
-        elif sdk_name == "java":
-            run_command = create_command(context, JAVA_TA_PATH)
-        elif sdk_name == "rust":
-            run_command = create_command(context, RUST_TA_PATH)
+        sdk_paths = {
+            "python": PYTHON_TA_PATH,
+            "java": JAVA_TA_PATH,
+            "rust": RUST_TA_PATH,
+            "cpp": CPP_TA_PATH
+        }
+        if sdk_name in sdk_paths:
+            run_command = create_command(context, sdk_paths[sdk_name])
+            #End scrtipt after priting the command
+            context.logger.info(run_command)
 
         process = create_subprocess(run_command)
-        if sdk_name in ["python", "java", "rust"]:
+        if sdk_name in ["python", "java", "rust", "cpp"]:
             context.ues.setdefault(sdk_name, []).append(process)
         else:
             raise ValueError("Invalid SDK name")
@@ -495,6 +511,8 @@ def access_nested_dict(dictionary, keys):
 
     keys = keys.split(".")
     value = dictionary
+    if isinstance(value,str):
+        value = json.loads(value)
     for key in keys:
         value = value[key]
     return value
