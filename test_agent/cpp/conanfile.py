@@ -1,7 +1,5 @@
 from conan import ConanFile
-from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
-from conan.tools.files import apply_conandata_patches, copy, export_conandata_patches, get, replace_in_file, rm, rmdir
-import os
+from conan.tools.cmake import CMake, CMakeToolchain
 
 class TestAgentRecipe(ConanFile):
     name = "test_agent_cpp"
@@ -13,7 +11,6 @@ class TestAgentRecipe(ConanFile):
     #topics = ("ulink client", "transport")
     # Binary configuration
     settings = "os", "compiler", "build_type", "arch"
-    options = {"shared": [True, False], "fPIC": [True, False]}
     conan_version = None
     generators = "CMakeDeps"
     version = "0.1"

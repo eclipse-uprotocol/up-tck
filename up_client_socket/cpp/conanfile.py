@@ -13,7 +13,6 @@ class UpClientSocket(ConanFile):
     #topics = ("ulink client", "transport")
     # Binary configuration
     settings = "os", "compiler", "build_type", "arch"
-    options = {"shared": [True, False], "fPIC": [True, False]}
     conan_version = None
     generators = "CMakeDeps"
     version = "0.1"
@@ -45,7 +44,9 @@ class UpClientSocket(ConanFile):
         self.requires("spdlog/1.13.0")
         self.requires("fmt/10.2.1")
         self.requires("libuuid/1.0.3")
-
+        self.requires("up-client-zenoh-cpp/0.1.4-dev")
+        self.requires("openssl/1.1.1w")
+    
     def generate(self):
         tc = CMakeToolchain(self)
         tc.generate()

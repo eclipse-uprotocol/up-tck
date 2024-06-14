@@ -14,37 +14,16 @@
 
 #include <Constants.h>
 #include <SocketUTransport.h>
-#include <arpa/inet.h>
-#include <google/protobuf/any.pb.h>
-#include <google/protobuf/util/message_differencer.h>
-#include <netinet/in.h>
-#include <spdlog/spdlog.h>
-#include <unistd.h>
 #include <up-client-zenoh-cpp/client/upZenohClient.h>
-#include <up-core-api/umessage.pb.h>
-#include <up-core-api/uri.pb.h>
-#include <up-cpp/transport/UTransport.h>
 #include <up-cpp/uri/serializer/LongUriSerializer.h>
-#include <up-cpp/uuid/factory/Uuidv8Factory.h>
 
-#include <iostream>
-#include <map>
-#include <optional>
-#include <string>
-#include <thread>
 #include <variant>
 
 #include "ProtoConverter.h"
-#include "rapidjson/document.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
 
-using namespace google::protobuf;
-using namespace std;
-using namespace rapidjson;
-
-using FunctionType = std::variant<std::function<UStatus(Document&)>,
-                                  std::function<void(Document&)>>;
+using FunctionType =
+    std::variant<std::function<uprotocol::v1::UStatus(rapidjson::Document&)>,
+                 std::function<void(rapidjson::Document&)>>;
 
 /// @class TestAgent
 /// @brief Represents a test agent that communicates with a test manager.
@@ -73,7 +52,8 @@ public:
 	/// @param[in] proto The message to be sent.
 	/// @param[in] action The action associated with the message.
 	/// @param[in] strTest_id The ID of the test (optional).
-	void sendToTestManager(const Message& proto, const string& action,
+	void sendToTestManager(const google::protobuf::Message& proto,
+	                       const string& action,
 	                       const string& strTest_id = "") const;
 
 	/// @brief Sends a message to the test manager.
@@ -81,27 +61,30 @@ public:
 	/// @param[in,out] jsonVal The JSON value to be sent.
 	/// @param[in] action The action associated with the message.
 	/// @param[in] strTest_id The ID of the test (optional).
-	void sendToTestManager(Document& doc, Value& jsonVal, const string action,
+	void sendToTestManager(rapidjson::Document& doc, rapidjson::Value& jsonVal,
+	                       const string action,
 	                       const string& strTest_id = "") const;
 
 private:
 	// The socket used for communication with the test manager.
 	int clientSocket_;
-	struct sockaddr_in mServerAddress_;  // The address of the test manager.
-	std::shared_ptr<uprotocol::utransport::UTransport>
-	    transportPtr_;  // The transport layer used for communication.
-	std::unordered_map<std::string, FunctionType>
-	    actionHandlers_;  // The map of action handlers.
+	// The address of the test manager.
+	struct sockaddr_in mServerAddress_;
+	// The transport layer used for communication.
+	std::shared_ptr<uprotocol::utransport::UTransport> transportPtr_;
+	// The map of action handlers.
+	std::unordered_map<std::string, FunctionType> actionHandlers_;
 
 	/// @brief Callback function called when a message is received from the
 	/// transport layer.
 	/// @param[in] transportUMessage The received message.
 	/// @return The status of the message processing.
-	UStatus onReceive(uprotocol::utransport::UMessage& transportUMessage) const;
+	uprotocol::v1::UStatus onReceive(
+	    uprotocol::utransport::UMessage& transportUMessage) const;
 
 	/// @brief Processes the received message.
 	/// @param[in,out] jsonData The JSON data of the received message.
-	void processMessage(Document& jsonData);
+	void processMessage(rapidjson::Document& jsonData);
 
 	/// @brief Disconnects the agent from the test manager.
 	/// @return The status of the disconnection.
@@ -110,34 +93,36 @@ private:
 	/// @brief Handles the "sendCommand" command received from the test manager.
 	/// @param[in,out] jsonData The JSON data of the command.
 	/// @return The status of the command handling.
-	UStatus handleSendCommand(Document& jsonData);
+	uprotocol::v1::UStatus handleSendCommand(rapidjson::Document& jsonData);
 
 	/// @brief Handles the "registerListener" command received from the test
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
 	/// @return The status of the command handling.
-	UStatus handleRegisterListenerCommand(Document& jsonData);
+	uprotocol::v1::UStatus handleRegisterListenerCommand(
+	    rapidjson::Document& jsonData);
 
 	/// @brief Handles the "unregisterListener" command received from the test
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
 	/// @return The status of the command handling.
-	UStatus handleUnregisterListenerCommand(Document& jsonData);
+	uprotocol::v1::UStatus handleUnregisterListenerCommand(
+	    rapidjson::Document& jsonData);
 
 	/// @brief Handles the "invokeMethod" command received from the test
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
-	void handleInvokeMethodCommand(Document& jsonData);
+	void handleInvokeMethodCommand(rapidjson::Document& jsonData);
 
 	/// @brief Handles the "serializeUri" command received from the test
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
-	void handleSerializeUriCommand(Document& jsonData);
+	void handleSerializeUriCommand(rapidjson::Document& jsonData);
 
 	/// @brief Handles the "deserializeUri" command received from the test
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
-	void handleDeserializeUriCommand(Document& jsonData);
+	void handleDeserializeUriCommand(rapidjson::Document& jsonData);
 
 	/// @brief Creates a transport layer object based on the specified transport
 	/// type.
@@ -150,7 +135,8 @@ private:
 	/// @param[in,out] responseDoc The JSON document containing the response
 	/// data.
 	/// @param[in] action The action associated with the response.
-	void writeDataToTMSocket(Document& responseDoc, const string action) const;
+	void writeDataToTMSocket(rapidjson::Document& responseDoc,
+	                         const string action) const;
 
 	/// @brief Creates a string value for a RapidJSON document.
 	/// @param[in,out] doc The RapidJSON document to which the string value will
@@ -161,8 +147,8 @@ private:
 	/// creates a RapidJSON value from the string, and returns it.
 	/// The returned value can be added to a RapidJSON document as either a key
 	/// or a value.
-	Value createRapidJsonStringValue(Document& doc,
-	                                 const std::string& data) const;
+	rapidjson::Value createRapidJsonStringValue(rapidjson::Document& doc,
+	                                            const std::string& data) const;
 };
 
 #endif  //_TEST_AGENT_H_

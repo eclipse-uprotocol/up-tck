@@ -14,10 +14,11 @@
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
 #include <openssl/evp.h>
-#include <spdlog/spdlog.h>
 
 #include <regex>
-#include <string>
+
+using namespace rapidjson;
+using namespace google::protobuf;
 
 std::string base64Encode(const std::string& in) {
 	BIO* bio;

@@ -22,7 +22,7 @@ import subprocess
 import sys
 import time
 from threading import Thread
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Union
 
 import git
 import parse
