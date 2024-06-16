@@ -10,61 +10,49 @@
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.20.1)
-project(up_client_socket)
+project(up_client_socket VERSION 0.1.0  LANGUAGES CXX DESCRIPTION "C++ socket transport")
 
-set(CMAKE_CXX_STANDARD 17)
-
-#add_compile_options(-O1 -fPIC -Wall -Wextra -pedantic -Werror -Wcast-qual -Wunused -Wuninitialized -Wmissing-declarations -Wconversion -Wpointer-arith -Wshadow  -Wfloat-equal)
-
-option(DEBUG_BUILD OFF)
-if(DEBUG_BUILD)
-        message("DEBUG_BUILD Enabled")
-        # add_compile_options(-ggdb -fsanitize=address -fno-omit-frame-pointer)
-        # add_link_options(-ggdb -fsanitize=address -fno-omit-frame-pointer)
-        add_compile_options(-ggdb)
-        add_link_options(-ggdb)
-endif()
-
-# Specify the source files
-set(SOURCE_FILES
-    ${CMAKE_SOURCE_DIR}/up-tck/up_client_socket/cpp/src/SocketUTransport.cpp 
-)
-
-# find and set 
 find_package(up-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 add_definitions(-DSPDLOG_FMT_EXTERNAL)
 find_package(fmt REQUIRED CONFIG)
 find_package(RapidJSON CONFIG REQUIRED)
-find_package(libuuid REQUIRED CONFIG)
 
-set(libs_required
-     up-cpp::up-cpp
-     spdlog::spdlog
-     fmt::fmt
-     rapidjson
-)
+# This is the root CMakeLists.txt file; We can set project wide settings here
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+    set(CMAKE_CXX_STANDARD 17)
+    # place libraries in a lib directory and executables in a bin directory,
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+endif()
 
-# Add an library target
-add_library(${PROJECT_NAME} ${SOURCE_FILES})
-# Comment above line abd uncomment below line to create shared library
-#add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
+file(GLOB_RECURSE SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-target_include_directories(${PROJECT_NAME}  SYSTEM PUBLIC
-						${rapidjson_INCLUDE_DIRS}
-						${up-cpp_INCLUDE_DIR}
-						${CMAKE_SOURCE_DIR}/up-tck/up_client_socket/cpp/src
-						${CMAKE_CURRENT_BINARY_DIR})
-						
-target_link_libraries(${PROJECT_NAME} PUBLIC
+add_library(${PROJECT_NAME} ${SRC_FILES})
+add_library(up_client_socket::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}> 
+    ${rapidjson_INCLUDE_DIRS}
+    ${up-cpp_INCLUDE_DIR}
+    ${spdlog_INCLUDE_DIR})
+
+set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+target_link_libraries(${PROJECT_NAME} 
+    PRIVATE
     pthread
     rt
-    dl
-    ${libs_required}
-    libuuid::libuuid
-)
+    dl 
+    spdlog::spdlog
+    up-cpp::up-cpp
+    fmt::fmt
+    rapidjson)
 
+# Specify the install location for the library
 INSTALL(TARGETS ${PROJECT_NAME})
 INSTALL(DIRECTORY include DESTINATION .)
-
-

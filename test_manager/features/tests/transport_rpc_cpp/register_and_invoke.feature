@@ -22,52 +22,38 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Testing register and unregister - Zenoh
+Feature: Testing RPC Functionality
 
-  Scenario Outline: To test the registerlistener and unregisterlistener apis
+  Scenario Outline: To test the registerlistener and invoke_method apis
     Given "<uE1>" creates data for "registerlistener"
     And sets "entity.name" to "body.access"
-    And sets "entity.id" to "12345"
-    And sets "entity.version_major" to "1"
     And sets "resource.name" to "door"
-    And sets "resource.id" to "12345"
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
-    When sends "registerlistener" request
 
+    When sends "registerlistener" request
     Then the status received with "code" is "OK"
 
-    When "<uE1>" creates data for "unregisterlistener"
+    Given "<uE2>" creates data for "invokemethod"
     And sets "entity.name" to "body.access"
-    And sets "entity.id" to "12345"
-    And sets "entity.version_major" to "1"
     And sets "resource.name" to "door"
-    And sets "resource.id" to "12345"
     And sets "resource.instance" to "front_left"
     And sets "resource.message" to "Door"
-    And sends "unregisterlistener" request
+    And sets "payload.format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
+    And sets "payload.value" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
 
+    When sends "invokemethod" request
+    Then "<uE2>" receives data field "payload.value" as b"\n/type.googleapis.com/google.protobuf.StringValue\x12\x14\n\x12SuccessRPCResponse"
+
+    Given "<uE1>" creates data for "unregisterlistener"
+    And sets "entity.name" to "body.access"
+    And sets "resource.name" to "door"
+    And sets "resource.instance" to "front_left"
+    And sets "resource.message" to "Door"
+
+    When sends "unregisterlistener" request
     Then the status received with "code" is "OK"
 
     Examples:
-      | uE1    |
-      | rust   |
-
-
-    Scenario Outline: Test unregisterlistener when no entity is registered to any topic
-      Given "<uE1>" creates data for "unregisterlistener"
-        And sets "entity.name" to "body.access"
-        And sets "entity.id" to "12345"
-        And sets "entity.version_major" to "1"
-        And sets "resource.name" to "door"
-        And sets "resource.id" to "12345"
-        And sets "resource.instance" to "front_left"
-        And sets "resource.message" to "Door"
-
-      When sends "unregisterlistener" request
-
-      Then the status received with "code" is "INVALID_ARGUMENT"
-
-      Examples:
-        | uE1    |
-        | rust   |
+      | uE1    | uE2    |
+      | cpp    | cpp    |

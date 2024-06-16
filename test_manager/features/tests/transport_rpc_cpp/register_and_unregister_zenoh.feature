@@ -51,7 +51,7 @@ Feature: Testing register and unregister - Zenoh
 
     Examples:
       | uE1    |
-      | rust   |
+      | cpp    |
 
 
     Scenario Outline: Test unregisterlistener when no entity is registered to any topic
@@ -70,4 +70,4 @@ Feature: Testing register and unregister - Zenoh
 
       Examples:
         | uE1    |
-        | rust   |
+        | cpp    |

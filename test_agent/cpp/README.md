@@ -1,67 +1,82 @@
-# Build with conan package manager:
------------------------------------
-# 1. Setting up docker container 
-#### instructions for **** Start working in uDev environment ****
-https://confluence.ultracruise.gm.com/display/UL/GitHub+-+uSpace+%28Ultifi%29+-+Quick+start
+# Build with Conan package manager
 
-#### Create projects directory
-cd ~; mkdir ~/projects; cd ~/projects
-#### Create ufw_workspace
-git clone https://github.com/GM-SDV-UP/gmultifi_ufw_workspace.git uspace_deploy; cd uspace_deploy
-#### execute init repo script
-./init_ultifi_repo.sh
-#### Login to docker artifactory (use your gm credentials):
-docker login artifactory.ultracruise.gm.com
-#### Run uDev container;
-./ubox.sh
+**Note:** The up-tck test agent is only compatible with up-cpp version 1.5.7.
 
-# 2. preparing the build environment
-#### from the uDev container
-cd ~/projects/uspace_deploy/ultifi
-#### clone/download up-tck from https://github.com/eclipse-uprotocol/up-tck to ultifi folder
+## 1. Setting up docker container (Optional)
 
-#### create the main CMAKE file
-cat << EOF > CMakeLists.txt
-cmake_minimum_required(VERSION 3.20.0)
-project(ultifi)
- 
-set(CONANFILES_ROOT \${CMAKE_CURRENT_SOURCE_DIR})
-include(cmake/CmakeCommonInit.cmake)
-add_repo(up-tck/up_client_socket/cpp)
-add_repo(up-tck/test_agent/cpp)
-EOF
- 
-#### Set the path of the 'conanfile.py'. Will be used by the UFW-Build-System.
-rm conanfile.py
+To start working in a docker environment, follow these instructions:
 
-ln -sf up-tck/up_client_socket/cpp/conanfile.py conanfile.py
+- Clone or download the up-conan-recipes repository from [here](https://github.com/gregmedd/up-conan-recipes)
+- Navigate to the `tools/ubuntu-24.04-docker` directory
+- Run the `launch-shell.sh` script
 
-# 3. compiling 
-#### from the uDev container
-cd ~/projects/uspace_deploy/ultifi
-#### To build for uDev docker
-#### To build release 
-source build.sh -r 
-#### To build debug 
-source build.sh -d
-#### Note: if you got compilation error regarding UPayload and UAttributes ambiguous, 
-####       go to your conan folder path and modify RPC client with full path for UPayload and UAttributes as shown below.
-vim ~/.conan/data/up-cpp/0.1.5.0-dev/_/_/package/89f3c5e59c749f26b20b069c0b4afb8e0cc77bac/include/up-cpp/rpc/RpcClient.h
-virtual std::future<uprotocol::utransport::UPayload> invokeMethod(const UUri &topic,
-                                                   const uprotocol::utransport::UPayload &payload,
-                                                   const uprotocol::utransport::UAttributes &attributes) = 0;
-# 4. Step for execution 
-#### if you built build-x86_64-release
-cd build-x86_64-release/bin
+## 2. Install dependencies to build the CPP test agent
 
-#### run the below executable for standalone launch of cpp testagent
-./test_agent_cpp flag {zenoh/socket}
+Note: All commands are based on Conan 2. Please adjust the commands accordingly for Conan 1.
 
-# 5. Steps to run with TCK
-#### create target folder and copy the contents of build-x86_64-release to up-tck/test_agent/cpp/target folder
-mkdir up-tck/test_agent/cpp/target
-cp -rf build-x86_64-release/bin up-tck/test_agent/cpp/target/
-cd up-tck/test_manager
-sh testrunner.sh
-####  provide feature test name say register_and_unregister
-register_and_unregister
+### up-cpp
+
+```
+git clone https://github.com/eclipse-uprotocol/up-cpp.git
+cd up-cpp
+git checkout up-v1.5.7
+git submodule update --init --recursive
+conan create . --build=missing
+```
+
+### zenohc
+
+```
+git clone https://github.com/eclipse-zenoh/zenoh-c.git
+cd zenoh-c
+git checkout release/0.11.0.3
+mkdir -p ../build && cd ../build 
+cmake ../zenoh-c
+cmake --build . --config Release
+cmake --build . --target install
+```
+
+### up-transport-zenoh-cpp
+
+```
+git clone https://github.com/eclipse-uprotocol/up-transport-zenoh-cpp.git
+cd up-cpp-client-zenoh
+git checkout v0.1.3-dev
+conan create . --build=missing
+```
+
+### up_client_socket
+
+```
+git clone https://github.com/eclipse-uprotocol/up-tck.git
+cd up-tck/up_client_socket/cpp
+conan create --version=up_client_socket/0.1.0 --build=missing .
+```
+
+## 3. Build the CPP test agent executable
+
+```
+cd up-tck/test_agent/cpp/
+conan install .
+cd build
+cmake ../ -DCMAKE_TOOLCHAIN_FILE=Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build . -- -j
+```
+
+## 4. Steps for execution
+
+To run the CPP test agent standalone, execute the following command:
+
+```
+./test_agent_cpp --transport {zenoh/socket}
+```
+
+## 5. Steps to run with TCK
+
+To run with TCK, follow these steps:
+
+- Create a target folder and copy the contents of `build-x86_64-release` to `up-tck/test_agent/cpp/target` folder
+- Navigate to the `up-tck/test_manager` directory
+- Run the `testrunner.sh` script
+- Provide the feature test name, for example: `register_and_unregister`
+

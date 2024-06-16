@@ -22,7 +22,7 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Testing Publish and Subscribe Functionality - Zenoh
+Feature: Testing Publish and Subscribe Functionality
 
   Scenario Outline: To test the registerlistener and send apis
     Given "<uE1>" creates data for "registerlistener"
@@ -71,4 +71,4 @@ Feature: Testing Publish and Subscribe Functionality - Zenoh
 
     Examples:
       | uE1    | uE2    |
-      | rust   | rust   |
+      | cpp    | cpp    |

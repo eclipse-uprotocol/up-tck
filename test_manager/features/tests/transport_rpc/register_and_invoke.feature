@@ -60,4 +60,3 @@ Feature: Testing RPC Functionality
       | python | python |
       | java   | python |
       | python | java   |
-      | cpp    | cpp    |
