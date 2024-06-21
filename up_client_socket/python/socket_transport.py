@@ -36,7 +36,7 @@ from uprotocol.rpc.rpcclient import RpcClient
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
-from uprotocol.uri.factory.uresource_builder import UResourceBuilder
+from uprotocol.uri.factory.uresourcebuilder import UResourceBuilder
 from uprotocol.uri.validator.urivalidator import UriValidator
 from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 
