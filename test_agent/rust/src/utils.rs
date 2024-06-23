@@ -23,10 +23,14 @@ use log::{debug, error, info};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use up_rust::{
-    Data, UAttributes, UAuthority, UCode, UEntity, UMessage, UMessageType, UPayload,
-    UPayloadFormat, UPriority, UResource, UUri, UUID,
+    UAttributes,  UCode,  UMessage, UMessageType, 
+    UPayloadFormat, UPriority,  UUri, UUID,
 };
-
+use bytes::Bytes;
+// use up_rust::{
+//     Data, UAttributes, UAuthority, UCode, UEntity, UMessage, UMessageType, UPayload,
+//     UPayloadFormat, UPriority, UResource, UUri, UUID,
+// };
 use protobuf::{Enum, MessageField};
 
 pub fn convert_json_to_jsonstring<T: serde::Serialize>(value: &T) -> String {
@@ -47,82 +51,160 @@ impl<'de> Deserialize<'de> for WrapperUUri {
         D: Deserializer<'de>,
     {
         let value: Value = Deserialize::deserialize(deserializer)?;
-        let authority = parse_uauthority(&value);
-        if authority.is_none() {
-            info!("No UAuthority parsed");
-        }
+        // let authority = parse_uauthority(&value);
+        // if authority.is_none() {
+        //     info!("No UAuthority parsed");
+        // }
 
-        let resource = parse_uresource(&value);
-        let entity = parse_uentity(&value);
 
-        let uuri = match authority {
-            Some(authority) => {
-                debug!("Authority is not default");
-                UUri {
-                    authority: Some(authority).into(),
-                    entity: Some(entity).into(),
-                    resource: Some(resource).into(),
-                    ..Default::default()
-                }
-            }
-            None => UUri {
-                entity: Some(entity).into(),
-                resource: Some(resource).into(),
-                ..Default::default()
-            },
-        };
+
+
+let authority_name = if let Some(authority_value) = value
+        .get("authority_name")
+        .and_then(|authority_value| authority_value.as_str())
+    {
+        Some(authority_value.to_owned())
+    } else {
+        error!("Error: Missing value authority name");
+        Some("default".to_owned())
+    };
+
+    let ue_id = if let Some(ue_id_value) = value
+    .get("ue_id")
+    .and_then(|ue_id_value| ue_id_value.as_str())
+{
+    if let Ok(parsed_value) = ue_id_value.parse::<u32>() {
+        Some(parsed_value)
+    } else {
+        let err_str = format!("Error: ue_id field is not a number");
+        error!("{err_str}");
+       Some(0)
+    }
+} else {
+    let err_str = format!("Error: ue_id_value field is not a string");
+    error!("{err_str}");
+    Some(0)
+};
+
+   let ue_version_major = if let Some(ue_version_major_value) = value
+    .get("ue_version_major")
+    .and_then(|ue_version_major_value| ue_version_major_value.as_str())
+{
+    if let Ok(parsed_value) = ue_version_major_value.parse::<u32>() {
+        Some(parsed_value)
+    } else {
+        let err_str = format!("Error: ue_version_major field is not a number");
+        error!("{err_str}");
+       Some(0)
+    }
+} else {
+    let err_str = format!("Error: ue_version_major_value field is not a string");
+    error!("{err_str}");
+    Some(0)
+};
+
+
+let resource_id = if let Some(resource_id_value) = value
+    .get("resource_id")
+    .and_then(|resource_id_value| resource_id_value.as_str())
+{
+    if let Ok(parsed_value) = resource_id_value.parse::<u32>() {
+        Some(parsed_value)
+    } else {
+        let err_str = format!("Error: resource_id field is not a number");
+        error!("{err_str}");
+       Some(0)
+    }
+} else {
+    let err_str = format!("Error: resource_id_value field is not a string");
+    error!("{err_str}");
+    Some(0)
+};
+   
+//
+
+let uuri = UUri {
+    authority_name: authority_name.expect("todo"),
+    ue_id: ue_id.expect("todo"),
+    ue_version_major: ue_version_major.expect("todo"),
+    resource_id:resource_id.expect("todo"),
+     ..Default::default()
+ };
+
+//
+
+
+        // let resource = parse_uresource(&value);
+        // let entity = parse_uentity(&value);
+
+        // let uuri = match authority {
+        //     Some(authority) => {
+        //         debug!("Authority is not default");
+        //         UUri {
+        //             authority: Some(authority).into(),
+        //             entity: Some(entity).into(),
+        //             resource: Some(resource).into(),
+        //             ..Default::default()
+        //         }
+        //     }
+        //     None => UUri {
+        //         entity: Some(entity).into(),
+        //         resource: Some(resource).into(),
+        //         ..Default::default()
+        //     },
+        // };
 
         Ok(WrapperUUri(uuri))
     }
 }
 
-fn parse_uresource(value: &Value) -> UResource {
-    let mut uresource = UResource::new();
-    if let Some(resource_value) = value
-        .get("resource")
-        .and_then(|resource_value| resource_value.get("name"))
-        .and_then(|resource_value| resource_value.as_str())
-    {
-        uresource.name = resource_value.to_owned();
-    } else {
-        error!("Error: name field is not a string in resource");
-    };
+// fn parse_uresource(value: &Value) -> UResource {
+//     let mut uresource = UResource::new();
+//     if let Some(resource_value) = value
+//         .get("resource")
+//         .and_then(|resource_value| resource_value.get("name"))
+//         .and_then(|resource_value| resource_value.as_str())
+//     {
+//         uresource.name = resource_value.to_owned();
+//     } else {
+//         error!("Error: name field is not a string in resource");
+//     };
 
-    if let Some(resource_value) = value
-        .get("resource")
-        .and_then(|resource_value| resource_value.get("instance"))
-        .and_then(|resource_value| resource_value.as_str())
-    {
-        uresource.instance = Some(resource_value.to_owned());
-    } else {
-        error!("Error: instance field is not a string in resource");
-    };
+//     if let Some(resource_value) = value
+//         .get("resource")
+//         .and_then(|resource_value| resource_value.get("instance"))
+//         .and_then(|resource_value| resource_value.as_str())
+//     {
+//         uresource.instance = Some(resource_value.to_owned());
+//     } else {
+//         error!("Error: instance field is not a string in resource");
+//     };
 
-    if let Some(resource_value) = value
-        .get("resource")
-        .and_then(|resource_value| resource_value.get("message"))
-        .and_then(|resource_value| resource_value.as_str())
-    {
-        uresource.message = Some(resource_value.to_owned());
-    } else {
-        error!("Error: message field is not a string in resource_value");
-    };
+//     if let Some(resource_value) = value
+//         .get("resource")
+//         .and_then(|resource_value| resource_value.get("message"))
+//         .and_then(|resource_value| resource_value.as_str())
+//     {
+//         uresource.message = Some(resource_value.to_owned());
+//     } else {
+//         error!("Error: message field is not a string in resource_value");
+//     };
 
-    if let Some(resource_value) = value
-        .get("resource")
-        .and_then(|resource_value| resource_value.get("id"))
-        .and_then(|resource_value| resource_value.as_str())
-    {
-        if let Ok(parsed_id) = resource_value.parse::<u32>() {
-            uresource.id = Some(parsed_id);
-        } else {
-            error!("Error: id field parsing to u32");
-        }
-    } else {
-        error!("Error: id field is not string");
-    };
-    uresource
-}
+//     if let Some(resource_value) = value
+//         .get("resource")
+//         .and_then(|resource_value| resource_value.get("id"))
+//         .and_then(|resource_value| resource_value.as_str())
+//     {
+//         if let Ok(parsed_id) = resource_value.parse::<u32>() {
+//             uresource.id = Some(parsed_id);
+//         } else {
+//             error!("Error: id field parsing to u32");
+//         }
+//     } else {
+//         error!("Error: id field is not string");
+//     };
+//     uresource
+// }
 
 fn parse_string_field(
     message: &str,
@@ -166,66 +248,66 @@ fn parse_u32_field(
     }
 }
 
-fn parse_uentity(value: &Value) -> UEntity {
-    let name = parse_string_field("entity", value, "name")
-        .ok()
-        .unwrap_or_else(|| "None".to_owned());
-    let id = parse_u32_field("entity", value, "id").ok().flatten();
-    let version_major = parse_u32_field("entity", value, "version_major")
-        .ok()
-        .flatten();
-    let version_minor = parse_u32_field("entity", value, "version_minor")
-        .ok()
-        .flatten();
+// fn parse_uentity(value: &Value) -> UEntity {
+//     let name = parse_string_field("entity", value, "name")
+//         .ok()
+//         .unwrap_or_else(|| "None".to_owned());
+//     let id = parse_u32_field("entity", value, "id").ok().flatten();
+//     let version_major = parse_u32_field("entity", value, "version_major")
+//         .ok()
+//         .flatten();
+//     let version_minor = parse_u32_field("entity", value, "version_minor")
+//         .ok()
+//         .flatten();
 
-    UEntity {
-        name,
-        id,
-        version_major,
-        version_minor,
-        ..Default::default()
-    }
-}
+//     UEntity {
+//         name,
+//         id,
+//         version_major,
+//         version_minor,
+//         ..Default::default()
+//     }
+// }
 
-fn parse_uauthority(value: &Value) -> Option<UAuthority> {
-    let name = if let Some(authority_value) = value
-        .get("authority")
-        .and_then(|authority_value| authority_value.get("name"))
-        .and_then(|authority_value| authority_value.as_str())
-    {
-        Some(authority_value.to_owned())
-    } else {
-        error!("Error: Missing value authority name");
-        return None;
-    };
+// fn parse_uauthority(value: &Value) -> Option<UAuthority> {
+//     let name = if let Some(authority_value) = value
+//         .get("authority")
+//         .and_then(|authority_value| authority_value.get("name"))
+//         .and_then(|authority_value| authority_value.as_str())
+//     {
+//         Some(authority_value.to_owned())
+//     } else {
+//         error!("Error: Missing value authority name");
+//         return None;
+//     };
 
-    let number = if let Some(authority_number_ip) = value
-        .get("authority")
-        .and_then(|authority_value| authority_value.get("number"))
-        .and_then(|number| number.get("ip"))
-    {
-        Some(up_rust::Number::Ip(
-            authority_number_ip.to_string().as_bytes().to_vec(),
-        ))
-    } else if let Some(authority_number_id) = value
-        .get("authority")
-        .and_then(|authority_value| authority_value.get("number"))
-        .and_then(|number| number.get("id"))
-    {
-        Some(up_rust::Number::Id(
-            authority_number_id.to_string().as_bytes().to_vec(),
-        ))
-    } else {
-        error!("Error: Missing value number");
-        return None;
-    };
+//     let number = if let Some(authority_number_ip) = value
+//         .get("authority")
+//         .and_then(|authority_value| authority_value.get("number"))
+//         .and_then(|number| number.get("ip"))
+//     {
+//         Some(up_rust::Number::Ip(
+//             authority_number_ip.to_string().as_bytes().to_vec(),
+//         ))
+//     } else if let Some(authority_number_id) = value
+//         .get("authority")
+//         .and_then(|authority_value| authority_value.get("number"))
+//         .and_then(|number| number.get("id"))
+//     {
+//         Some(up_rust::Number::Id(
+//             authority_number_id.to_string().as_bytes().to_vec(),
+//         ))
+//     } else {
+//         error!("Error: Missing value number");
+//         return None;
+//     };
 
-    Some(UAuthority {
-        name,
-        number,
-        ..Default::default()
-    })
-}
+//     Some(UAuthority {
+//         name,
+//         number,
+//         ..Default::default()
+//     })
+// }
 #[derive(Default)]
 pub struct WrapperUAttribute(pub UAttributes);
 impl<'de> Deserialize<'de> for WrapperUAttribute {
@@ -375,61 +457,62 @@ fn parse_uuid(value: &Value, uuid: &str) -> Result<UUID, serde_json::Error> {
     })
 }
 
-#[derive(Default)]
-pub struct WrapperUPayload(pub UPayload);
-impl<'de> Deserialize<'de> for WrapperUPayload {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value: Value = Deserialize::deserialize(deserializer)?;
-        let Ok(upayload) = parse_upayload(&value) else {
-            let err_msg = "Error parsing payload: ".to_string();
-            return Err(serde::de::Error::custom(err_msg));
-        };
+//#[derive(Default)]
+// pub struct WrapperUPayload(pub UPayload);
+// impl<'de> Deserialize<'de> for WrapperUPayload {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         let value: Value = Deserialize::deserialize(deserializer)?;
+//         let Ok(upayload) = parse_upayload(&value) else {
+//             let err_msg = "Error parsing payload: ".to_string();
+//             return Err(serde::de::Error::custom(err_msg));
+//         };
 
-        Ok(WrapperUPayload(upayload))
-    }
-}
+//         Ok(WrapperUPayload(upayload))
+//     }
+// }
 
-#[allow(clippy::map_unwrap_or)]
-fn parse_upayload(value: &Value) -> Result<UPayload, serde_json::Error> {
-    let format = value
-        .get("format")
-        .and_then(|format_value| format_value.as_str())
-        .map(|format_str| {
-            UPayloadFormat::from_str(format_str).unwrap_or_else(|| {
-                error!("Error: Unable to parse string to UPayloadFormat");
-                UPayloadFormat::UPAYLOAD_FORMAT_UNSPECIFIED
-            })
-        })
-        .unwrap_or_else(|| {
-            error!("Error: value of format is not a string");
-            UPayloadFormat::UPAYLOAD_FORMAT_UNSPECIFIED
-        });
+// #[allow(clippy::map_unwrap_or)]
+// fn parse_upayload(value: &Value) -> Result<UPayload, serde_json::Error> {
+//     let format = value
+//         .get("format")
+//         .and_then(|format_value| format_value.as_str())
+//         .map(|format_str| {
+//             UPayloadFormat::from_str(format_str).unwrap_or_else(|| {
+//                 error!("Error: Unable to parse string to UPayloadFormat");
+//                 UPayloadFormat::UPAYLOAD_FORMAT_UNSPECIFIED
+//             })
+//         })
+//         .unwrap_or_else(|| {
+//             error!("Error: value of format is not a string");
+//             UPayloadFormat::UPAYLOAD_FORMAT_UNSPECIFIED
+//         });
 
-    let length = value
-        .get("length")
-        .and_then(Value::as_str)
-        .and_then(|length_value| length_value.parse::<i32>().ok());
+//     let length = value
+//         .get("length")
+//         .and_then(Value::as_str)
+//         .and_then(|length_value| length_value.parse::<i32>().ok());
 
-    let data = if let Some(data_value) = value.get("value") {
-        if let Ok(data_vec) = serde_json::to_vec(data_value) {
-            Some(Data::Value(data_vec))
-        } else {
-            Some(Data::Reference(0))
-        }
-    } else {
-        return Err(serde::de::Error::custom("Missing value field"));
-    };
+//     let data = if let Some(data_value) = value.get("value") {
+//         if let Ok(data_vec) = serde_json::to_vec(data_value) {
+//             Some(Data::Value(data_vec))
+            
+//         } else {
+//             Some(Data::Reference(0))
+//         }
+//     } else {
+//         return Err(serde::de::Error::custom("Missing value field"));
+//     };
 
-    Ok(UPayload {
-        format: format.into(),
-        length,
-        data,
-        ..Default::default()
-    })
-}
+//     Ok(UPayload {
+//         format: format.into(),
+//         length,
+//         data,
+//         ..Default::default()
+//     })
+// }
 
 #[derive(Debug, Default)]
 pub struct WrapperUMessage(pub UMessage);
@@ -441,6 +524,10 @@ impl<'de> Deserialize<'de> for WrapperUMessage {
     {
         let value: Value = Deserialize::deserialize(deserializer)?;
 
+
+
+
+
         let wattributes = value
             .get("attributes")
             .and_then(|attributes| {
@@ -448,14 +535,27 @@ impl<'de> Deserialize<'de> for WrapperUMessage {
             })
             .map(|wrapper_attr| wrapper_attr.0);
 
-        let wpayload = value
-            .get("payload")
-            .and_then(|payload| serde_json::from_value::<WrapperUPayload>(payload.clone()).ok())
-            .map(|wrapper_payload| wrapper_payload.0);
+        // let wpayload = value
+        //     .get("payload")
+        //     .and_then(|payload| serde_json::from_value::<WrapperUPayload>(payload.clone()).ok())
+        //     .map(|wrapper_payload| wrapper_payload.0);
+
+
+            let payload = if let Some(payload_value) = value.get("payload") {
+                if let Ok(data_vec) = serde_json::to_vec(payload_value) {
+                    Some(Bytes::from(data_vec))
+                } else {
+                    Some(Bytes::new())
+                }
+            } else {
+                return Err(serde::de::Error::custom("Missing value field"));
+            };
+
+
 
         Ok(WrapperUMessage(UMessage {
             attributes: wattributes.into(),
-            payload: wpayload.into(),
+            payload,
             ..Default::default()
         }))
     }
