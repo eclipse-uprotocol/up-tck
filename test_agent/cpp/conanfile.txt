@@ -1,0 +1,16 @@
+[requires]
+protobuf/[>=3.21.12]
+up_client_socket/0.1.0
+up-cpp/0.1.2-dev
+up-client-zenoh-cpp/0.1.3-dev
+rapidjson/cci.20230929
+spdlog/[>=1.13.0]
+fmt/10.2.1
+openssl/1.1.1w
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[layout]
+cmake_layout
