@@ -1,6 +1,7 @@
 [requires]
+up-core-api/1.5.8
 protobuf/3.21.12
-up-cpp/0.1.2-dev
+up-cpp/0.2.0
 rapidjson/cci.20230929
 spdlog/1.13.0
 fmt/10.2.1
