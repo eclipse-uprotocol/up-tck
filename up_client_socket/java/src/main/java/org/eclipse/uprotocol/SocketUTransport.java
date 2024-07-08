@@ -21,12 +21,13 @@
 
 package org.eclipse.uprotocol;
 
-import org.eclipse.uprotocol.rpc.RpcClient;
+import org.eclipse.uprotocol.communication.RpcClient;
+import org.eclipse.uprotocol.communication.UPayload;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.UTransport;
-import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
-import org.eclipse.uprotocol.uri.factory.UResourceBuilder;
+import org.eclipse.uprotocol.transport.builder.UMessageBuilder;
 import org.eclipse.uprotocol.uri.validator.UriValidator;
+import org.eclipse.uprotocol.communication.CallOptions;
 import org.eclipse.uprotocol.v1.*;
 import org.eclipse.uprotocol.validation.ValidationResult;
 
@@ -48,8 +49,7 @@ public class SocketUTransport implements UTransport, RpcClient {
     private static final UUri RESPONSE_URI;
 
     static {
-        RESPONSE_URI = UUri.newBuilder().setEntity(UEntity.newBuilder().setName("test_agent_java").setVersionMajor(1))
-                .setResource(UResourceBuilder.forRpcResponse()).build();
+        RESPONSE_URI = UUri.newBuilder().setUeId(1).setUeVersionMajor(1).setResourceId(0).build();
     }
 
     private final Socket socket;
@@ -178,16 +178,18 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param message The message to be sent.
      * @return A status indicating the outcome of the send operation.
      */
-    public UStatus send(UMessage message) {
+    public CompletionStage<UStatus> send(UMessage message) {
         byte[] umsgSerialized = message.toByteArray();
         try {
             OutputStream outputStream = socket.getOutputStream();
             outputStream.write(umsgSerialized);
             logger.info("uMessage Sent to dispatcher fron java socket transport");
-            return UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build();
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.OK)
+                    .setMessage("uMessage Sent to dispatcher").build());
         } catch (IOException e) {
             logger.log(Level.SEVERE, "INTERNAL ERROR: ", e);
-            return UStatus.newBuilder().setCode(UCode.INTERNAL).setMessage("INTERNAL ERROR: " + e.getMessage()).build();
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.INTERNAL)
+                    .setMessage("INTERNAL ERROR: " + e.getMessage()).build());
         }
     }
 
@@ -198,13 +200,13 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param listener The listener to be registered.
      * @return A status indicating the outcome of the registration operation.
      */
-    public UStatus registerListener(UUri topic, UListener listener) {
-        ValidationResult result = UriValidator.validate(topic);
-        if (result.isFailure()) {
-            return result.toStatus();
+    public CompletionStage<UStatus> registerListener(UUri sourceFilter, UUri sinkFilter, UListener listener) {
+        if (!UriValidator.isTopic(sourceFilter)) {
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.INVALID_ARGUMENT)
+                    .setMessage("Is not a valid topic URI").build());
         }
-        uri_to_listener.computeIfAbsent(topic, k -> new ArrayList<>()).add(listener);
-        return UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build();
+        uri_to_listener.computeIfAbsent(sourceFilter, k -> new ArrayList<>()).add(listener);
+        return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build());
     }
 
     /**
@@ -214,22 +216,23 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param listener The listener to be removed.
      * @return A status indicating the outcome of the unregistration operation.
      */
-    public UStatus unregisterListener(UUri topic, UListener listener) {
-        ValidationResult result = UriValidator.validate(topic);
-        if (result.isFailure()) {
-            return result.toStatus();
+    public CompletionStage<UStatus> unregisterListener(UUri sourceFilter, UUri sinkFilter, UListener listener) {
+        if (!UriValidator.isTopic(sourceFilter)) {
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.INVALID_ARGUMENT)
+                    .setMessage("Is not a valid topic URI").build());
         }
-        ArrayList<UListener> listeners = uri_to_listener.get(topic);
+        ArrayList<UListener> listeners = uri_to_listener.get(sourceFilter);
         if (listeners != null && listeners.remove(listener)) {
             if (listeners.isEmpty()) {
-                uri_to_listener.remove(topic);
+                uri_to_listener.remove(sourceFilter);
             }
-            return UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build();
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build());
         }
-        return UStatus.newBuilder().setCode(UCode.NOT_FOUND).setMessage("Listener not found for the given UUri")
-                .build();
+        return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.NOT_FOUND)
+                .setMessage("Listener not found for the given URI").build());
     }
 
+    //TODO: Implement invokeMethod
     /**
      * Invokes a remote method with provided parameters and returns a CompletableFuture for the response.
      *
@@ -238,19 +241,17 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param options        The call options specifying timeout.
      * @return A CompletableFuture that will hold the response message for the request.
      */
-    public CompletionStage<UMessage> invokeMethod(UUri methodUri, UPayload requestPayload, CallOptions options) {
-        UAttributes attributes = UAttributesBuilder.request(RESPONSE_URI, methodUri, UPriority.UPRIORITY_CS4,
-                options.getTtl()).build();
-        UUID requestId = attributes.getId();
-        CompletableFuture<UMessage> responseFuture = new CompletableFuture<>();
+    public CompletionStage<UPayload> invokeMethod(UUri methodUri, UPayload requestPayload, CallOptions options) {
+        UMessage umsg = UMessageBuilder.request(RESPONSE_URI, methodUri, options.timeout()).build(requestPayload);
+        UUID requestId = umsg.getAttributes().getId();
+        CompletionStage<UMessage> responseFuture = new CompletableFuture<>();
         reqid_to_future.put(requestId, responseFuture);
 
-        Thread timeoutThread = new Thread(() -> timeoutCounter(responseFuture, requestId, options.getTtl()));
+        Thread timeoutThread = new Thread(() -> timeoutCounter(responseFuture.toCompletableFuture(), requestId, options.timeout()));
         timeoutThread.start();
 
-        UMessage umsg = UMessage.newBuilder().setPayload(requestPayload).setAttributes(attributes).build();
         send(umsg);
-        return responseFuture;
+        return CompletableFuture.completedFuture(null);
     }
 
     /**
@@ -270,5 +271,27 @@ public class SocketUTransport implements UTransport, RpcClient {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * Closes the socket connection and releases any resources associated with it.
+     */
+    public void close() {
+        try {
+            if (!socket.isClosed()) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "INTERNAL ERROR: ", e);
+        }
+    }
+
+    /**
+     * Returns the source.
+     *
+     * @return The source.
+     */
+    public UUri getSource() {
+        return RESPONSE_URI;
     }
 }

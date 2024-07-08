@@ -23,229 +23,74 @@
 # -------------------------------------------------------------------------
 
 Feature: URI Validation
-  Scenario Outline: UUri validate completely filled UUri
-    Given "uE1" creates data for "uri_deserialize"
+  Scenario Outline: UUri Validation for an empty UUri
+      Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input "//authority_name_nameName/name of entity/64/resource name.resource instance#message of resource"
+      When sends a "uri_deserialize" request with serialized input ""
 
-    Then receives json with following set fields:
-      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.id         |                               | bytes               |
-      | authority.name       | authority_name_nameName       | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | name of entity                | str                 |
-      | entity.version_major | 64                            | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        | resource name                 | str                 |
-      | resource.instance    | resource instance             | str                 |
-      | resource.message     | message of resource           | str                 |
-      | resource.id          | 0                             | int                 |
+      Then receives json with following set fields:
+        | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
+        | authority_name       |                               | str                 |
+        | ue_id                | 0                             | int                 |
+        | ue_version_major     | 0                             | int                 |
+        | resource_id          | 0                             | int                 |
 
-    When "uE2" creates data for "uri_validate"
-    And sets "validation_type" to "<validation_type>"
-    And sets "uuri" to previous response data
-    And sends "uri_validate" request
+      When "uE2" creates data for "uri_validate"
+      And sets "validation_type" to "<validation_type>"
+      And sets "uuri" to previous response data
+      And sends "uri_validate" request
 
-    Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
+      Then receives validation result as "<bool_result>"
 
-    Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | True        |                            |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Invalid RPC response type. |
-      | rpc_method      | False       | Invalid RPC method uri. Uri should be the method to be called, or method from response. |
-      | is_empty        | False       |                            |
+      Examples:
+        | validation_type             | bool_result |
+        | is_empty                    | True        |
+        | is_rpc_method               | False       |
+        | is_rpc_response             | False       |
+        | is_notification_destination | False       |
+        | is_default_resource_id      | False       |
+        | is_topic                    | False       |
 
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | True        |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | True        |                            |
 
-  Scenario Outline: UUri validate completely filled UUri 2
-    Given "uE1" creates data for "uri_deserialize"
+  Scenario Outline: UUri validation for a UUri with only authority_name
+      Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input "//uAuthName/entityName/1/resrcName.instance#Message"
+      When sends a "uri_deserialize" request with serialized input "//hi"
 
-    Then receives json with following set fields:
-      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.id         |                               | bytes               |
-      | authority.name       | uAuthName                     | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | entityName                    | str                 |
-      | entity.version_major | 1                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        | resrcName                     | str                 |
-      | resource.instance    | instance                      | str                 |
-      | resource.message     | Message                       | str                 |
-      | resource.id          | 0                             | int                 |
+      Then receives json with following set fields:
+        | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
+        | authority_name       | hi                            | str                 |
+        | ue_id                | 0                             | int                 |
+        | ue_version_major     | 0                             | int                 |
+        | resource_id          | 0                             | int                 |
 
-    When "uE2" creates data for "uri_validate"
-    And sets "validation_type" to "<validation_type>"
-    And sets "uuri" to previous response data
-    And sends "uri_validate" request
+      When "uE2" creates data for "uri_validate"
+      And sets "validation_type" to "<validation_type>"
+      And sets "uuri" to previous response data
+      And sends "uri_validate" request
 
-    Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
+      Then receives validation result as "<bool_result>"
 
-    Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | True        |                            |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Invalid RPC response type. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Invalid RPC method uri. Uri should be the method to be called, or method from response. |
-      | is_empty        | False       |                            |
-
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | True        |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | True        |                            |
-
-  Scenario Outline: UUri validate completely filled UUri, but no uAuthority
-    Given "uE1" creates data for "uri_deserialize"
-
-    When sends a "uri_deserialize" request with serialized input "/entityName/1/resrcName.instance#Message"
-
-    Then receives json with following set fields:
-      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.id         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | entityName                    | str                 |
-      | entity.version_major | 1                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        | resrcName                     | str                 |
-      | resource.instance    | instance                      | str                 |
-      | resource.message     | Message                       | str                 |
-      | resource.id          | 0                             | int                 |
-
-    When "uE2" creates data for "uri_validate"
-    And sets "validation_type" to "<validation_type>"
-    And sets "uuri" to previous response data
-    And sends "uri_validate" request
-
-    Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
-
-    Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | True        |                            |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Invalid RPC response type. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Invalid RPC method uri. Uri should be the method to be called, or method from response. |
-      | is_empty        | False       |                            |
-
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-
-  Scenario Outline: UUri validate completely filled UUri, but no UEntity
-    Given "uE1" creates data for "uri_deserialize"
-
-    When sends a "uri_deserialize" request with serialized input "//uAuthName///resrcName.instance#Message"
-
-    Then receives json with following set fields:
-      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.id         |                               | bytes               |
-      | authority.name       | uAuthName                     | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          |                               | str                 |
-      | entity.version_major | 0                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        | resrcName                     | str                 |
-      | resource.instance    | instance                      | str                 |
-      | resource.message     | Message                       | str                 |
-      | resource.id          | 0                             | int                 |
-
-    When "uE2" creates data for "uri_validate"
-    And sets "validation_type" to "<validation_type>"
-    And sets "uuri" to previous response data
-    And sends "uri_validate" request
-
-    Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
-
-    Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | False       | Uri is missing uSoftware Entity name. |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Uri is missing uSoftware Entity name. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Uri is missing uSoftware Entity name. |
-      | is_empty        | False       |                            |
-
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-       
-
-  Scenario Outline: UUri validate completely filled UUri, but no uResource
-    Given "uE1" creates data for "uri_deserialize"
-
-    When sends a "uri_deserialize" request with serialized input "//uAuthName/entityName/1"
-
-    Then receives json with following set fields:
-      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.id         |                               | bytes               |
-      | authority.name       | uAuthName                     | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | entityName                    | str                 |
-      | entity.version_major | 1                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        |                               | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
-
-    When "uE2" creates data for "uri_validate"
-    And sets "validation_type" to "<validation_type>"
-    And sets "uuri" to previous response data
-    And sends "uri_validate" request
-
-    Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
-
-    Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | True        |                            |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Invalid RPC response type. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Invalid RPC method uri. Uri should be the method to be called, or method from response. |
-      | is_empty        | False       |                            |
-
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-       
+      Examples:
+        | validation_type             | bool_result |
+        | is_empty                    | False       |
+        | is_rpc_method               | False       |
+        | is_rpc_response             | True        |
+        | is_notification_destination | True        |
+        | is_default_resource_id      | True        |
+        | is_topic                    | False       |
   
-  Scenario Outline: UUri validate purely remote UUri
+  Scenario Outline: UUri validation for a UUri with resource_id less than min_topic_id
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input ""
+    When sends a "uri_deserialize" request with serialized input "//hi/1/1/7FFF"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          |                               | str                 |
-      | entity.version_major | 0                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        |                               | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       | hi                            | str                 |
+      | ue_id                | 1                             | int                 |
+      | ue_version_major     | 1                             | int                 |
+      | resource_id          | 32767                         | int                 |
 
     When "uE2" creates data for "uri_validate"
     And sets "validation_type" to "<validation_type>"
@@ -253,39 +98,22 @@ Feature: URI Validation
     And sends "uri_validate" request
 
     Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
 
     Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | False       | Uri is missing uSoftware Entity name. |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Uri is missing uSoftware Entity name. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Uri is missing uSoftware Entity name. |
-      | is_empty        | False       |                            |
+      | validation_type             | bool_result |
+      | is_rpc_method               | True        |
 
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-
-  Scenario Outline: UUri validate with random string
+  Scenario Outline: UUri validation for a UUri with resource_id greater than min_topic_id
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input "random string"
+    When sends a "uri_deserialize" request with serialized input "//hi/1/1/8000"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          |                               | str                 |
-      | entity.version_major | 0                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        |                               | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       | hi                            | str                 |
+      | ue_id                | 1                             | int                 |
+      | ue_version_major     | 1                             | int                 |
+      | resource_id          | 32768                         | int                 |
 
     When "uE2" creates data for "uri_validate"
     And sets "validation_type" to "<validation_type>"
@@ -293,396 +121,366 @@ Feature: URI Validation
     And sends "uri_validate" request
 
     Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
 
     Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | False       | Uri is missing uSoftware Entity name. |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Uri is missing uSoftware Entity name. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Uri is missing uSoftware Entity name. |
-      | is_empty        | False       |                            |
+      | validation_type             | bool_result |
+      | is_rpc_method               | False       |
 
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
+  Scenario Outline: UUri validation for a UUri with resource_id equal to rpc_response_id
+    Given "uE1" creates data for "uri_deserialize"
+
+    When sends a "uri_deserialize" request with serialized input "//hi/1/1/8000"
+
+    Then receives json with following set fields:
+      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
+      | authority_name       | hi                            | str                 |
+      | ue_id                | 1                             | int                 |
+      | ue_version_major     | 1                             | int                 |
+      | resource_id          | 32768                         | int                 |
+
+    When "uE2" creates data for "uri_validate"
+    And sets "validation_type" to "<validation_type>"
+    And sets "uuri" to previous response data
+    And sends "uri_validate" request
+
+    Then receives validation result as "<bool_result>"
+
+    Examples:
+      | validation_type             | bool_result |
+      | is_rpc_method               | False       |
+
+  Scenario Outline: UUri matches when equal to //authority/A410/3/1003
+    Given "uE1" creates data for "uri_deserialize"
+
+    When sends a "uri_deserialize" request with serialized input "//authority/A410/3/1003"
+
+    Then receives json with following set fields:
+      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
+      | authority_name       | authority                     | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
+
+    When "uE2" creates data for "uri_validate"
+    And sets "validation_type" to "<validation_type>"
+    And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
+    And sends "uri_validate" request
+
+    Then receives validation result as "<bool_result>"
+
+    Examples:
+      | validation_type             | bool_result |
+      | matches                     | True        |
+
+  Scenario Outline: UUri matches when wildcard authority equal to //authority/A410/3/1003
+    Given "uE1" creates data for "uri_deserialize"
+
+    When sends a "uri_deserialize" request with serialized input "//*/A410/3/1003"
+
+    Then receives json with following set fields:
+      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
+      | authority_name       | *                             | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
+
+    When "uE2" creates data for "uri_validate"
+    And sets "validation_type" to "<validation_type>"
+    And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
+    And sends "uri_validate" request
+
+    Then receives validation result as "<bool_result>"
+
+    Examples:
+      | validation_type             | bool_result |
+      | matches                     | True        |
   
-  Scenario Outline: UUri validate just entity name to validate correctly
+  Scenario Outline: UUri matches when wildcard authority equal to /A410/3/1003
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input "/neelam"
+    When sends a "uri_deserialize" request with serialized input "//*/A410/3/1003"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | neelam                        | str                 |
-      | entity.version_major | 0                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        |                               | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       | *                             | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
 
     When "uE2" creates data for "uri_validate"
     And sets "validation_type" to "<validation_type>"
     And sets "uuri" to previous response data
+    And sets "uuri_2" to "/A410/3/1003"
     And sends "uri_validate" request
 
     Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
 
     Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | True        |                            |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Invalid RPC response type. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Invalid RPC method uri. Uri should be the method to be called, or method from response. |
-      | is_empty        | False       |                            |
+      | validation_type             | bool_result |
+      | matches                     | True        |
 
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-
-  Scenario Outline: UUri validate filled UAuthority and partially filled UEntity, but no UEntity name
+  Scenario Outline: UUri matches when wildcard entity_id equal to //authority/A410/3/1003
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input "//VCU.myvin//1"
+    When sends a "uri_deserialize" request with serialized input "//authority/FFFF/3/1003"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       | VCU.myvin                     | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          |                               | str                 |
-      | entity.version_major | 1                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        |                               | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       | authority                     | str                 |
+      | ue_id                | 65535                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
 
     When "uE2" creates data for "uri_validate"
     And sets "validation_type" to "<validation_type>"
     And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
     And sends "uri_validate" request
 
     Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
 
     Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | False       | Uri is missing uSoftware Entity name. |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Uri is missing uSoftware Entity name. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Uri is missing uSoftware Entity name. |
-      | is_empty        | False       |                            |
+      | validation_type             | bool_result |
+      | matches                     | True        |
 
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-
-  Scenario Outline: UUri validate just UEntity name and version major
+  Scenario Outline: UUri matches when matching entity instance equal to //authority/2A410/3/1003
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input "/hartley/1000"
+    When sends a "uri_deserialize" request with serialized input "//authority/A410/3/1003"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | hartley                       | str                 |
-      | entity.version_major | 1000                          | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        |                               | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       | authority                     | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
 
     When "uE2" creates data for "uri_validate"
     And sets "validation_type" to "<validation_type>"
     And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/2A410/3/1003"
     And sends "uri_validate" request
 
     Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
 
     Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | True        |                            |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Invalid RPC response type. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Invalid RPC method uri. Uri should be the method to be called, or method from response. |
-      | is_empty        | False       |                            |
+      | validation_type             | bool_result |
+      | matches                     | True        |
 
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-
-  Scenario Outline: UUri validate random string 2
+  Scenario Outline: UUri matches when wildcard entity version equal to //authority/A410/3/1003
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input ":"
+    When sends a "uri_deserialize" request with serialized input "//authority/A410/FF/1003"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          |                               | str                 |
-      | entity.version_major | 0                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        |                               | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       | authority                     | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 255                           | int                 |
+      | resource_id          | 4099                          | int                 |
 
     When "uE2" creates data for "uri_validate"
     And sets "validation_type" to "<validation_type>"
     And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
     And sends "uri_validate" request
 
     Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
 
     Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | False       | Uri is missing uSoftware Entity name. |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Uri is missing uSoftware Entity name. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Uri is missing uSoftware Entity name. |
-      | is_empty        | False       |                            |
+      | validation_type             | bool_result |
+      | matches                     | True        |
 
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-
-  Scenario Outline: UUri validate random string 3
+  Scenario Outline: UUri matches when wildcard resource id equal to //authority/A410/3/1003
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input "///"
+    When sends a "uri_deserialize" request with serialized input "//authority/A410/3/FFFF"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          |                               | str                 |
-      | entity.version_major | 0                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        |                               | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       | authority                     | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 65535                         | int                 |
 
     When "uE2" creates data for "uri_validate"
     And sets "validation_type" to "<validation_type>"
     And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
     And sends "uri_validate" request
 
     Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
 
     Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | False       | Uri is missing uSoftware Entity name. |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Uri is missing uSoftware Entity name. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | False       | Uri is missing uSoftware Entity name. |
-      | is_empty        | False       |                            |
-
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-
-  # Tests UriValidator.validate_rpc_method()
-  Scenario Outline: UUri validate rpc_method filled entity name, resource name and instance
-    Given "uE1" creates data for "uri_deserialize"
-
-    When sends a "uri_deserialize" request with serialized input "/neelam//rpc.echo"
-
-    Then receives json with following set fields:
-      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | neelam                        | str                 |
-      | entity.version_major | 0                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        | rpc                           | str                 |
-      | resource.instance    | echo                          | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
-
-    When "uE2" creates data for "uri_validate"
-    And sets "validation_type" to "<validation_type>"
-    And sets "uuri" to previous response data
-    And sends "uri_validate" request
-
-    Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
-
-    Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | True        |                            |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Invalid RPC response type. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | True        |                            |
-      | is_empty        | False       |                            |
-
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-
-
-  Scenario Outline: UUri validate rpc_method as rpc methods 2
-    Given "uE1" creates data for "uri_deserialize"
-
-    When sends a "uri_deserialize" request with serialized input "//bo.cloud/petapp/1/rpc.response"
-
-    Then receives json with following set fields:
-      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       | bo.cloud                      | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | petapp                        | str                 |
-      | entity.version_major | 1                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        | rpc                           | str                 |
-      | resource.instance    | response                      | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
-
-    When "uE2" creates data for "uri_validate"
-    And sets "validation_type" to "<validation_type>"
-    And sets "uuri" to previous response data
-    And sends "uri_validate" request
-
-    Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
-
-    Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | True        |                            |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Invalid RPC response type. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | True        |                            |
-      | is_empty        | False       |                            |
-
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | True        |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | True        |                            |
-
+      | validation_type             | bool_result |
+      | matches                     | True        |
   
-   Scenario Outline: UUri validate rpc_method as rpc methods 3
+  Scenario Outline: UUri doesn't match when uppercase authorty not equal to //authority/A410/3/1003
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input "/petapp//rpc.response"
+    When sends a "uri_deserialize" request with serialized input "//Authority/A410/3/1003"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | petapp                        | str                 |
-      | entity.version_major | 0                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        | rpc                           | str                 |
-      | resource.instance    | response                      | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       | Authority                     | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
 
     When "uE2" creates data for "uri_validate"
     And sets "validation_type" to "<validation_type>"
     And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
     And sends "uri_validate" request
 
     Then receives validation result as "<bool_result>"
-    And  receives validation message as "<message_result>"
 
     Examples:
-      | validation_type | bool_result | message_result             |
-      | uri             | True        |                            |
-      # False for now bc default message="" is set, but should be True
-      | rpc_response    | False       | Invalid RPC response type. |
-      # rpc_method: resource.name == "rpc", resource.instance != "" or id < 32768
-      | rpc_method      | True        |                            |
-      | is_empty        | False       |                            |
+      | validation_type             | bool_result |
+      | matches                     | False       |
 
-      # is_resolved == is long formed (filled names in uauth, enti, & resrc) and micro formed (existing ids in uauth, enti, & resrc )
-      | is_resolved     | False       |                            |
-      | is_micro_form   | True        |                            |
-      | is_long_form    | False       |                            |
-
-  Scenario: UUri validate rpc_method, even tho resource.instance == "", resource id < 32768 so still rpc_method
+  Scenario Outline: UUri doesn't match when local pattern match isn't equal to //authority/A410/3/1003
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input "/petapp/1/rpc"
+    When sends a "uri_deserialize" request with serialized input "/A410/3/1003"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          | petapp                        | str                 |
-      | entity.version_major | 1                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        | rpc                           | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       |                               | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
 
     When "uE2" creates data for "uri_validate"
-    And sets "validation_type" to "rpc_method"
+    And sets "validation_type" to "<validation_type>"
     And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
     And sends "uri_validate" request
 
-    Then receives validation result as "True"
-    And  receives validation message as ""
+    Then receives validation result as "<bool_result>"
 
-
-  # Below is False, BUT should be TRUE! fix until new UUri signature is implemented by June 10ish, 2024
-  Scenario: UUri validate is_rpc_response given inputs 
+    Examples:
+      | validation_type             | bool_result |
+      | matches                     | False       |
+  
+  Scenario Outline: UUri doesn't match when different authority to //authority/A410/3/1003
     Given "uE1" creates data for "uri_deserialize"
 
-    When sends a "uri_deserialize" request with serialized input ""
+    When sends a "uri_deserialize" request with serialized input "//other/A410/3/1003"
 
     Then receives json with following set fields:
       | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
-      | authority.ip         |                               | bytes               |
-      | authority.name       |                               | str                 |
-      | entity.id            | 0                             | int                 |
-      | entity.name          |                               | str                 |
-      | entity.version_major | 0                             | int                 |
-      | entity.version_minor | 0                             | int                 |
-      | resource.name        |                               | str                 |
-      | resource.instance    |                               | str                 |
-      | resource.message     |                               | str                 |
-      | resource.id          | 0                             | int                 |
+      | authority_name       | other                         | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
 
     When "uE2" creates data for "uri_validate"
-    And sets "validation_type" to "is_empty"
+    And sets "validation_type" to "<validation_type>"
     And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
     And sends "uri_validate" request
 
-    Then receives validation result as "False"
-    And  receives validation message as ""
+    Then receives validation result as "<bool_result>"
 
+    Examples:
+      | validation_type             | bool_result |
+      | matches                     | False       |
+  
+  Scenario Outline: UUri doesn't match when different entity id to //authority/A410/3/1003
+    Given "uE1" creates data for "uri_deserialize"
+
+    When sends a "uri_deserialize" request with serialized input "//authority/45/3/1003"
+
+    Then receives json with following set fields:
+      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
+      | authority_name       | authority                     | str                 |
+      | ue_id                | 69                            | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
+
+    When "uE2" creates data for "uri_validate"
+    And sets "validation_type" to "<validation_type>"
+    And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
+    And sends "uri_validate" request
+
+    Then receives validation result as "<bool_result>"
+
+    Examples:
+      | validation_type             | bool_result |
+      | matches                     | False       |
+
+  Scenario Outline: UUri doesn't match when different entity instance to //authority/A410/3/1003
+    Given "uE1" creates data for "uri_deserialize"
+
+    When sends a "uri_deserialize" request with serialized input "//authority/30A410/3/1003"
+
+    Then receives json with following set fields:
+      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
+      | authority_name       | authority                     | str                 |
+      | ue_id                | 3187728                       | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 4099                          | int                 |
+
+    When "uE2" creates data for "uri_validate"
+    And sets "validation_type" to "<validation_type>"
+    And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
+    And sends "uri_validate" request
+
+    Then receives validation result as "<bool_result>"
+
+    Examples:
+      | validation_type             | bool_result |
+      | matches                     | False       |
+  
+  Scenario Outline: UUri doesn't match when different entity version to //authority/A410/3/1003
+    Given "uE1" creates data for "uri_deserialize"
+
+    When sends a "uri_deserialize" request with serialized input "//authority/A410/1/1003"
+
+    Then receives json with following set fields:
+      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
+      | authority_name       | authority                     | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 1                             | int                 |
+      | resource_id          | 4099                          | int                 |
+
+    When "uE2" creates data for "uri_validate"
+    And sets "validation_type" to "<validation_type>"
+    And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
+    And sends "uri_validate" request
+
+    Then receives validation result as "<bool_result>"
+
+    Examples:
+      | validation_type             | bool_result |
+      | matches                     | False       |
+
+  Scenario Outline: UUri doesn't match when different resource id to //authority/A410/3/1003
+    Given "uE1" creates data for "uri_deserialize"
+
+    When sends a "uri_deserialize" request with serialized input "//authority/A410/3/ABCD"
+
+    Then receives json with following set fields:
+      | protobuf_field_names | protobuf_field_values         | protobuf_field_type |
+      | authority_name       | authority                     | str                 |
+      | ue_id                | 42000                         | int                 |
+      | ue_version_major     | 3                             | int                 |
+      | resource_id          | 43981                         | int                 |
+
+    When "uE2" creates data for "uri_validate"
+    And sets "validation_type" to "<validation_type>"
+    And sets "uuri" to previous response data
+    And sets "uuri_2" to "//authority/A410/3/1003"
+    And sends "uri_validate" request
+
+    Then receives validation result as "<bool_result>"
+
+    Examples:
+      | validation_type             | bool_result |
+      | matches                     | False       |

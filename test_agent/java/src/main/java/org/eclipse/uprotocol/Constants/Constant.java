@@ -26,7 +26,7 @@ package org.eclipse.uprotocol.Constants;
 
 public class Constant {
     public static final String TEST_MANAGER_IP = "127.0.0.5";
-    public static final int TEST_MANAGER_PORT = 12345;
+    public static final int TEST_MANAGER_PORT = 33333;
     public static final int BYTES_MSG_LENGTH = 32767;
 
 }
