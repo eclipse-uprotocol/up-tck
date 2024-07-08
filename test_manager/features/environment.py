@@ -19,6 +19,7 @@ import sys
 from threading import Thread
 
 import git
+from behave.model import Scenario
 from behave.runner import Context
 
 repo = git.Repo(".", search_parent_directories=True)
@@ -38,6 +39,8 @@ def before_all(context):
     :return: None
     """
 
+    Scenario.continue_after_failed_step = True
+
     context.transport = {}
     context.ues = {}
     context.dispatcher = {}
@@ -45,7 +48,7 @@ def before_all(context):
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
 
-    test_manager = TestManager(context, "127.0.0.5", 12345)
+    test_manager = TestManager(context, "127.0.0.5", 33333)
     thread = Thread(target=test_manager.listen_for_incoming_events)
     thread.start()
     context.tm = test_manager

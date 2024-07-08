@@ -30,8 +30,7 @@ import parse
 from behave import given, register_type, then, when
 from behave.runner import Context
 from hamcrest import assert_that, equal_to
-from uprotocol.proto.uattributes_pb2 import UMessageType, UPriority
-from uprotocol.proto.ustatus_pb2 import UCode
+from uprotocol.v1.ucode_pb2 import UCode
 
 PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
@@ -99,18 +98,15 @@ def cast(value: str, data_type: str, jsonable: bool = True) -> Union[str, int, b
     @return Correctly typed value
     """
 
-    if "UPriority" in value:
-        enum_member: str = value.split(".")[1]
-        value = getattr(UPriority, enum_member)
-    elif "UMessageType" in value:
-        enum_member: str = value.split(".")[1]
-        value = getattr(UMessageType, enum_member)
-    elif "UCode" in value:
+    if "UCode" in value:
         enum_member: str = value.split(".")[1]
         value = getattr(UCode, enum_member)
 
     if data_type == "int":
-        value = int(value)
+        try:
+            value = int(value)
+        except ValueError:
+            value = None
     elif data_type == "str":
         pass
     elif data_type == "bool":
