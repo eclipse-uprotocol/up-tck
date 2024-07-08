@@ -4,5 +4,10 @@
         "ue1": ["python", "java"],
         "ue2": ["python", "java"],
         "transports": ["socket"]
+    },
+    "uuid_validator": {
+        "path": "validators",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
     }
 }
