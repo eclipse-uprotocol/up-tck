@@ -263,7 +263,6 @@ def handle_uri_validate_command(json_msg: Dict[str, Any]):
         "is_empty": UriValidator.is_empty,
         "is_rpc_method": UriValidator.is_rpc_method,
         "is_rpc_response": UriValidator.is_rpc_response,
-        "is_notification_destination": UriValidator.is_notification_destination,
         "is_default_resource_id": UriValidator.is_default_resource_id,
         "is_topic": UriValidator.is_topic,
         "matches": UriValidator.matches,
