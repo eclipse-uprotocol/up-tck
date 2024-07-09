@@ -1,4 +1,9 @@
 {
+    "uattributes_validator": {
+        "path": "validators",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
+    },
     "uri_validator": {
         "path": "validators",
         "ue1": ["python", "java"],

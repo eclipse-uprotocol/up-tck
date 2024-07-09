@@ -359,7 +359,7 @@ def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
     val_type = data.get("validation_type")
     if data.get("attributes"):
         attributes = dict_to_proto(data["attributes"], UAttributes())
-        if attributes.sink.authority.name == "default":
+        if attributes.sink.authority_name == "default":
             attributes.sink.CopyFrom(UUri())
     else:
         attributes = UAttributes()
