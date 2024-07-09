@@ -52,7 +52,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -88,13 +90,13 @@ public class TestAgent {
         }
     }
 
-    public static void processMessage(Map<String, Object> jsonData) throws IOException {
+    public static void processMessage(Map<String, Object> jsonData) throws InterruptedException, ExecutionException {
         String action = (String) jsonData.get("action");
         if (actionHandlers.containsKey(action)) {
-            UStatus status = (UStatus) actionHandlers.get(action).handle(jsonData);
+            CompletableFuture<UStatus> status = (CompletableFuture<UStatus>) actionHandlers.get(action).handle(jsonData);
             if (status != null) {
                 String testID = (String) jsonData.get("test_id");
-                sendToTestManager(status, action, testID);
+                sendToTestManager(status.get(), action, testID);
             }
         }
     }
@@ -484,15 +486,23 @@ public class TestAgent {
 
     }
 
-    public static void main(String[] args) throws IOException {
-        Thread receiveThread = new Thread(TestAgent::receiveFromTM);
+    public static void main(String[] args) {
+        Thread receiveThread = new Thread(() -> {
+            try {
+                receiveFromTM();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+        });
         receiveThread.start();
         JSONObject obj = new JSONObject();
         obj.put("SDK_name", "java");
         sendToTestManager(obj, "initialize");
     }
 
-    public static void receiveFromTM() {
+    public static void receiveFromTM() throws InterruptedException, ExecutionException {
         try {
             while (true) {
                 byte[] buffer = new byte[Constant.BYTES_MSG_LENGTH];

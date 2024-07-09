@@ -45,3 +45,6 @@ If you would like to run any tests with the Java Test Agent, follow these instru
 === Running BDD Tests
 
 For information about running BDD Tests, refer to  https://github.com/eclipse-uprotocol/up-tck/blob/main/test_manager/README.adoc[BDD/README.adoc]
+
+=== Sample use cases
+image::screenshots/InteropTestingSDK.drawio.svg[]

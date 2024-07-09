@@ -4,4 +4,4 @@
         "ue1": ["python"],
         "transports": ["socket"]
     }
-}
+]

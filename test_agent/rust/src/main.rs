@@ -27,15 +27,15 @@ use std::{sync::Arc, thread};
 
 use crate::constants::{TEST_MANAGER_ADDR, ZENOH_TRANSPORT};
 use testagent::{ListenerHandlers, SocketTestAgent};
-use up_rust::{Number, UAuthority, UEntity, UTransport};
-use utransport_socket::UTransportSocket;
+use up_rust::UTransport;
 mod testagent;
 use clap::Parser;
 use log::{debug, error};
 use std::net::TcpStream;
+use std::str::FromStr;
 use tokio::runtime::Runtime;
-use up_client_zenoh::UPClientZenoh;
-use zenoh::config::Config;
+use up_transport_zenoh::UPClientZenoh;
+use zenoh::config::{Config, EndPoint};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -57,22 +57,21 @@ fn connect_to_socket(addr: &str, port: u16) -> Result<TcpStream, Box<dyn std::er
 }
 
 async fn create_zenoh_u_transport() -> Box<dyn UTransport> {
-    let uauthority = UAuthority {
-        name: Some("MyAuthName".to_string()),
-        number: Some(Number::Id(vec![1, 2, 3, 4])),
-        ..Default::default()
-    };
-    let uentity = UEntity {
-        name: "default.entity".to_string(),
-        id: Some(u32::from(rand::random::<u16>())),
-        version_major: Some(1),
-        version_minor: None,
-        ..Default::default()
-    };
     dbg!("zenoh transport created successfully");
 
+    let mut zenoh_config = Config::default();
+
+    // Specify the address to listen on using IPv4
+    let ipv4_endpoint = EndPoint::from_str("tcp/0.0.0.0:7445");
+
+    // Add the IPv4 endpoint to the Zenoh configuration
+    zenoh_config
+        .listen
+        .endpoints
+        .push(ipv4_endpoint.expect("FAIL"));
+    // TODO: Add error handling if we fail to create a UPClientZenoh
     Box::new(
-        UPClientZenoh::new(Config::default(), uauthority, uentity)
+        UPClientZenoh::new(zenoh_config, "windows".to_string())
             .await
             .unwrap(),
     )
@@ -83,15 +82,12 @@ async fn connect_and_receive(transport_name: &str) -> Result<(), Box<dyn std::er
     let ta_to_tm_socket = connect_to_socket(TEST_MANAGER_ADDR.0, TEST_MANAGER_ADDR.1)?;
     let foo_listener_socket_to_tm = connect_to_socket(TEST_MANAGER_ADDR.0, TEST_MANAGER_ADDR.1)?;
 
-    #[allow(clippy::single_match_else)]
+    #[allow(clippy::match_same_arms)]
     // We allow this because we'll have further transports we want to support and match works well
     // for that
     let u_transport: Box<dyn UTransport> = match transport_name {
         ZENOH_TRANSPORT => create_zenoh_u_transport().await,
-        _ => {
-            debug!("Socket transport created successfully");
-            Box::new(UTransportSocket::new()?)
-        }
+        _ => create_zenoh_u_transport().await,
     };
 
     let foo_listener = Arc::new(ListenerHandlers::new(foo_listener_socket_to_tm));

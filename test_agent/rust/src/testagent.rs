@@ -22,7 +22,8 @@
 use async_trait::async_trait;
 use log::{debug, error};
 use serde_json::Value;
-use up_rust::{Data, UCode, UListener};
+//use up_rust::{Data, UCode, UListener};
+use up_rust::{UCode, UListener};
 use up_rust::{UMessage, UStatus, UTransport};
 
 use std::io::{Read, Write};
@@ -67,48 +68,15 @@ impl UListener for ListenerHandlers {
     async fn on_receive(&self, msg: UMessage) {
         debug!("OnReceive called");
 
-        let data_payload = match &msg.payload.data {
-            Some(data) => {
-                // Now we have access to the Data enum
-                match data {
-                    Data::Reference(reference) => reference.to_string(),
-                    Data::Value(value) => {
-                        let value_str = String::from_utf8_lossy(value);
-                        value_str.to_string()
-                    }
-                    _ => "none".into(),
-                }
-            }
-            None => {
-                debug!("No data available");
-                "none".into()
-            }
+        let value = match &msg.payload {
+            Some(bytes) => String::from_utf8_lossy(bytes).to_string(),
+            None => "default_value".to_string(),
         };
 
-        let Ok(value_str) = serde_json::to_string(
-            &[("value".to_string(), data_payload.to_string())]
-                .iter()
-                .cloned()
-                .collect::<HashMap<_, _>>(),
-        ) else {
-            error!("Issue in converting to payload");
-            return;
-        };
+        // Create a HashMap and insert the key-value pair
+        let mut data = HashMap::new();
+        data.insert("payload".to_string(), value);
 
-        let Ok(payload_str) = serde_json::to_string(
-            &[("payload".to_string(), value_str.to_string())]
-                .iter()
-                .cloned()
-                .collect::<HashMap<_, _>>(),
-        ) else {
-            error!("Issue in converting to payload");
-            return;
-        };
-
-        let data = [("data".to_string(), payload_str.to_string())]
-            .iter()
-            .cloned()
-            .collect::<HashMap<_, _>>();
         let json_message = JsonResponseData {
             action: constants::RESPONSE_ON_RECEIVE.to_owned(),
             data,
@@ -179,7 +147,7 @@ impl SocketTestAgent {
         };
         let u_uuri = wrapper_uuri.0;
         utransport
-            .register_listener(u_uuri, Arc::clone(&self.clone().listener))
+            .register_listener(&u_uuri, None, Arc::clone(&self.clone().listener))
             .await
     }
 
@@ -198,7 +166,7 @@ impl SocketTestAgent {
         };
         let u_uuri = wrapper_uuri.0;
         utransport
-            .unregister_listener(u_uuri, Arc::clone(&self.clone().listener))
+            .unregister_listener(&u_uuri, None, Arc::clone(&self.clone().listener))
             .await
     }
 

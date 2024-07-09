@@ -43,6 +43,7 @@ def create_command(context, filepath_from_root_repo: str, transport_to_send: str
 
     full_path = os.path.abspath(os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo)
 
+    context.logger.info(filepath_from_root_repo)
     if filepath_from_root_repo.endswith(".jar"):
         command.append("java")
         command.append("-jar")
@@ -189,6 +190,7 @@ def create_sdk_data(context, sdk_name: str, command: str):
     if "rust" in sdk_name and command == "send":
         context.rust_sender = True
 
+    context.logger.info(f"Created {sdk_name} process...")
     context.ue = sdk_name
     context.action = command
 
