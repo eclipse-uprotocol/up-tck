@@ -1,38 +1,57 @@
-{
-    "uri_deserializer": {
+[
+    {
+        "feature_name" : "register_and_unregister",
+        "path": "transport_rpc",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "register_and_unregister",
+        "path": "transport_rpc",
+        "ue1": ["rust"],
+        "transports": ["zenoh"]
+    },
+    {
+        "feature_name" : "uri_deserializer",
         "path": "serializers",
         "ue1": ["python", "java"],
         "transports": ["socket"]
     },
-    "uri_serializer": {
+    {
+        "feature_name" : "uri_serializer",
         "path": "serializers",
         "ue1": ["python", "java"],
         "transports": ["socket"]
     },
-    "uuid_deserializer": {
+    {
+        "feature_name" : "uuid_serializer",
         "path": "serializers",
         "ue1": ["python", "java"],
         "transports": ["socket"]
     },
-    "uuid_serializer": {
+    {
+        "feature_name" : "uuid_deserializer",
         "path": "serializers",
         "ue1": ["python", "java"],
         "transports": ["socket"]
     },
-    "uattributes_validator": {
+    {
+        "feature_name" : "uattributes_validator",
         "path": "validators",
         "ue1": ["python", "java"],
         "transports": ["socket"]
     },
-    "uri_validator": {
+    {
+        "feature_name" : "uri_validator",
         "path": "validators",
         "ue1": ["python", "java"],
         "ue2": ["python", "java"],
         "transports": ["socket"]
     },
-    "uuid_validator": {
+    {
+        "feature_name" : "uuid_validator",
         "path": "validators",
         "ue1": ["python", "java"],
         "transports": ["socket"]
     }
-}
+]

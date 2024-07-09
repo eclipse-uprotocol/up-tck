@@ -29,7 +29,6 @@ import org.eclipse.uprotocol.transport.builder.UMessageBuilder;
 import org.eclipse.uprotocol.uri.validator.UriValidator;
 import org.eclipse.uprotocol.communication.CallOptions;
 import org.eclipse.uprotocol.v1.*;
-import org.eclipse.uprotocol.validation.ValidationResult;
 
 import java.io.IOException;
 import java.io.InputStream;

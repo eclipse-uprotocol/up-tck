@@ -29,7 +29,6 @@ from uprotocol.communication.upayload import UPayload
 from uprotocol.transport.builder.umessagebuilder import UMessageBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
-from uprotocol.uri.validator.urivalidator import UriValidator
 from uprotocol.uuid.serializer.uuidserializer import UuidSerializer
 from uprotocol.v1.uattributes_pb2 import (
     UMessageType,
@@ -162,9 +161,6 @@ class SocketUTransport(UTransport, RpcClient):
         Registers a listener for the specified topic/method URI.
         """
 
-        status = UriValidator.validate(source_filter)
-        if status.is_failure():
-            return status.to_status()
         uri: bytes = source_filter.SerializeToString()
         self.uri_to_listener[uri].append(listener)
         return UStatus(code=UCode.OK, message="OK")
@@ -174,9 +170,6 @@ class SocketUTransport(UTransport, RpcClient):
         Unregisters a listener for the specified topic URI.
         """
 
-        status = UriValidator.validate(source_filter)
-        if status.is_failure():
-            return status.to_status()
         uri: bytes = source_filter.SerializeToString()
 
         listeners = self.uri_to_listener.get(uri, [])
