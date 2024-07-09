@@ -376,13 +376,14 @@ def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expec
     try:
         expected_value = expected_value.strip()
         context.logger.info(f"getting on_receive_msg from {sender_sdk_name}")
+        if sender_sdk_name == "uE1":
+            sender_sdk_name = context.config.userdata["uE1"]
         on_receive_msg: Dict[str, Any] = context.tm.get_onreceive(sender_sdk_name)
         context.logger.info(f"got on_receive_msg:  {on_receive_msg}")
         if sender_sdk_name == "rust":
-            val = on_receive_msg["data"]["data"]
+            val = on_receive_msg["data"]["payload"]
             rec_field_value = bytes(
-                val.split("value")[1]
-                .replace('"', "")
+                val.replace('"', "")
                 .replace(":", "")
                 .replace("\\", "")
                 .replace("x", "\\x")

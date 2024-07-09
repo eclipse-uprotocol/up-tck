@@ -12,6 +12,20 @@
         "transports": ["zenoh"]
     },
     {
+        "feature_name" : "register_and_send",
+        "path": "transport_rpc",
+        "ue1": ["python", "java"],
+        "ue2": ["python", "java"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "register_and_send",
+        "path": "transport_rpc",
+        "ue1": ["rust"],
+        "ue2": ["rust"],
+        "transports": ["zenoh"]
+    },
+    {
         "feature_name" : "uri_deserializer",
         "path": "serializers",
         "ue1": ["python", "java"],
