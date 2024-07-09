@@ -47,7 +47,6 @@ Feature: URI Validation
         | is_empty                    | True        |
         | is_rpc_method               | False       |
         | is_rpc_response             | False       |
-        | is_notification_destination | False       |
         | is_default_resource_id      | False       |
         | is_topic                    | False       |
 
@@ -76,7 +75,6 @@ Feature: URI Validation
         | is_empty                    | False       |
         | is_rpc_method               | False       |
         | is_rpc_response             | True        |
-        | is_notification_destination | True        |
         | is_default_resource_id      | True        |
         | is_topic                    | False       |
   

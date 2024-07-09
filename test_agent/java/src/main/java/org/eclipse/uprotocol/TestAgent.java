@@ -209,9 +209,6 @@ public class TestAgent {
             case "is_rpc_response":
                 validatorFunc = UriValidator::isRpcResponse;
                 break;
-            case "is_notification_destination":
-                validatorFunc = UriValidator::isRpcResponse;
-                break;
             case "is_default_resource_id":
                 validatorFunc = UriValidator::isDefaultResourceId;
                 break;
