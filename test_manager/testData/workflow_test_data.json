@@ -1,5 +1,6 @@
-{
-    "uuid_validator": {
+[
+    {
+        "feature_name" : "uuid_validator",
         "path": "validators",
         "ue1": ["python"],
         "transports": ["socket"]
