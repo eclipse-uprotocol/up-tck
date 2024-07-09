@@ -3,10 +3,5 @@
         "path": "validators",
         "ue1": ["python"],
         "transports": ["socket"]
-    },
-    "uuid_validator": {
-        "path": "validators",
-        "ue1": ["python", "java"],
-        "transports": ["socket"]
     }
 }
