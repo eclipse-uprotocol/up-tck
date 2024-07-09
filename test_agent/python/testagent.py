@@ -170,6 +170,7 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
                     except Exception:
                         pass
 
+                    logger.info(f"setting {field_name} to {value}")
                     setattr(proto_obj, field_name, value)
         return proto_obj
 
@@ -216,7 +217,7 @@ def handle_invoke_method_command(json_msg):
 
 def handle_serialize_uuri(json_msg: Dict[str, Any]):
     uri: UUri = dict_to_proto(json_msg["data"], UUri())
-    serialized_uuri: str = UriSerializer.serialize(uri)
+    serialized_uuri: str = UriSerializer.serialize(uri).lower()
     send_to_test_manager(
         serialized_uuri,
         actioncommands.SERIALIZE_URI,
@@ -294,30 +295,6 @@ def handle_uri_validate_command(json_msg: Dict[str, Any]):
             actioncommands.VALIDATE_URI,
             received_test_id=json_msg["test_id"],
         )
-
-
-def handle_serialize_uri_command(json_msg: Dict[str, Any]):
-    uri: UUri = dict_to_proto(json_msg["data"], UUri())
-    serialized_uuri: bytes = UriSerializer.serialize(uri)
-    # Use "iso-8859-1" to decode bytes -> str, so no UnicodeDecodeError if "utf-8" decode
-    serialized_uuri_json_packed: str = serialized_uuri.decode("iso-8859-1")
-    send_to_test_manager(
-        serialized_uuri_json_packed,
-        actioncommands.MICRO_SERIALIZE_URI,
-        received_test_id=json_msg["test_id"],
-    )
-
-
-def handle_deserialize_uri_command(json_msg: Dict[str, Any]):
-    sent_micro_serialized_uuri: str = json_msg["data"]
-    # Incoming micro serialized uuri is sent as an "iso-8859-1" str
-    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("iso-8859-1")
-    uuri: UUri = UriSerializer.deserialize(micro_serialized_uuri)
-    send_to_test_manager(
-        uuri,
-        actioncommands.MICRO_DESERIALIZE_URI,
-        received_test_id=json_msg["test_id"],
-    )
 
 
 def handle_uuid_validate_command(json_msg):

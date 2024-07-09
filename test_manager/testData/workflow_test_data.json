@@ -1,4 +1,14 @@
 {
+    "uri_deserializer": {
+        "path": "serializers",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
+    },
+    "uri_serializer": {
+        "path": "serializers",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
+    },
     "uattributes_validator": {
         "path": "validators",
         "ue1": ["python", "java"],

@@ -273,10 +273,9 @@ def verify_uri_received_properties(context):
     # Iterate over the rows of the table and verify the received properties
     int_type_fields = set(
         [
-            "entity.id",
-            "entity.version_major",
-            "entity.version_minor",
-            "resource.id",
+            "ue_id",
+            "ue_version_major",
+            "resource_id",
         ]
     )
     bytes_type_fields = set(["authority.id", "authority.ip"])
@@ -295,7 +294,7 @@ def verify_uri_received_properties(context):
                 assert_that(deserialized_uri[field], equal_to(expected_value))
             else:
                 assert_that(
-                    len(deserialized_uri[field]) > 0,
+                    len(str(deserialized_uri[field])) > 0,
                     equal_to(len(expected_value) > 0),
                 )
 
