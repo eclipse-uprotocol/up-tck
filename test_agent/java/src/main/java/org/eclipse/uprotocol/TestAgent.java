@@ -74,8 +74,8 @@ public class TestAgent {
         actionHandlers.put(ActionCommands.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
         actionHandlers.put(ActionCommands.VALIDATE_URI, TestAgent::handleValidateUriCommand);
         actionHandlers.put(ActionCommands.VALIDATE_UUID, TestAgent::handleValidateUuidCommand);
-        actionHandlers.put(ActionCommands.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
-        actionHandlers.put(ActionCommands.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
+        actionHandlers.put(ActionCommands.SERIALIZE_UUID, TestAgent::handleSerializeUuidCommand);
+        actionHandlers.put(ActionCommands.DESERIALIZE_UUID, TestAgent::handleDeserializeUuidCommand);
         actionHandlers.put(ActionCommands.VALIDATE_UATTRIBUTES, TestAgent::handleUAttributesValidateCommand);
     }
 
@@ -451,7 +451,7 @@ public class TestAgent {
         return null;
     }
 
-    private static Object handleLongSerializeUuidCommand(Map<String, Object> jsonData) {
+    private static Object handleSerializeUuidCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         UUID uuid = (UUID) ProtoConverter.dictToProto(data, UUID.newBuilder());
         String serializedUUid = UuidSerializer.serialize(uuid);
@@ -460,7 +460,7 @@ public class TestAgent {
         return null;
     }
 
-    private static Object handleLongDeserializeUuidCommand(Map<String, Object> jsonData) {
+    private static Object handleDeserializeUuidCommand(Map<String, Object> jsonData) {
         UUID uuid = UuidSerializer.deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uuid, ActionCommands.DESERIALIZE_UUID, testID);
