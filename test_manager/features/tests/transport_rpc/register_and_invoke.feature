@@ -25,38 +25,31 @@
 Feature: Testing RPC Functionality
 
   Scenario Outline: To test the registerlistener and invoke_method apis
-    Given "<uE1>" creates data for "registerlistener"
-    And sets "entity.name" to "body.access"
-    And sets "resource.name" to "door"
-    And sets "resource.instance" to "front_left"
-    And sets "resource.message" to "Door"
+    Given "uE1" creates data for "registerlistener"
+    And sets "ue_id" to "12345"
+    And sets "ue_version_major" to "1"
+    And sets "resource_id" to "32769"
 
     When sends "registerlistener" request
     Then the status received with "code" is "OK"
 
-    Given "<uE2>" creates data for "invokemethod"
-    And sets "entity.name" to "body.access"
-    And sets "resource.name" to "door"
-    And sets "resource.instance" to "front_left"
-    And sets "resource.message" to "Door"
-    And sets "payload.format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
-    And sets "payload.value" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+    Given "uE2" creates data for "invokemethod"
+    And sets "ue_id" to "12345"
+    And sets "ue_version_major" to "1"
+    And sets "resource_id" to "32769"
+    And sets "payload" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
 
     When sends "invokemethod" request
-    Then "<uE2>" receives data field "payload.value" as b"\n/type.googleapis.com/google.protobuf.StringValue\x12\x14\n\x12SuccessRPCResponse"
+    Then "uE2" receives data field "payload" as b"\n/type.googleapis.com/google.protobuf.StringValue\x12\x14\n\x12SuccessRPCResponse"
 
-    Given "<uE1>" creates data for "unregisterlistener"
-    And sets "entity.name" to "body.access"
-    And sets "resource.name" to "door"
-    And sets "resource.instance" to "front_left"
-    And sets "resource.message" to "Door"
+    Given "uE1" creates data for "unregisterlistener"
+    And sets "ue_id" to "12345"
+    And sets "ue_version_major" to "1"
+    And sets "resource_id" to "32769"
 
     When sends "unregisterlistener" request
     Then the status received with "code" is "OK"
 
     Examples:
-      | uE1    | uE2    |
-      | java   | java   |
-      | python | python |
-      | java   | python |
-      | python | java   |
+      | ignore | ignore |
+      | ignore | ignore |

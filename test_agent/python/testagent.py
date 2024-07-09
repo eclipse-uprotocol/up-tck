@@ -66,20 +66,17 @@ class SocketUListener(UListener):
     def on_receive(self, umsg: UMessage) -> None:
         logger.info("Listener received")
         if umsg.attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
-            attributes = UMessageBuilder.response(
+            any_obj = any_pb2.Any()
+            any_obj.Pack(StringValue(value="SuccessRPCResponse"))
+            payload = UPayload(
+                data=any_obj.SerializeToString(),
+                format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY,
+            )
+            res_msg = UMessageBuilder.response(
                 umsg.attributes.sink,
                 umsg.attributes.source,
                 umsg.attributes.id,
-            ).build()
-            any_obj = any_pb2.Any()
-            any_obj.Pack(StringValue(value="SuccessRPCResponse"))
-            res_msg = UMessage(
-                attributes=attributes,
-                payload=UPayload(
-                    value=any_obj.SerializeToString(),
-                    format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY,
-                ),
-            )
+            ).build_from_upayload(payload)
             transport.send(res_msg)
         else:
             send_to_test_manager(umsg, actioncommands.RESPONSE_ON_RECEIVE)
@@ -201,8 +198,13 @@ def handle_unregister_listener_command(json_msg):
 
 def handle_invoke_method_command(json_msg):
     uri = dict_to_proto(json_msg["data"], UUri())
-    payload = dict_to_proto(json_msg["data"]["payload"], UPayload())
-    res_future: Future = transport.invoke_method(uri, payload, CallOptions(ttl=10000))
+    logger.info(json_msg["data"]["payload"])
+    value = json_msg["data"]["payload"]
+    if isinstance(value, str) and "BYTES:" in value:
+        value = value.replace("BYTES:", "")
+        value = value.encode("utf-8")
+    payload = UPayload(data=value)
+    res_future: Future = transport.invoke_method(uri, payload, CallOptions(timeout=10000))
 
     def handle_response(message):
         message: Message = message.result()

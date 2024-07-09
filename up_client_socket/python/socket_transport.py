@@ -196,7 +196,7 @@ class SocketUTransport(UTransport, RpcClient):
         response = Future()
         self.reqid_to_future[request_id.SerializeToString()] = response
         # Start a thread to count the timeout
-        timeout_thread = threading.Thread(target=timeout_counter, args=(response, request_id, options.ttl))
+        timeout_thread = threading.Thread(target=timeout_counter, args=(response, request_id, options.timeout))
         timeout_thread.start()
 
         self.send(umsg)

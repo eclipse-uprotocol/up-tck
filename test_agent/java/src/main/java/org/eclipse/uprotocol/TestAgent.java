@@ -164,13 +164,19 @@ public class TestAgent {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         // Convert data and payload to protocol buffers
         UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
-        ByteString payloadBytes = (ByteString) data.get("data");
-        UPayloadFormat format = (UPayloadFormat) data.get("format");
-        UPayload payload = new UPayload(payloadBytes, format);
-        CompletionStage<UPayload> responseFuture = transport.invokeMethod(uri, payload,
-                CallOptions.DEFAULT);
+        String payload = (String) data.get("payload");
+        ByteString value = null;
+        if (payload instanceof String && (payload).startsWith("BYTES:")) {
+            String byteString = (payload).substring(6); // Remove 'BYTES:' prefix
+            value = ByteString.copyFromUtf8(byteString);
+        } else if (payload instanceof String) {
+            value = ByteString.copyFromUtf8(payload);
+        }
+
+        UPayload setPayload = new UPayload(value, UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY);
+        CompletionStage<UPayload> responseFuture = transport.invokeMethod(uri, setPayload, CallOptions.DEFAULT);
         responseFuture.whenComplete((responseMessage, exception) -> {
-            sendToTestManager(responseMessage, ActionCommands.INVOKE_METHOD_COMMAND, (String) jsonData.get("test_id"));
+            sendToTestManager(Map.of("payload", responseMessage.data().toStringUtf8()), ActionCommands.INVOKE_METHOD_COMMAND, (String) jsonData.get("test_id"));
         });
         return null;
     }

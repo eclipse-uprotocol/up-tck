@@ -52,7 +52,7 @@ public class SocketUTransport implements UTransport, RpcClient {
     }
 
     private final Socket socket;
-    private final ConcurrentHashMap<UUID, CompletionStage<UMessage>> reqid_to_future;
+    private final ConcurrentHashMap<UUID, CompletionStage<UPayload>> reqid_to_future;
     private final ConcurrentHashMap<UUri, ArrayList<UListener>> uri_to_listener;
     private final Object lock = new Object();
 
@@ -164,10 +164,15 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param umsg The response message to handle.
      */
     private void handleResponseMessage(UMessage umsg) {
+        logger.info("HEYA");
+        logger.info(umsg.toString());
+        UPayload payload = new UPayload(umsg.getPayload(), umsg.getAttributes().getPayloadFormat());
         UUID requestId = umsg.getAttributes().getReqid();
-        CompletionStage<UMessage> responseFuture = reqid_to_future.remove(requestId);
+        logger.info(reqid_to_future.toString());
+        CompletionStage<UPayload> responseFuture = reqid_to_future.remove(requestId);
         if (responseFuture != null) {
-            responseFuture.toCompletableFuture().complete(umsg);
+            logger.info("ITSCOMPLETE");
+            responseFuture.toCompletableFuture().complete(payload);
         }
     }
 
@@ -243,14 +248,16 @@ public class SocketUTransport implements UTransport, RpcClient {
     public CompletionStage<UPayload> invokeMethod(UUri methodUri, UPayload requestPayload, CallOptions options) {
         UMessage umsg = UMessageBuilder.request(RESPONSE_URI, methodUri, options.timeout()).build(requestPayload);
         UUID requestId = umsg.getAttributes().getId();
-        CompletionStage<UMessage> responseFuture = new CompletableFuture<>();
+        CompletionStage<UPayload> responseFuture = new CompletableFuture<>();
         reqid_to_future.put(requestId, responseFuture);
 
+        logger.info("REQIDTOFUTURETIMAP");
+        logger.info(reqid_to_future.toString());
         Thread timeoutThread = new Thread(() -> timeoutCounter(responseFuture.toCompletableFuture(), requestId, options.timeout()));
         timeoutThread.start();
 
         send(umsg);
-        return CompletableFuture.completedFuture(null);
+        return responseFuture;
     }
 
     /**
@@ -260,7 +267,7 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param requestId      The request ID associated with the response.
      * @param timeout        The timeout duration.
      */
-    private void timeoutCounter(CompletableFuture<UMessage> responseFuture, UUID requestId, int timeout) {
+    private void timeoutCounter(CompletableFuture<UPayload> responseFuture, UUID requestId, int timeout) {
         try {
             Thread.sleep(timeout);
             if (!responseFuture.isDone()) {
