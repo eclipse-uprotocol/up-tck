@@ -70,8 +70,8 @@ public class TestAgent {
         actionHandlers.put(ActionCommands.REGISTER_LISTENER_COMMAND, TestAgent::handleRegisterListenerCommand);
         actionHandlers.put(ActionCommands.UNREGISTER_LISTENER_COMMAND, TestAgent::handleUnregisterListenerCommand);
         actionHandlers.put(ActionCommands.INVOKE_METHOD_COMMAND, TestAgent::handleInvokeMethodCommand);
-        actionHandlers.put(ActionCommands.SERIALIZE_URI, TestAgent::handleLongSerializeUriCommand);
-        actionHandlers.put(ActionCommands.DESERIALIZE_URI, TestAgent::handleLongDeserializeUriCommand);
+        actionHandlers.put(ActionCommands.SERIALIZE_URI, TestAgent::handleSerializeUriCommand);
+        actionHandlers.put(ActionCommands.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
         actionHandlers.put(ActionCommands.VALIDATE_URI, TestAgent::handleValidateUriCommand);
         actionHandlers.put(ActionCommands.VALIDATE_UUID, TestAgent::handleValidateUuidCommand);
         actionHandlers.put(ActionCommands.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
@@ -173,7 +173,7 @@ public class TestAgent {
         return null;
     }
 
-    private static Object handleLongSerializeUriCommand(Map<String, Object> jsonData) {
+    private static Object handleSerializeUriCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
         String serializedUuri = UriSerializer.serialize(uri);
@@ -182,7 +182,7 @@ public class TestAgent {
         return null;
     }
 
-    private static Object handleLongDeserializeUriCommand(Map<String, Object> jsonData) {
+    private static Object handleDeserializeUriCommand(Map<String, Object> jsonData) {
         UUri uri = UriSerializer.deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uri, ActionCommands.DESERIALIZE_URI, testID);
