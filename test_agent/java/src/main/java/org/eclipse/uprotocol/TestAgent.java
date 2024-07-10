@@ -66,6 +66,7 @@ public class TestAgent {
     private static final Logger logger = Logger.getLogger("JavaTestAgent");
     private static final UListener listener = TestAgent::handleOnReceive;
     private static final Gson gson = new Gson();
+    private static final UUri RESPONSE_URI;
 
     static {
         actionHandlers.put(ActionCommands.SEND_COMMAND, TestAgent::handleSendCommand);
@@ -82,8 +83,12 @@ public class TestAgent {
     }
 
     static {
+        RESPONSE_URI = UUri.newBuilder().setUeId(1).setUeVersionMajor(1).setResourceId(0).build();
+    }
+
+    static {
         try {
-            transport = new SocketUTransport();
+            transport = new SocketUTransport(RESPONSE_URI);
             clientSocket = new Socket(Constant.TEST_MANAGER_IP, Constant.TEST_MANAGER_PORT);
         } catch (IOException e) {
             throw new RuntimeException(e);
