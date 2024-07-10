@@ -45,19 +45,16 @@ public class SocketUTransport implements UTransport, RpcClient {
     private static final String DISPATCHER_IP = "127.0.0.1";
     private static final Integer DISPATCHER_PORT = 44444;
     private static final int BYTES_MSG_LENGTH = 32767;
-    private static final UUri RESPONSE_URI;
-
-    static {
-        RESPONSE_URI = UUri.newBuilder().setUeId(1).setUeVersionMajor(1).setResourceId(0).build();
-    }
 
     private final Socket socket;
     private final ConcurrentHashMap<UUID, CompletionStage<UMessage>> reqid_to_future;
     private final ConcurrentHashMap<UUri, ArrayList<UListener>> uri_to_listener;
     private final Object lock = new Object();
 
+    private UUri source;
 
-    public SocketUTransport() throws IOException {
+    public SocketUTransport(UUri newSource) throws IOException {
+        source = newSource;
         reqid_to_future = new ConcurrentHashMap<>();
         uri_to_listener = new ConcurrentHashMap<>();
         socket = new Socket(DISPATCHER_IP, DISPATCHER_PORT);
@@ -241,7 +238,7 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @return A CompletableFuture that will hold the response message for the request.
      */
     public CompletionStage<UPayload> invokeMethod(UUri methodUri, UPayload requestPayload, CallOptions options) {
-        UMessage umsg = UMessageBuilder.request(RESPONSE_URI, methodUri, options.timeout()).build(requestPayload);
+        UMessage umsg = UMessageBuilder.request(source, methodUri, options.timeout()).build(requestPayload);
         UUID requestId = umsg.getAttributes().getId();
         CompletionStage<UMessage> responseFuture = new CompletableFuture<>();
         reqid_to_future.put(requestId, responseFuture);
@@ -291,6 +288,6 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @return The source.
      */
     public UUri getSource() {
-        return RESPONSE_URI;
+        return source;
     }
 }
