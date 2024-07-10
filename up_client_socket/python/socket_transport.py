@@ -42,7 +42,6 @@ from uprotocol.v1.ustatus_pb2 import UStatus
 logger = logging.getLogger(__name__)
 DISPATCHER_ADDR: tuple = ("127.0.0.1", 44444)
 BYTES_MSG_LENGTH: int = 32767
-RESPONSE_URI = UUri(ue_id=1, ue_version_major=1, resource_id=0)
 
 
 def timeout_counter(response, req_id, timeout):
@@ -60,11 +59,13 @@ def timeout_counter(response, req_id, timeout):
 
 
 class SocketUTransport(UTransport, RpcClient):
-    def __init__(self):
+    def __init__(self, source: UUri):
         """
         Creates a uEntity with Socket Connection, as well as a map of registered topics.
+        param source: The URI associated with the UTransport.
         """
 
+        self.source = source
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(DISPATCHER_ADDR)
 
@@ -196,7 +197,7 @@ class SocketUTransport(UTransport, RpcClient):
         """
         Invokes a method with the provided URI, request payload, and options.
         """
-        umsg = UMessageBuilder.request(RESPONSE_URI, method_uri, options.timeout).build_from_upayload(request_payload)
+        umsg = UMessageBuilder.request(self.source, method_uri, options.timeout).build_from_upayload(request_payload)
         # Get uAttributes's request id
         request_id = umsg.attributes.id
 
@@ -214,4 +215,11 @@ class SocketUTransport(UTransport, RpcClient):
         """
         Returns the source URI of the UTransport.
         """
-        return RESPONSE_URI
+        return self.source
+
+    def close(self):
+        """
+        Closes the socket connection.
+        """
+        self.socket.close()
+        logger.info(f"{self.__class__.__name__} Socket Connection Closed")
