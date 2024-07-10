@@ -61,12 +61,14 @@ logging.basicConfig(format="%(levelname)s| %(filename)s:%(lineno)s %(message)s")
 logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 
+RESPONSE_URI = UUri(ue_id=1, ue_version_major=1, resource_id=0)
+
 
 class SocketUListener(UListener):
     def on_receive(self, umsg: UMessage) -> None:
         logger.info("Listener received")
         if umsg.attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
-            attributes = UMessageBuilder.response(
+            message = UMessageBuilder.response(
                 umsg.attributes.sink,
                 umsg.attributes.source,
                 umsg.attributes.id,
@@ -74,7 +76,7 @@ class SocketUListener(UListener):
             any_obj = any_pb2.Any()
             any_obj.Pack(StringValue(value="SuccessRPCResponse"))
             res_msg = UMessage(
-                attributes=attributes,
+                attributes=message.attributes,
                 payload=UPayload(
                     value=any_obj.SerializeToString(),
                     format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY,
@@ -456,7 +458,7 @@ def receive_from_tm():
 
 if __name__ == "__main__":
     listener = SocketUListener()
-    transport = SocketUTransport()
+    transport = SocketUTransport(RESPONSE_URI)
     ta_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ta_socket.connect(constants.TEST_MANAGER_ADDR)
     thread = Thread(target=receive_from_tm)
