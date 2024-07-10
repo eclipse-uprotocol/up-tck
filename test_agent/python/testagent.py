@@ -61,6 +61,8 @@ logging.basicConfig(format="%(levelname)s| %(filename)s:%(lineno)s %(message)s")
 logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 
+RESPONSE_URI = UUri(ue_id=1, ue_version_major=1, resource_id=0)
+
 
 class SocketUListener(UListener):
     def on_receive(self, umsg: UMessage) -> None:
@@ -458,7 +460,7 @@ def receive_from_tm():
 
 if __name__ == "__main__":
     listener = SocketUListener()
-    transport = SocketUTransport()
+    transport = SocketUTransport(RESPONSE_URI)
     ta_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ta_socket.connect(constants.TEST_MANAGER_ADDR)
     thread = Thread(target=receive_from_tm)
