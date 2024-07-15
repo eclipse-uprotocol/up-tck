@@ -12,10 +12,13 @@
 #ifndef _PROTO_CONVERTER_H_
 #define _PROTO_CONVERTER_H_
 
+#include <UTransportMock.h>
 #include <google/protobuf/util/json_util.h>
 #include <google/protobuf/wrappers.pb.h>
 #include <rapidjson/document.h>
 #include <spdlog/spdlog.h>
+#include <uprotocol/v1/uattributes.pb.h>
+#include <uprotocol/v1/umessage.pb.h>
 
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
@@ -35,6 +38,12 @@ public:
 	                        google::protobuf::Message& parentProtoObj,
 	                        rapidjson::Document::AllocatorType& allocator);
 
+	static uprotocol::v1::UUri distToUri(
+	    rapidjson::Value& parentJsonObj,
+	    rapidjson::Document::AllocatorType& allocator);
+
+	static std::optional<uprotocol::v1::UPayloadFormat> distToUPayFormat(
+	    const rapidjson::Value& formatStrValue);
 	/// @brief Convert a protobuf message to a JSON object.
 	///
 	/// @param [in] message The protobuf message to convert.

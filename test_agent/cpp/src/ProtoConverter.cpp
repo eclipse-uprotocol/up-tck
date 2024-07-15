@@ -110,6 +110,29 @@ void ProtoConverter::dictToProto(Value& parentJsonObj, Message& parentProtoObj,
 	}
 }
 
+uprotocol::v1::UUri ProtoConverter::distToUri(
+    rapidjson::Value& parentJsonObj,
+    rapidjson::Document::AllocatorType& allocator) {
+	uprotocol::v1::UUri uri;
+	dictToProto(parentJsonObj, uri, allocator);
+	return uri;
+}
+
+std::optional<uprotocol::v1::UPayloadFormat> ProtoConverter::distToUPayFormat(
+    const rapidjson::Value& formatStrValue) {
+	if (formatStrValue.IsString()) {
+		const std::string formatStr = formatStrValue.GetString();
+		const google::protobuf::EnumDescriptor* descriptor =
+		    uprotocol::v1::UPayloadFormat_descriptor();
+		const google::protobuf::EnumValueDescriptor* value =
+		    descriptor->FindValueByName(formatStr);
+		if (value) {
+			return static_cast<uprotocol::v1::UPayloadFormat>(value->number());
+		}
+	}
+	return std::nullopt;
+}
+
 Value ProtoConverter::convertMessageToJson(const Message& message,
                                            Document& doc) {
 	std::string jsonString;
