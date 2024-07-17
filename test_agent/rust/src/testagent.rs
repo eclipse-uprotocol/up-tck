@@ -20,11 +20,12 @@
  */
 
 use async_trait::async_trait;
+use std::time::{SystemTime, UNIX_EPOCH};
 use log::{debug, error};
 use serde_json::Value;
 //use up_rust::{Data, UCode, UListener};
 use up_rust::{UCode, UListener};
-use up_rust::{UMessage, UStatus, UTransport};
+use up_rust::{UMessage, UStatus, UTransport, UUID};
 
 use std::io::{Read, Write};
 use std::{collections::HashMap, sync::Arc};
@@ -100,9 +101,6 @@ impl UListener for ListenerHandlers {
         }
     }
 
-    async fn on_error(&self, _err: UStatus) {
-        debug!("{}", _err);
-    }
 }
 
 impl SocketTestAgent {
@@ -146,7 +144,7 @@ impl SocketTestAgent {
             }
         };
         let u_uuri = wrapper_uuri.0;
-        utransport
+        utransport  
             .register_listener(&u_uuri, None, Arc::clone(&self.clone().listener))
             .await
     }
@@ -169,6 +167,42 @@ impl SocketTestAgent {
             .unregister_listener(&u_uuri, None, Arc::clone(&self.clone().listener))
             .await
     }
+
+    // async fn handle_uuid_validate_command(
+    //     &self,
+    //     json_data_value: Value,
+    // ) -> Result<(), UStatus> {
+    //     let uuid_type: &str = json_data_value.get("uuid_type").unwrap().as_str().unwrap();
+    //     let validator_type = json_data_value.get("validator_type").unwrap().as_str().unwrap();
+
+    //     let uuid = match uuid_type {
+    //         "uprotocol" => UUID::build(),
+    //         "invalid" => match UUID::from_u64_pair(0, 0) {
+    //             Ok(uuid) => uuid,
+    //             Err(err) => {
+    //                 error!("Failed to create UUID: {}", err);
+    //                 return Err(UStatus::fail_with_code(UCode::INTERNAL, err.to_string()));
+    //             }
+    //         },
+    //         "uprotocol_time" => {
+    //             let start = SystemTime::now();
+    //             let since_the_epoch = start
+    //                 .duration_since(UNIX_EPOCH)
+    //                 .expect("Time went backwards");
+    //             match UUID::build_for_timestamp(since_the_epoch) {
+    //                 Ok(uuid) => uuid,
+    //                 Err(err) => {
+    //                     error!("Failed to create UUID: {}", err);
+    //                     return Err(UStatus::fail_with_code(UCode::INTERNAL, err.to_string()));
+    //                 }
+    //             }
+    //         },
+    //         _ => UUID::build(),
+    //     };
+
+    //     Ok(())
+
+    // }
 
     pub async fn receive_from_tm(
         &mut self,
