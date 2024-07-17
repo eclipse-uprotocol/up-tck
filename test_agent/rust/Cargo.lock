@@ -2536,7 +2536,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "up-rust 0.1.5 (git+https://github.com/eclipse-uprotocol/up-rust?rev=3a50104421a801d52e1d9c68979db54c013ce43d)",
+ "up-rust 0.1.0 (git+https://github.com/eclipse-uprotocol/up-rust?branch=main)",
  "up-transport-zenoh",
  "utransport-socket",
  "uuid",
@@ -3470,6 +3470,44 @@ dependencies = [
 
 [[package]]
 name = "up-rust"
+version = "0.1.0"
+source = "git+https://github.com/eclipse-uprotocol/up-rust?branch=main#24ed76dd7d2d4700687d36c689f1c776e401892c"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "mediatype",
+ "protobuf",
+ "protobuf-codegen",
+ "protoc-bin-vendored",
+ "rand",
+ "reqwest",
+ "tracing",
+ "uriparse",
+ "uuid-simd",
+]
+
+[[package]]
+name = "up-rust"
+version = "0.1.0"
+source = "git+https://github.com/eclipse-uprotocol/up-rust#da722852004f657fa8d0282369fcfccb0ccda112"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "mediatype",
+ "protobuf",
+ "protobuf-codegen",
+ "protoc-bin-vendored",
+ "rand",
+ "reqwest",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uriparse",
+ "uuid-simd",
+]
+
+[[package]]
+name = "up-rust"
 version = "0.1.5"
 source = "git+https://github.com/eclipse-uprotocol/up-rust?rev=3a50104421a801d52e1d9c68979db54c013ce43d#3a50104421a801d52e1d9c68979db54c013ce43d"
 dependencies = [
@@ -3489,44 +3527,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "up-rust"
-version = "0.1.5"
-source = "git+https://github.com/eclipse-uprotocol/up-rust?rev=c705ac97602ad6917a93d23651e8a504ec7bb718#c705ac97602ad6917a93d23651e8a504ec7bb718"
-dependencies = [
- "async-trait",
- "bytes",
- "chrono",
- "mediatype",
- "once_cell",
- "protobuf",
- "protobuf-codegen",
- "protoc-bin-vendored",
- "rand",
- "regex",
- "reqwest",
- "url",
- "uuid",
-]
-
-[[package]]
 name = "up-transport-zenoh"
 version = "0.1.0"
-source = "git+https://github.com/eclipse-uprotocol/up-transport-zenoh-rust.git?rev=7c839e7a94f526a82027564a609f48a79a3f4eae#7c839e7a94f526a82027564a609f48a79a3f4eae"
+source = "git+https://github.com/eclipse-uprotocol/up-transport-zenoh-rust.git?branch=main#2bb73678d100a935079f62c2ff447b45bdf72c1a"
 dependencies = [
  "anyhow",
  "async-trait",
  "bitmask-enum",
  "chrono",
  "crossbeam-channel",
- "env_logger",
  "lazy_static",
- "log",
  "prost 0.12.4",
  "prost-types 0.12.4",
  "protobuf",
  "rand",
  "tokio",
- "up-rust 0.1.5 (git+https://github.com/eclipse-uprotocol/up-rust?rev=3a50104421a801d52e1d9c68979db54c013ce43d)",
+ "tracing",
+ "tracing-subscriber",
+ "up-rust 0.1.5",
  "zenoh",
 ]
 
@@ -3583,7 +3601,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "up-rust 0.1.5 (git+https://github.com/eclipse-uprotocol/up-rust?rev=c705ac97602ad6917a93d23651e8a504ec7bb718)",
+ "up-rust 0.1.0 (git+https://github.com/eclipse-uprotocol/up-rust)",
  "uuid",
 ]
 

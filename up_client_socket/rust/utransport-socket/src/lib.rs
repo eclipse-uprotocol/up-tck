@@ -24,7 +24,7 @@ mod constants;
 use async_trait::async_trait;
 
 use up_rust::UListener;
-use up_rust::{UAttributesValidators, UriValidator};
+use up_rust::UAttributesValidators;
 use up_rust::{UCode, UMessage, UMessageType, UStatus, UTransport, UUri};
 
 use crate::constants::BYTES_MSG_LENGTH;
@@ -201,9 +201,6 @@ impl UTransportSocket {
 
                     debug!("invoking listner on receive\n");
                     task::spawn(async move { task_listener.on_receive(task_umessage).await });
-
-                    debug!("invoking listner on error\n");
-                    task::spawn(async move { task_listener_error.on_error(UStatus::ok()).await });
                 }
             }
         }
@@ -344,7 +341,7 @@ impl UTransport for UTransportSocket {
     ///
     /// Returns an error if no message could be received. Possible reasons are that the topic does not exist
     /// or that no message is available from the topic.
-    async fn receive(&self, _topic: UUri) -> Result<UMessage, UStatus> {
+    async fn receive(&self, _source_filter: &UUri, sink_filter: Option<&UUri>) -> Result<UMessage, UStatus> {
         Err(UStatus::fail_with_code(
             UCode::UNIMPLEMENTED,
             "Not implemented",
@@ -373,55 +370,43 @@ impl UTransport for UTransportSocket {
 
     async fn register_listener(
         &self,
-        topic: UUri,
+        source_filter: &UUri,
+        sink_filter: Option<&UUri>,
         listener: Arc<dyn UListener>,
     ) -> Result<(), UStatus> {
         debug!("Register listener called");
-        if topic.authority.is_some() && topic.entity.is_none() && topic.resource.is_none() {
-            // This is special UUri which means we need to register for all of Publish, Request, Response, and Notification
-            // RPC response
-            Err(UStatus::fail_with_code(
-                UCode::UNIMPLEMENTED,
-                "Not implemented",
-            ))
+        // Do the validation
+        if UUri::is_rpc_response(&source_filter) {
+            debug!("Register listener called for RPC Response");
+        } else if UUri::is_rpc_method(&source_filter) {
+            debug!("Register listener called for RPC");
         } else {
-            // Do the validation
-            debug!("{}", topic.authority.is_some());
-            debug!("{}", UriValidator::is_remote(&topic));
-            UriValidator::validate(&topic)
-                .map_err(|err| UStatus::fail_with_code(UCode::INVALID_ARGUMENT, err.to_string()))?;
-            if UriValidator::is_rpc_response(&topic) {
-                debug!("Register listener called for RPC Response");
-            } else if UriValidator::is_rpc_method(&topic) {
-                debug!("Register listener called for RPC");
-            } else {
-                debug!("Register listener called for Topic");
-            }
-
-            let mut topics_listeners = match self.listener_map.lock() {
-                Ok(lock) => lock,
-                Err(err) => {
-                    error!("Error acquiring lock: {}", err);
-                    return Err(UStatus::fail_with_code(
-                        UCode::INTERNAL,
-                        "Issue in acquiring lock",
-                    ));
-                }
-            };
-
-            let listeners = topics_listeners.entry(topic).or_default();
-            let identified_listener = ComparableListener::new(listener);
-            let inserted = listeners.insert(identified_listener);
-            debug!("{inserted}");
-            return if inserted {
-                Ok(())
-            } else {
-                Err(UStatus::fail_with_code(
-                    UCode::ALREADY_EXISTS,
-                    "UUri + UListener pair already exists!",
-                ))
-            };
+            debug!("Register listener called for Topic");
         }
+
+        let mut topics_listeners = match self.listener_map.lock() {
+            Ok(lock) => lock,
+            Err(err) => {
+                error!("Error acquiring lock: {}", err);
+                return Err(UStatus::fail_with_code(
+                    UCode::INTERNAL,
+                    "Issue in acquiring lock",
+                ));
+            }
+        };
+
+        let listeners = topics_listeners.entry(source_filter.clone()).or_default();
+        let identified_listener = ComparableListener::new(listener);
+        let inserted = listeners.insert(identified_listener);
+        debug!("{inserted}");
+        return if inserted {
+            Ok(())
+        } else {
+            Err(UStatus::fail_with_code(
+                UCode::ALREADY_EXISTS,
+                "UUri + UListener pair already exists!",
+            ))
+        };
     }
 
     /// Unregisters a listener for a given topic.
@@ -438,7 +423,8 @@ impl UTransport for UTransportSocket {
     /// Returns an error if the listener could not be unregistered, for example if the given listener does not exist.
     async fn unregister_listener(
         &self,
-        topic: UUri,
+        source_filter: &UUri,
+        sink_filter: Option<&UUri>,
         listener: Arc<dyn UListener>,
     ) -> Result<(), UStatus> {
         let mut topics_listeners = match self.listener_map.lock() {
@@ -451,12 +437,12 @@ impl UTransport for UTransportSocket {
                 ));
             }
         };
-        let listeners = topics_listeners.entry(topic.clone());
+        let listeners = topics_listeners.entry(source_filter.clone());
 
         return match listeners {
             Entry::Vacant(_) => Err(UStatus::fail_with_code(
                 UCode::NOT_FOUND,
-                format!("No listeners registered for topic: {:?}", &topic),
+                format!("No listeners registered for topic: {:?}", &source_filter),
             )),
             Entry::Occupied(mut e) => {
                 let occupied = e.get_mut();
