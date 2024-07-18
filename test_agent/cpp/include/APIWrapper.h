@@ -9,10 +9,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Rebased
+
 #ifndef _API_WRAPPER_H_
 #define _API_WRAPPER_H_
 
 #include <SocketUTransport.h>
+
 #include "ProtoConverter.h"
 #include "utils.h"
 

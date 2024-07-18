@@ -53,8 +53,7 @@ void APIWrapper::sendToTestManager(rapidjson::Document& doc,
                                    const std::string action,
                                    const std::string& strTest_id) const {}
 
-std::shared_ptr<uprotocol::transport::UTransport>
-APIWrapper::createTransport(
+std::shared_ptr<uprotocol::transport::UTransport> APIWrapper::createTransport(
     const std::string& transportType) {
 	// If the transport type is "socket", create a new SocketUTransport.
 	if (transportType == "socket") {
@@ -87,12 +86,6 @@ UStatus APIWrapper::removeHandleOrProvideError(Document& jsonData) {
 UStatus APIWrapper::removeHandleOrProvideError(const UUri& uri) {
 	UStatus status;
 
-	auto count = uriCallbackMap_.erase(uri.SerializeAsString());
-	if (count == 0) {
-		spdlog::error("APIWrapper::removeCallbackToMap, URI not found.");
-		status.set_code(UCode::NOT_FOUND);
-	}
-
 	// Remove the rpc handles that are not valid
 	rpcClientHandles_.erase(
 	    std::remove_if(
@@ -101,12 +94,23 @@ UStatus APIWrapper::removeHandleOrProvideError(const UUri& uri) {
 	               handle) { return !handle; }),
 	    rpcClientHandles_.end());
 
+	auto count = uriCallbackMap_.erase(uri.SerializeAsString());
+	if (count == 0) {
+		spdlog::warn("APIWrapper::removeCallbackToMap, URI not found.");
+		status.set_code(UCode::NOT_FOUND);
+		return status;
+	}
+
 	status.set_code(UCode::OK);
 
 	return status;
 }
 
 UStatus APIWrapper::handleSendCommand(Document& jsonData) {
+
+	// spdlog jsonData
+	spdlog::info("APIWrapper::handleSendCommand(), jsonData is: {}",
+	             jsonData[Constants::DATA].GetString());
 	// Create a v1 UMessage object.
 	UMessage umsg;
 	// Convert the jsonData to a proto message.
