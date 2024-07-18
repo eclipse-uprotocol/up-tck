@@ -20,7 +20,7 @@ import logging
 import socket
 import sys
 import time
-from concurrent.futures import Future
+from argparse import ArgumentParser
 from datetime import datetime, timezone
 from threading import Thread
 from typing import Any, Dict, List, Union
@@ -31,7 +31,6 @@ from google.protobuf import any_pb2
 from google.protobuf.descriptor import FieldDescriptor
 from google.protobuf.message import Message
 from google.protobuf.wrappers_pb2 import StringValue
-from uprotocol.communication.calloptions import CallOptions
 from uprotocol.communication.upayload import UPayload
 from uprotocol.transport.builder.umessagebuilder import UMessageBuilder
 from uprotocol.transport.ulistener import UListener
@@ -62,6 +61,8 @@ logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 
 RESPONSE_URI = UUri(ue_id=1, ue_version_major=1, resource_id=0)
+
+sdkname = "python"
 
 
 class SocketUListener(UListener):
@@ -135,7 +136,7 @@ def send_to_test_manager(
     response_dict = {
         "data": response,
         "action": action,
-        "ue": "python",
+        "ue": sdkname,
         "test_id": received_test_id,
     }
     response_dict = json.dumps(response_dict).encode("utf-8")
@@ -196,27 +197,6 @@ def handle_register_listener_command(json_msg) -> UStatus:
 def handle_unregister_listener_command(json_msg):
     uri = dict_to_proto(json_msg["data"], UUri())
     return transport.unregister_listener(uri, listener)
-
-
-def handle_invoke_method_command(json_msg):
-    uri = dict_to_proto(json_msg["data"], UUri())
-    logger.info(json_msg["data"]["payload"])
-    value = json_msg["data"]["payload"]
-    if isinstance(value, str) and "BYTES:" in value:
-        value = value.replace("BYTES:", "")
-        value = value.encode("utf-8")
-    payload = UPayload(data=value)
-    res_future: Future = transport.invoke_method(uri, payload, CallOptions(timeout=10000))
-
-    def handle_response(message):
-        message: Message = message.result()
-        send_to_test_manager(
-            message,
-            actioncommands.INVOKE_METHOD_COMMAND,
-            received_test_id=json_msg["test_id"],
-        )
-
-    res_future.add_done_callback(handle_response)
 
 
 def handle_serialize_uuri(json_msg: Dict[str, Any]):
@@ -425,7 +405,6 @@ action_handlers = {
     actioncommands.SEND_COMMAND: handle_send_command,
     actioncommands.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
     actioncommands.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
-    actioncommands.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
     actioncommands.SERIALIZE_URI: handle_serialize_uuri,
     actioncommands.DESERIALIZE_URI: handle_deserialize_uri,
     actioncommands.SERIALIZE_UUID: handle_serialize_uuid,
@@ -459,10 +438,25 @@ def receive_from_tm():
 
 
 if __name__ == "__main__":
-    listener = SocketUListener()
-    transport = SocketUTransport(RESPONSE_URI)
+    parser = ArgumentParser()
+
+    parser.add_argument("-t", "--transport", dest="transport", help="Select Transport", metavar="TRANSPORT")
+
+    parser.add_argument("-s", "--sdkname", dest="sdkname", help="Write SDK Name", metavar="SDKNAME")
+
+    args = parser.parse_args()
+
+    if args.transport == "socket":
+        listener = SocketUListener()
+        transport = SocketUTransport(RESPONSE_URI)
+    else:
+        raise ValueError("Invalid Transport")
+
+    if args.sdkname is not None:
+        sdkname = args.sdkname
+
     ta_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ta_socket.connect(constants.TEST_MANAGER_ADDR)
     thread = Thread(target=receive_from_tm)
     thread.start()
-    send_to_test_manager({"SDK_name": "python"}, "initialize")
+    send_to_test_manager({"SDK_name": sdkname}, "initialize")

@@ -20,12 +20,11 @@
  */
 
 use async_trait::async_trait;
-use std::time::{SystemTime, UNIX_EPOCH};
 use log::{debug, error};
 use serde_json::Value;
 //use up_rust::{Data, UCode, UListener};
 use up_rust::{UCode, UListener};
-use up_rust::{UMessage, UStatus, UTransport, UUID};
+use up_rust::{UMessage, UStatus, UTransport};
 
 use std::io::{Read, Write};
 use std::{collections::HashMap, sync::Arc};
@@ -33,7 +32,6 @@ use tokio::sync::Mutex;
 
 use serde::Serialize;
 
-use crate::constants::SDK_INIT_MESSAGE;
 use crate::utils::{convert_json_to_jsonstring, WrapperUMessage, WrapperUUri};
 use crate::{constants, utils};
 use std::net::TcpStream;
@@ -56,11 +54,12 @@ pub struct SocketTestAgent {
 #[derive(Clone)]
 pub struct ListenerHandlers {
     clientsocket_to_tm: Arc<Mutex<TcpStream>>,
+    sdk_name: String,
 }
 impl ListenerHandlers {
-    pub fn new(test_clientsocket_to_tm: TcpStream) -> Self {
+    pub fn new(test_clientsocket_to_tm: TcpStream, sdk_name: &str) -> Self {
         let clientsocket_to_tm = Arc::new(Mutex::new(test_clientsocket_to_tm));
-        Self { clientsocket_to_tm }
+        Self { clientsocket_to_tm, sdk_name: sdk_name.to_string() }
     }
 }
 
@@ -81,7 +80,7 @@ impl UListener for ListenerHandlers {
         let json_message = JsonResponseData {
             action: constants::RESPONSE_ON_RECEIVE.to_owned(),
             data,
-            ue: "rust".to_string(),
+            ue: self.sdk_name.clone(),
             test_id: "1".to_string(),
         };
 
@@ -100,7 +99,6 @@ impl UListener for ListenerHandlers {
             Err(err) => error!("on receive could not send data to TM: {err}"),
         }
     }
-
 }
 
 impl SocketTestAgent {
@@ -127,6 +125,8 @@ impl SocketTestAgent {
             }
         };
         let u_message = wrapper_umessage.0;
+        let u_message_id = u_message.attributes.id.clone();
+        println!("{u_message_id:?}");
         utransport.send(u_message).await
     }
 
@@ -144,7 +144,7 @@ impl SocketTestAgent {
             }
         };
         let u_uuri = wrapper_uuri.0;
-        utransport  
+        utransport
             .register_listener(&u_uuri, None, Arc::clone(&self.clone().listener))
             .await
     }
@@ -208,8 +208,9 @@ impl SocketTestAgent {
         &mut self,
         utransport: Box<dyn UTransport>,
         ta_to_tm_socket: TcpStream,
+        sdk_name: &str,
     ) {
-        self.clone().inform_tm_ta_starting().await;
+        self.clone().inform_tm_ta_starting(sdk_name).await;
         let clientsocket = self.clientsocket.clone();
         let mut socket = clientsocket.lock().await;
 
@@ -283,7 +284,7 @@ impl SocketTestAgent {
             let json_message = JsonResponseData {
                 action: json_str_ref.to_owned(),
                 data: status_dict.clone(),
-                ue: "rust".to_owned(),
+                ue: sdk_name.to_string(),
                 test_id: test_id.to_string(),
             };
 
@@ -306,11 +307,14 @@ impl SocketTestAgent {
         self.close_connection().await;
     }
 
-    async fn inform_tm_ta_starting(self) {
-        let sdk_init = SDK_INIT_MESSAGE;
+    async fn inform_tm_ta_starting(self, sdk_name: &str) {
+        let sdk_init = r#"{"ue":""#.to_owned() + sdk_name + r#"","data":{"SDK_name":""#
+            + sdk_name
+            + r#""},"action":"initialize"}"#;
 
         //inform TM that rust TA is running
         debug!("Sending SDK name to Test Manager!");
+        println!("{sdk_init}");
         let message = sdk_init.as_bytes();
         let clientsocket = self.clientsocket.clone();
         let mut socket = clientsocket.lock().await;

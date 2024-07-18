@@ -75,7 +75,7 @@ impl UTransportSocket {
             error!("{err_string}");
             return Err(UStatus::fail_with_code(UCode::INTERNAL, err_string));
         }
-        debug!("Socket transport initialized successfully");
+        println!("Socket transport initialized successfully");
 
         Ok(UTransportSocket {
             socket_sync,

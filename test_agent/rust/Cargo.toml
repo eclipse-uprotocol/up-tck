@@ -42,8 +42,8 @@ prost = "0.12"
 prost-types = "0.12"
 protobuf = { version = "3.3" }
 utransport-socket = {path = "../../up_client_socket/rust/utransport-socket"}
-up-rust = { default-features = false, git = "https://github.com/eclipse-uprotocol/up-rust", branch = "main" }
-up-transport-zenoh = { git = "https://github.com/eclipse-uprotocol/up-transport-zenoh-rust.git", branch = "main" }
+up-rust = { default-features = false, version = "0.1.1" }
+up-transport-zenoh = { git = "https://github.com/ZettaScaleLabs/up-client-zenoh-rust.git", branch = "bump-up-rust" }
 zenoh = { version = "0.11.0-rc.3", features = ["unstable"]}
 base64 = { version = "0.22.0"}
 serde = { version = "1.0", features = ["derive"] }

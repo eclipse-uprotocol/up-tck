@@ -26,7 +26,7 @@ Feature: Testing register and unregister
 
   Scenario Outline: To test the registerlistener and unregisterlistener apis
     Given "uE1" creates data for "registerlistener"
-    And sets "ue_id" to "12345"
+    And sets "ue_id" to "65538"
     And sets "ue_version_major" to "1"
     And sets "resource_id" to "32769"
     When sends "registerlistener" request
@@ -34,7 +34,7 @@ Feature: Testing register and unregister
     Then the status received with "code" is "OK"
 
     When "uE1" creates data for "unregisterlistener"
-    And sets "ue_id" to "12345"
+    And sets "ue_id" to "65538"
     And sets "ue_version_major" to "1"
     And sets "resource_id" to "32769"
     And sends "unregisterlistener" request
@@ -48,7 +48,7 @@ Feature: Testing register and unregister
 
     Scenario Outline: Test unregisterlistener when no entity is registered to any topic
       Given "uE1" creates data for "unregisterlistener"
-        And sets "ue_id" to "12345"
+        And sets "ue_id" to "65538"
         And sets "ue_version_major" to "1"
         And sets "resource_id" to "32769"
 

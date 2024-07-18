@@ -21,13 +21,10 @@
 
 package org.eclipse.uprotocol;
 
-import org.eclipse.uprotocol.communication.RpcClient;
 import org.eclipse.uprotocol.communication.UPayload;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.UTransport;
-import org.eclipse.uprotocol.transport.builder.UMessageBuilder;
 import org.eclipse.uprotocol.uri.validator.UriValidator;
-import org.eclipse.uprotocol.communication.CallOptions;
 import org.eclipse.uprotocol.v1.*;
 
 import java.io.IOException;
@@ -40,7 +37,7 @@ import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class SocketUTransport implements UTransport, RpcClient {
+public class SocketUTransport implements UTransport {
     private static final Logger logger = Logger.getLogger("JavaSocketUTransport");
     private static final String DISPATCHER_IP = "127.0.0.1";
     private static final Integer DISPATCHER_PORT = 44444;
@@ -161,14 +158,10 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param umsg The response message to handle.
      */
     private void handleResponseMessage(UMessage umsg) {
-        logger.info("HEYA");
-        logger.info(umsg.toString());
         UPayload payload = new UPayload(umsg.getPayload(), umsg.getAttributes().getPayloadFormat());
         UUID requestId = umsg.getAttributes().getReqid();
-        logger.info(reqid_to_future.toString());
         CompletionStage<UPayload> responseFuture = reqid_to_future.remove(requestId);
         if (responseFuture != null) {
-            logger.info("ITSCOMPLETE");
             responseFuture.toCompletableFuture().complete(payload);
         }
     }
@@ -231,49 +224,6 @@ public class SocketUTransport implements UTransport, RpcClient {
         }
         return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.NOT_FOUND)
                 .setMessage("Listener not found for the given URI").build());
-    }
-
-    //TODO: Implement invokeMethod
-    /**
-     * Invokes a remote method with provided parameters and returns a CompletableFuture for the response.
-     *
-     * @param methodUri      The URI identifying the remote method to be invoked.
-     * @param requestPayload The payload of the request message.
-     * @param options        The call options specifying timeout.
-     * @return A CompletableFuture that will hold the response message for the request.
-     */
-    public CompletionStage<UPayload> invokeMethod(UUri methodUri, UPayload requestPayload, CallOptions options) {
-        UMessage umsg = UMessageBuilder.request(source, methodUri, options.timeout()).build(requestPayload);
-        UUID requestId = umsg.getAttributes().getId();
-        CompletionStage<UPayload> responseFuture = new CompletableFuture<>();
-        reqid_to_future.put(requestId, responseFuture);
-
-        logger.info("REQIDTOFUTURETIMAP");
-        logger.info(reqid_to_future.toString());
-        Thread timeoutThread = new Thread(() -> timeoutCounter(responseFuture.toCompletableFuture(), requestId, options.timeout()));
-        timeoutThread.start();
-
-        send(umsg);
-        return responseFuture;
-    }
-
-    /**
-     * Waits for the specified timeout and completes the CompletableFuture exceptionally if no response is received.
-     *
-     * @param responseFuture The CompletableFuture to complete exceptionally.
-     * @param requestId      The request ID associated with the response.
-     * @param timeout        The timeout duration.
-     */
-    private void timeoutCounter(CompletableFuture<UPayload> responseFuture, UUID requestId, int timeout) {
-        try {
-            Thread.sleep(timeout);
-            if (!responseFuture.isDone()) {
-                responseFuture.completeExceptionally(new TimeoutException(
-                        "Not received response for request " + requestId.toString() + " within " + timeout + " ms"));
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     /**

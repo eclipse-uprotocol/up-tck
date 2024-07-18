@@ -21,6 +21,9 @@
 
 package org.eclipse.uprotocol;
 
+import org.apache.commons.cli.*;
+
+
 import com.google.gson.Gson;
 import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
@@ -46,7 +49,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -67,12 +69,13 @@ public class TestAgent {
     private static final UListener listener = TestAgent::handleOnReceive;
     private static final Gson gson = new Gson();
     private static final UUri RESPONSE_URI;
+    private static String transportName;
+    private static String sdkName;
 
     static {
         actionHandlers.put(ActionCommands.SEND_COMMAND, TestAgent::handleSendCommand);
         actionHandlers.put(ActionCommands.REGISTER_LISTENER_COMMAND, TestAgent::handleRegisterListenerCommand);
         actionHandlers.put(ActionCommands.UNREGISTER_LISTENER_COMMAND, TestAgent::handleUnregisterListenerCommand);
-        actionHandlers.put(ActionCommands.INVOKE_METHOD_COMMAND, TestAgent::handleInvokeMethodCommand);
         actionHandlers.put(ActionCommands.SERIALIZE_URI, TestAgent::handleSerializeUriCommand);
         actionHandlers.put(ActionCommands.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
         actionHandlers.put(ActionCommands.VALIDATE_URI, TestAgent::handleValidateUriCommand);
@@ -134,7 +137,7 @@ public class TestAgent {
 
     private static void writeDataToTMSocket(JSONObject responseDict, String action) {
         responseDict.put("action", action);
-        responseDict.put("ue", "java");
+        responseDict.put("ue", sdkName);
         try {
             OutputStream outputStream = clientSocket.getOutputStream();
             outputStream.write(responseDict.toString().getBytes(StandardCharsets.UTF_8));
@@ -163,27 +166,6 @@ public class TestAgent {
     private static CompletionStage<UStatus> handleUnregisterListenerCommand(Map<String, Object> jsonData) {
         UUri uri = (UUri) ProtoConverter.dictToProto((Map<String, Object>) jsonData.get("data"), UUri.newBuilder());
         return transport.unregisterListener(uri, listener);
-    }
-
-    private static Object handleInvokeMethodCommand(Map<String, Object> jsonData) {
-        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
-        // Convert data and payload to protocol buffers
-        UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
-        String payload = (String) data.get("payload");
-        ByteString value = null;
-        if (payload instanceof String && (payload).startsWith("BYTES:")) {
-            String byteString = (payload).substring(6); // Remove 'BYTES:' prefix
-            value = ByteString.copyFromUtf8(byteString);
-        } else if (payload instanceof String) {
-            value = ByteString.copyFromUtf8(payload);
-        }
-
-        UPayload setPayload = new UPayload(value, UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY);
-        CompletionStage<UPayload> responseFuture = transport.invokeMethod(uri, setPayload, CallOptions.DEFAULT);
-        responseFuture.whenComplete((responseMessage, exception) -> {
-            sendToTestManager(Map.of("payload", responseMessage.data().toStringUtf8()), ActionCommands.INVOKE_METHOD_COMMAND, (String) jsonData.get("test_id"));
-        });
-        return null;
     }
 
     private static Object handleSerializeUriCommand(Map<String, Object> jsonData) {
@@ -497,7 +479,35 @@ public class TestAgent {
 
     }
 
+    @SuppressWarnings("null")
     public static void main(String[] args) {
+
+        Options options = new Options();
+
+        Option input = new Option("t", "transport", true, "Select Transport");
+        input.setRequired(true);
+        options.addOption(input);
+
+        Option output = new Option("s", "sdkname", true, "Select SDK Name");
+        output.setRequired(true);
+        options.addOption(output);
+
+        CommandLineParser parser = new DefaultParser();
+        HelpFormatter formatter = new HelpFormatter();
+        CommandLine cmd = null;//not a good practice, it serves it purpose
+
+        try {
+            cmd = parser.parse(options, args);
+        } catch (ParseException e) {
+            System.out.println(e.getMessage());
+            formatter.printHelp("utility-name", options);
+
+            System.exit(1);
+        }
+
+        transportName = cmd.getOptionValue("transport");
+        sdkName = cmd.getOptionValue("sdkname");
+
         Thread receiveThread = new Thread(() -> {
             try {
                 receiveFromTM();
@@ -509,7 +519,7 @@ public class TestAgent {
         });
         receiveThread.start();
         JSONObject obj = new JSONObject();
-        obj.put("SDK_name", "java");
+        obj.put("SDK_name", sdkName);
         sendToTestManager(obj, "initialize");
     }
 

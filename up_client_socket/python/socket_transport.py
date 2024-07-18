@@ -18,18 +18,11 @@ SPDX-License-Identifier: Apache-2.0
 import logging
 import socket
 import threading
-import time
 from collections import defaultdict
-from concurrent.futures import Future
 from threading import Lock
 
-from uprotocol.communication.calloptions import CallOptions
-from uprotocol.communication.rpcclient import RpcClient
-from uprotocol.communication.upayload import UPayload
-from uprotocol.transport.builder.umessagebuilder import UMessageBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
-from uprotocol.uuid.serializer.uuidserializer import UuidSerializer
 from uprotocol.v1.uattributes_pb2 import (
     UMessageType,
 )
@@ -43,21 +36,7 @@ DISPATCHER_ADDR: tuple = ("127.0.0.1", 44444)
 BYTES_MSG_LENGTH: int = 32767
 
 
-def timeout_counter(response, req_id, timeout):
-    time.sleep(timeout / 1000)
-    if not response.done():
-        response.set_exception(
-            TimeoutError(
-                "Not received response for request "
-                + UuidSerializer.serialize(req_id)
-                + " within "
-                + str(timeout / 1000)
-                + " seconds"
-            )
-        )
-
-
-class SocketUTransport(UTransport, RpcClient):
+class SocketUTransport(UTransport):
     def __init__(self, source: UUri):
         """
         Creates a uEntity with Socket Connection, as well as a map of registered topics.
@@ -185,24 +164,6 @@ class SocketUTransport(UTransport, RpcClient):
             code=UCode.NOT_FOUND,
             message="Listener not found for the given UUri",
         )
-
-    def invoke_method(self, method_uri: UUri, request_payload: UPayload, options: CallOptions) -> Future:
-        """
-        Invokes a method with the provided URI, request payload, and options.
-        """
-        umsg = UMessageBuilder.request(self.source, method_uri, options.timeout).build_from_upayload(request_payload)
-        # Get uAttributes's request id
-        request_id = umsg.attributes.id
-
-        response = Future()
-        self.reqid_to_future[request_id.SerializeToString()] = response
-        # Start a thread to count the timeout
-        timeout_thread = threading.Thread(target=timeout_counter, args=(response, request_id, options.timeout))
-        timeout_thread.start()
-
-        self.send(umsg)
-
-        return response
 
     def get_source(self) -> UUri:
         """
