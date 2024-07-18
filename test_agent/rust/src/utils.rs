@@ -116,20 +116,18 @@ impl<'de> Deserialize<'de> for WrapperUUri {
     }
 }
 
-fn parse_string_field(
-    message: &str,
-    value: &Value,
-    field: &str,
-) -> Result<String, serde_json::Error> {
+fn parse_string_field(value: &Value, field: &str) -> Result<String, serde_json::Error> {
     if let Some(msg_value) = value
-        .get(message)
-        .and_then(|msg_value| msg_value.get(field))
+        .get(field)
         .and_then(|field_value| field_value.as_str())
     {
         Ok(msg_value.to_owned())
     } else {
         let err_str = format!("Error: {field} field is not a string");
         error!("{err_str}");
+        error!("{value}");
+        let new_val = value.get(field).unwrap();
+        error!("{new_val}");
         Err(serde::de::Error::custom(err_str))
     }
 }
@@ -236,7 +234,7 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
             }
         };
 
-        match parse_string_field("entity", &value, "commstatus") {
+        match parse_string_field(&value, "commstatus") {
             Ok(commstatus_str) => {
                 if let Some(code) = UCode::from_str(&commstatus_str) {
                     uattributes.commstatus = Some(code.into());
@@ -251,11 +249,13 @@ impl<'de> Deserialize<'de> for WrapperUAttribute {
 
         debug!(" uattributes.commstatus: {:?}", uattributes.commstatus);
 
-        if let Ok(reqid) = parse_uuid(&value, "reqid") {
-            uattributes.reqid = MessageField(Some(Box::new(reqid)));
-        } else {
-            let err_msg = "Error parsing UUID reqid: ".to_string();
-            error!("{}", err_msg);
+        if value.get("type") != Some(&Value::String("UMESSAGE_TYPE_PUBLISH".to_string())) {
+            if let Ok(reqid) = parse_uuid(&value, "reqid") {
+                uattributes.reqid = MessageField(Some(Box::new(reqid)));
+            } else {
+                let err_msg = "Error parsing UUID reqid: ".to_string();
+                error!("{}", err_msg);
+            }
         }
 
         if let Some(token) = value.get("token") {
@@ -324,24 +324,26 @@ impl<'de> Deserialize<'de> for WrapperUMessage {
             })
             .map(|wrapper_attr| wrapper_attr.0);
 
-        // let wpayload = value
-        //     .get("payload")
-        //     .and_then(|payload| serde_json::from_value::<WrapperUPayload>(payload.clone()).ok())
-        //     .map(|wrapper_payload| wrapper_payload.0);
-
         let payload = if let Some(payload_value) = value.get("payload") {
-            if let Ok(data_vec) = serde_json::to_vec(payload_value) {
-                Some(Bytes::from(data_vec))
+            // Check if the word BYTES: is in the payload, if so, remove it
+            let payload_value = if let Some(payload_str) = payload_value.as_str() {
+                if payload_str.starts_with("BYTES:") {
+                    payload_str.trim_start_matches("BYTES:").to_string()
+                } else {
+                    payload_str.to_string()
+                }
             } else {
-                Some(Bytes::new())
-            }
+                "default value".to_string()
+            };
+            // Then convert the payload to bytes
+            Bytes::from(payload_value.into_bytes())
         } else {
             return Err(serde::de::Error::custom("Missing value field"));
         };
 
         Ok(WrapperUMessage(UMessage {
             attributes: wattributes.into(),
-            payload,
+            payload: Some(payload),
             ..Default::default()
         }))
     }

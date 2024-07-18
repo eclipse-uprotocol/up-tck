@@ -16,6 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 """
 
 import sys
+import time
 from threading import Thread
 
 import git
@@ -25,6 +26,7 @@ from behave.runner import Context
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
+from dispatcher.dispatcher import Dispatcher
 from test_manager.features.utils import loggerutils
 from test_manager.testmanager import TestManager
 
@@ -43,15 +45,45 @@ def before_all(context):
 
     context.transport = {}
     context.ues = {}
-    context.dispatcher = {}
+    context.dispatcher = None
+
+    context.ue_tracker = []
 
     loggerutils.setup_logging()
     loggerutils.setup_formatted_logging(context)
+
+    context.logger.info("Setting up Test Environment...")
 
     test_manager = TestManager(context, "127.0.0.5", 33333)
     thread = Thread(target=test_manager.listen_for_incoming_events)
     thread.start()
     context.tm = test_manager
+
+    counter = 1
+    all_languages = []
+    all_transports = []
+    while context.config.userdata.get(f"uE{str(counter)}") is not None:
+        all_languages.append(context.config.userdata[f"uE{str(counter)}"])
+        all_transports.append(context.config.userdata[f"transport{str(counter)}"])
+        context.logger.info(all_languages)
+        context.ue_tracker.append(
+            (
+                context.config.userdata[f"uE{str(counter)}"]
+                + "_"
+                + str(all_languages.count(context.config.userdata[f"uE{str(counter)}"])),
+                context.config.userdata[f"transport{str(counter)}"],
+                False,
+            )
+        )
+        counter += 1
+
+    if "socket" in all_transports:
+        context.logger.info("Creating Dispatcher...")
+        dispatcher = Dispatcher()
+        thread = Thread(target=dispatcher.listen_for_client_connections)
+        thread.start()
+        context.dispatcher = dispatcher
+        time.sleep(5)
 
     context.logger.info("Created Test Manager...")
 
@@ -62,15 +94,18 @@ def after_all(context: Context):
     context.json_dict = None
 
     context.rust_sender = False
-    context.tm.close_test_agent("rust")
-    context.tm.close_test_agent("python")
-    context.tm.close_test_agent("java")
-    context.tm.close_test_agent("cpp")
+
+    for ue in context.ue_tracker:
+        context.tm.close_test_agent(ue[0])
     context.tm.close()
-    if context.transport.get("transport") == "socket":
-        context.dispatcher["socket"].close()
+
+    context.logger.info(context.dispatcher)
+    if context.dispatcher is not None:
+        context.logger.info("Closing Dispatcher...")
+        context.dispatcher.close()
 
     context.logger.info("Closed All Test Agents and Test Manager...")
+
     try:
         for ue in context.ues:
             for process in context.ues[ue]:

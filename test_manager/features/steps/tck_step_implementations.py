@@ -19,13 +19,13 @@ import base64
 import codecs
 import json
 import os
+import random
+import re
 import subprocess
 import sys
 import time
-from threading import Thread
 from typing import Any, Dict, List, Union
 
-import git
 import parse
 from behave import given, register_type, then, when
 from behave.runner import Context
@@ -36,20 +36,13 @@ PYTHON_TA_PATH = "/test_agent/python/testagent.py"
 JAVA_TA_PATH = "/test_agent/java/target/tck-test-agent-java-jar-with-dependencies.jar"
 RUST_TA_PATH = "/test_agent/rust/target/debug/rust_tck"
 CPP_TA_PATH = "/test_agent/cpp/build/bin/test_agent_cpp"
-DISPATCHER_PATH = "/dispatcher/dispatcher.py"
-
-repo = git.Repo(".", search_parent_directories=True)
-sys.path.insert(0, repo.working_tree_dir)
-
-from dispatcher.dispatcher import Dispatcher
 
 
-def create_command(context, filepath_from_root_repo: str) -> List[str]:
+def create_command(context, filepath_from_root_repo: str, transport_to_send: str, sdk_name: str) -> List[str]:
     command: List[str] = []
 
     full_path = os.path.abspath(os.path.dirname(os.getcwd()) + "/" + filepath_from_root_repo)
 
-    context.logger.info(filepath_from_root_repo)
     if filepath_from_root_repo.endswith(".jar"):
         command.append("java")
         command.append("-jar")
@@ -67,7 +60,9 @@ def create_command(context, filepath_from_root_repo: str) -> List[str]:
     command.append(full_path)
 
     command.append("--transport")
-    command.append(context.transport["transport"])
+    command.append(transport_to_send)
+    command.append("--sdkname")
+    command.append(sdk_name)
     return command
 
 
@@ -139,51 +134,67 @@ register_type(NullableString=parse_nullable_string)
 def create_sdk_data(context, sdk_name: str, command: str):
     context.json_dict = {}
 
-    if sdk_name == "uE1":
-        sdk_name = context.config.userdata["uE1"]
-    elif sdk_name == "uE2":
-        sdk_name = context.config.userdata["uE2"]
+    ue_number = sdk_name.replace("uE", "")
+    context.logger.info(f"ue_number: {ue_number}")
 
-    if context.transport == {}:
-        context.transport["transport"] = context.config.userdata["transport"]
-        if context.transport["transport"] == "socket":
-            dispatcher = Dispatcher()
-            thread = Thread(target=dispatcher.listen_for_client_connections)
-            thread.start()
-            context.dispatcher[context.transport["transport"]] = dispatcher
-            time.sleep(5)
-        elif context.transport["transport"] == "zenoh":
-            context.logger.info("Zenoh selected as transport")
-        else:
-            raise ValueError("Invalid transport")
+    if "uE" in sdk_name:
+        sdk_name = context.ue_tracker[int(ue_number) - 1][0]
+        transport = context.ue_tracker[int(ue_number) - 1][1]
 
-    if sdk_name not in context.ues:
+    if not context.tm.has_sdk_connection(sdk_name):
         context.logger.info(f"Creating {sdk_name} process...")
 
+        base_sdk_name = re.sub(r"_\d+", "", sdk_name)
+        context.logger.info(f"base_sdk_name: {base_sdk_name}")
         sdk_paths = {"python": PYTHON_TA_PATH, "java": JAVA_TA_PATH, "rust": RUST_TA_PATH, "cpp": CPP_TA_PATH}
-        if sdk_name in sdk_paths:
-            run_command = create_command(context, sdk_paths[sdk_name])
+        if base_sdk_name in sdk_paths:
+            run_command = create_command(context, sdk_paths[base_sdk_name], transport, sdk_name)
             # End scrtipt after priting the command
             context.logger.info(run_command)
-
-        process = create_subprocess(run_command)
-        if sdk_name in ["python", "java", "rust", "cpp"]:
-            context.ues.setdefault(sdk_name, []).append(process)
         else:
             raise ValueError("Invalid SDK name")
 
+        process = create_subprocess(run_command)
+        if base_sdk_name in ["python", "java", "cpp", "rust"]:
+            context.ues.setdefault(base_sdk_name, []).append(process)
+        else:
+            raise ValueError("Invalid SDK name")
+
+        context.logger.info(f"Created {sdk_name} process...")
+
     while not context.tm.has_sdk_connection(sdk_name):
-        continue
+        time.sleep(1)
+        context.logger.info(f"Waiting for {sdk_name} to connect...")
+
+    context.logger.info(f"{sdk_name} connected to Test Manager...")
+
+    ue_id = random.randrange(0x0001, 0x7FFF)
+    resource_id = random.randrange(0x0001, 0x7FFF)
+
+    uri_dict = {
+        "data": {
+            "ue_id": ue_id,
+            "ue_version_major": 1,
+            "resource_id": resource_id
+        }
+    }
+
+    response_json: Dict[str, Any] = context.tm.request(sdk_name, "initialize_transport", uri_dict)
+
+    context.logger.info(f"Response Json {command} -> {response_json}")
+    if response_json is None:
+        raise AssertionError("Response from Test Manager is None")
+    
+    assert_that(response_json["data"]["result"], equal_to("OK"))
 
     try:
         context.rust_sender
     except AttributeError:
         context.rust_sender = False
 
-    if sdk_name == "rust" and command == "send":
+    if "rust" in sdk_name and command == "send":
         context.rust_sender = True
 
-    context.logger.info(f"Created {sdk_name} process...")
     context.ue = sdk_name
     context.action = command
 
@@ -375,12 +386,18 @@ def receive_status(context, field_name: str, expected_value: str):
 def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expected_value: str):
     try:
         expected_value = expected_value.strip()
+
+        ue_number = sender_sdk_name.replace("uE", "")
+        context.logger.info(f"ue_number: {ue_number}")
+
+        if "uE" in sender_sdk_name:
+            sender_sdk_name = context.ue_tracker[int(ue_number) - 1][0]
         context.logger.info(f"getting on_receive_msg from {sender_sdk_name}")
-        if sender_sdk_name == "uE1":
-            sender_sdk_name = context.config.userdata["uE1"]
+
         on_receive_msg: Dict[str, Any] = context.tm.get_onreceive(sender_sdk_name)
         context.logger.info(f"got on_receive_msg:  {on_receive_msg}")
-        if sender_sdk_name == "rust":
+        context.logger.info(f"sender_sdk_name: {sender_sdk_name}")
+        if sender_sdk_name == "rust" and not context.rust_sender:
             val = on_receive_msg["data"]["payload"]
             rec_field_value = bytes(
                 val.replace('"', "")
@@ -394,12 +411,12 @@ def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expec
         else:
             val = access_nested_dict(on_receive_msg["data"], field_name)
             if context.rust_sender:
+                context.logger.info(f"val {field_name}:  {val}")
                 context.rust_sender = False
-                decoded_string = val.replace('"', "").replace("\\", "").replace("x", "\\x")[1:]
+                decoded_string = "type.googleapis.com/" + val.split(".com/")[1]
                 rec_field_value = bytes(decoded_string, "utf-8")
             else:
                 rec_field_value: bytes = val.encode("utf-8")
-        context.logger.info(f"val {field_name}:  {val}")
 
         assert (
             rec_field_value.split(b"googleapis.com/")[1] == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
