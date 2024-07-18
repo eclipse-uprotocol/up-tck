@@ -75,7 +75,7 @@ impl UTransportSocket {
             error!("{err_string}");
             return Err(UStatus::fail_with_code(UCode::INTERNAL, err_string));
         }
-        debug!("Socket transport initialized successfully");
+        println!("Socket transport initialized successfully");
 
         Ok(UTransportSocket {
             socket_sync,
@@ -106,7 +106,7 @@ impl UTransportSocket {
         Ok(())
     }
     async fn dispatcher_listener(&mut self) {
-        debug!("started listener for dispatcher");
+        println!("started listener for dispatcher");
         // Use `while let` to handle reads
 
         let mut recv_data = [0; BYTES_MSG_LENGTH];

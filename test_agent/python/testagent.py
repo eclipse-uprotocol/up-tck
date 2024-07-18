@@ -65,6 +65,8 @@ RESPONSE_URI = UUri(ue_id=1, ue_version_major=1, resource_id=0)
 sdkname = "python"
 transport_name = "socket"
 
+sdkname = "python"
+transport_name = "socket"
 
 class SocketUListener(UListener):
     def on_receive(self, umsg: UMessage) -> None:

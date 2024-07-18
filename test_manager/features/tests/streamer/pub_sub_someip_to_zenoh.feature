@@ -22,32 +22,45 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Testing RPC Functionality
+Feature: Testing Publishing and Subscribing Across the Streamer
 
-  Scenario Outline: To test the registerlistener and invoke_method apis
+Scenario Outline: To test one uE Subscribing and one uE Publishing
+
     Given "uE1" creates data for "registerlistener"
-    And sets "ue_id" to "12345"
+    And sets "authority_name" to "me_authority"
+    And sets "ue_id" to "23456"
     And sets "ue_version_major" to "1"
     And sets "resource_id" to "32769"
 
     When sends "registerlistener" request
     Then the status received with "code" is "OK"
 
-    Given "uE2" creates data for "invokemethod"
-    And sets "ue_id" to "12345"
-    And sets "ue_version_major" to "1"
-    And sets "resource_id" to "32769"
+    When "uE2" creates data for "send"
+    And sets "attributes.id.msb" to "112128268635242497"
+    And sets "attributes.id.lsb" to "11155833020022798372"
+    And sets "attributes.source.authority_name" to "me_authority"
+    And sets "attributes.source.ue_id" to "23456"
+    And sets "attributes.source.ue_version_major" to "1"
+    And sets "attributes.source.resource_id" to "32769"
+    And sets "attributes.priority" to "UPRIORITY_CS1"
+    And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
+    And sets "attributes.commstatus" to "OK"
+    And sets "attributes.traceparent" to "traceparentTest"
     And sets "payload" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
 
-    When sends "invokemethod" request
-    Then "uE2" receives data field "payload" as b"\n/type.googleapis.com/google.protobuf.StringValue\x12\x14\n\x12SuccessRPCResponse"
+    And sends "send" request
 
-    Given "uE1" creates data for "unregisterlistener"
-    And sets "ue_id" to "12345"
+    Then the status received with "code" is "OK"
+    And "uE1" sends onreceive message with field "payload" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+
+    # Unregister in the end for cleanup
+    When "uE1" creates data for "unregisterlistener"
+    And sets "authority_name" to "me_authority"
+    And sets "ue_id" to "23456"
     And sets "ue_version_major" to "1"
     And sets "resource_id" to "32769"
+    And sends "unregisterlistener" request
 
-    When sends "unregisterlistener" request
     Then the status received with "code" is "OK"
 
     Examples:

@@ -25,7 +25,7 @@
 Feature: Local and Remote URI de-serialization
 
   Scenario Outline: Testing the local uri deserializer
-    Given "uE1" creates data for "uri_deserialize"
+    Given "<uE1>" creates data for "uri_deserialize"
     When sends a "uri_deserialize" request with serialized input "<serialized_uri>"
 
     Then the deserialized uri received should have the following properties:
@@ -43,7 +43,7 @@ Feature: Local and Remote URI de-serialization
 
 
   Scenario Outline: Testing the remote uri deserializer
-    Given "uE1" creates data for "uri_deserialize"
+    Given "<uE1>" creates data for "uri_deserialize"
     When sends a "uri_deserialize" request with serialized input "<serialized_uri>"
     Then the deserialized uri received should have the following properties:
       | Field                | Value                  |
