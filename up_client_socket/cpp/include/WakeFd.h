@@ -9,6 +9,7 @@
 class WakeFd {
 	int fd_;
 	int pair_[2];
+	const size_t max_read_bytes = 32768;
 
 public:
 	WakeFd(int fd) : fd_(fd) { auto pret = pipe(pair_); }
@@ -35,14 +36,17 @@ public:
 		fds[1].events = POLLIN;
 		fds[1].revents = 0;
 		int ret = poll(fds, 2, -1);
-		if (fds[1].revents)
+		// wake() called, return false to exit
+		if (fds[1].revents) {
 			return false;
+		}
+		// spurious wake, return true to try again
 		if (fds[0].revents == 0) {
 			data.resize(0);
 			return true;
 		}
-		data.reserve(326768);
-		int readSize = ::read(fd_, data.data(), 32768);
+		data.reserve(max_read_bytes);
+		int readSize = ::read(fd_, data.data(), max_read_bytes);
 		if (readSize < 0)
 			return false;
 		data.resize(readSize);

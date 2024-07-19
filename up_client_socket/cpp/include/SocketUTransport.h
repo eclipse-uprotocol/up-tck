@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+// #include <string_view>
 
 /// @class SocketUTransport
 /// @brief Represents a socket-based implementation of the UTransport interface
@@ -26,8 +27,13 @@
 /// socket connection. It inherits from the UTransport and RpcClient classes.
 class SocketUTransport : public uprotocol::transport::UTransport {
 public:
+	static constexpr const char* default_dispatcher_ip = "127.0.0.1";
+	static constexpr int default_dispatcher_port = 44444;
+
 	/// @brief Constructs a SocketUTransport object.
-	SocketUTransport(const uprotocol::v1::UUri&);
+	SocketUTransport(const uprotocol::v1::UUri&,
+	                 const std::string& dispatcher_ip = default_dispatcher_ip,
+	                 int dispatcher_port = default_dispatcher_port);
 
 private:
 	[[nodiscard]] uprotocol::v1::UStatus sendImpl(

@@ -28,8 +28,8 @@ using uprotocol::transport::UTransport;
 // using uprotocol::datamodel::serializer::uri::AsString;
 using namespace std;
 
-const string dispatcher_ip = "127.0.0.1";
-const int diaptcher_port = 44444;
+// const string dispatcher_ip = "127.0.0.1";
+// const int diaptcher_port = 44444;
 
 struct SocketUTransport::Impl {
 	struct CallbackData {
@@ -71,7 +71,7 @@ struct SocketUTransport::Impl {
 		return key;
 	}
 
-	Impl() {
+	Impl(const std::string& dispatcher_ip, int dispatcher_port) {
 		struct sockaddr_in serv_addr;
 
 		if (inet_pton(AF_INET, dispatcher_ip.c_str(), &serv_addr.sin_addr) <=
@@ -95,7 +95,7 @@ struct SocketUTransport::Impl {
 		wake_fd_ = make_unique<WakeFd>(fd);
 
 		serv_addr.sin_family = AF_INET;
-		serv_addr.sin_port = htons(diaptcher_port);
+		serv_addr.sin_port = htons(dispatcher_port);
 
 		if (wake_fd_->connect((struct sockaddr*)&serv_addr, sizeof(serv_addr)) <
 		    0) {
@@ -166,7 +166,7 @@ struct SocketUTransport::Impl {
 				    "SocketUTransport::listen():{}, Received uMessage:{}",
 				    __LINE__, umsg.DebugString());
 
-				auto attributes = umsg.attributes();
+				auto& attributes = umsg.attributes();
 				auto key = makeKey(attributes.source());
 				auto ptr = callback_data_.find(key);
 				if (ptr != nullptr) {
@@ -207,8 +207,10 @@ struct SocketUTransport::Impl {
 	}
 };
 
-SocketUTransport::SocketUTransport(const UUri& uuri)
-    : UTransport(uuri), pImpl(new Impl()) {}
+SocketUTransport::SocketUTransport(const UUri& uuri,
+                                   const std::string& dispatcher_ip,
+                                   int dispatcher_port)
+    : UTransport(uuri), pImpl(new Impl(dispatcher_ip, dispatcher_port)) {}
 
 UStatus SocketUTransport::sendImpl(const UMessage& umsg) {
 	return pImpl->sendImpl(umsg);
