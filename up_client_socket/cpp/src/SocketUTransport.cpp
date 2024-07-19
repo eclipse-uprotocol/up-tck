@@ -19,7 +19,10 @@
 #include <array>
 #include <set>
 #include <thread>
-
+#include <cctype>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
 #include "SafeTupleMap.h"
 #include "WakeFd.h"
 
@@ -30,6 +33,23 @@ using namespace std;
 
 // const string dispatcher_ip = "127.0.0.1";
 // const int diaptcher_port = 44444;
+
+string repr(const string& input)
+{
+	stringstream ss;
+	ss << "'" << setfill('0') << hex;
+	for (auto c : input) {
+		if (isgraph(c)) ss << c;
+		else if (c == '\n') {
+			ss << "\\n";
+		}
+		else {
+			ss << "\\x" << setw(2) << (int(c) & 0xff);
+		}
+	}
+	ss << "'";
+	return ss.str();
+}
 
 struct SocketUTransport::Impl {
 	struct CallbackData {
@@ -115,21 +135,25 @@ struct SocketUTransport::Impl {
 	}
 
 	UStatus sendImpl(const UMessage& umsg) {
-		spdlog::debug(
-		    "SocketUTransport::send():{}, UMessage in string format is : {}",
-		    __LINE__, umsg.DebugString());
+		cout << "inside sendImpl " << umsg.ShortDebugString() << endl;
+		// spdlog::debug(
+		//     "SocketUTransport::send():{}, UMessage in string format is : {}",
+		//     __LINE__, umsg.DebugString());
 
-		size_t serializedSize = umsg.ByteSizeLong();
-		string umsgSerialized(serializedSize, '\0');
-		bool ret = umsg.SerializeToArray(umsgSerialized.data(), serializedSize);
-		spdlog::debug("SocketUTransport::send():{}, Serialized UMessage is {}",
-		              __LINE__, umsgSerialized);
+		// size_t serializedSize = umsg.ByteSizeLong();
+		// string umsgSerialized(serializedSize, '\0');
+		// bool ret = umsg.SerializeToArray(umsgSerialized.data(), serializedSize);
+		string buf;
+		bool ret = umsg.SerializeToString(&buf);
+		// spdlog::debug("SocketUTransport::send():{}, Serialized UMessage is {}",
+		//               __LINE__, buf);
 
 		UStatus status;
 		status.set_code(UCode::OK);
 		status.set_message("OK");
 
-		if (wake_fd_->send(umsgSerialized.c_str(), serializedSize, 0) < 0) {
+		cout << "sending " << repr(buf) << endl;
+		if (wake_fd_->send(buf.c_str(), buf.size(), 0) < 0) {
 			spdlog::error("SocketUTransport::send():{}, Error sending UMessage",
 			              __LINE__);
 			status.set_code(UCode::INTERNAL);
@@ -146,6 +170,7 @@ struct SocketUTransport::Impl {
 				if (wake_fd_->read(buffer_) == false)
 					break;
 
+				cout << "dispatcher received " << repr(buffer_) << endl;
 				UMessage umsg;
 				try {
 					if (!umsg.ParseFromString(buffer_)) {

@@ -85,7 +85,6 @@ class Dispatcher:
         """
         try:
             recv_data: bytes = up_client_socket.recv(BYTES_MSG_LENGTH)
-
             if recv_data == b"":
                 self._close_connected_socket(up_client_socket)
                 return
@@ -105,6 +104,7 @@ class Dispatcher:
         # for up_client_socket in self.connected_sockets.copy():  # copy() to avoid RuntimeError
         for up_client_socket in self.connected_sockets:
             try:
+                print(f'sendall {data}')
                 up_client_socket.sendall(data)
             except ConnectionAbortedError as e:
                 logger.error(f"Error sending data to {up_client_socket.getpeername()}: {e}")

@@ -18,7 +18,6 @@ find_package(up-core-api REQUIRED)
 find_package(spdlog REQUIRED)
 add_definitions(-DSPDLOG_FMT_EXTERNAL)
 find_package(fmt REQUIRED CONFIG)
-find_package(RapidJSON CONFIG REQUIRED)
 
 # This is the root CMakeLists.txt file; We can set project wide settings here
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
@@ -29,9 +28,7 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 endif()
 
-file(GLOB_RECURSE SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-
-add_library(${PROJECT_NAME} ${SRC_FILES})
+add_library(${PROJECT_NAME} src/SocketUTransport.cpp)
 add_library(up_client_socket::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
@@ -39,7 +36,6 @@ target_include_directories(${PROJECT_NAME}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}> 
-    ${rapidjson_INCLUDE_DIRS}
     ${up-cpp_INCLUDE_DIR}
     ${up-core-api_INCLUDE_DIR}
     ${protobuf_INCLUDE_DIR}
@@ -56,8 +52,19 @@ target_link_libraries(${PROJECT_NAME}
     up-cpp::up-cpp
     up-core-api::up-core-api
     protobuf::libprotobuf
-    fmt::fmt
-    rapidjson)
+    fmt::fmt)
+
+add_executable(myTest src/test.cpp)
+target_include_directories(myTest
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}> 
+    ${up-cpp_INCLUDE_DIR}
+    ${up-core-api_INCLUDE_DIR}
+    ${protobuf_INCLUDE_DIR}
+    ${spdlog_INCLUDE_DIR})
+target_link_libraries(myTest ${PROJECT_NAME})
 
 # Specify the install location for the library
 INSTALL(TARGETS ${PROJECT_NAME})
