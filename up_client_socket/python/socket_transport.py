@@ -18,57 +18,32 @@ SPDX-License-Identifier: Apache-2.0
 import logging
 import socket
 import threading
-import time
 from collections import defaultdict
-from concurrent.futures import Future
 from threading import Lock
 
-from uprotocol.proto.uattributes_pb2 import (
-    CallOptions,
-    UMessageType,
-    UPriority,
-)
-from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.proto.uri_pb2 import UEntity, UUri
-from uprotocol.proto.ustatus_pb2 import UCode, UStatus
-from uprotocol.rpc.rpcclient import RpcClient
-from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 from uprotocol.transport.utransport import UTransport
-from uprotocol.uri.factory.uresourcebuilder import UResourceBuilder
-from uprotocol.uri.validator.urivalidator import UriValidator
-from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
+from uprotocol.v1.uattributes_pb2 import (
+    UMessageType,
+)
+from uprotocol.v1.ucode_pb2 import UCode
+from uprotocol.v1.umessage_pb2 import UMessage
+from uprotocol.v1.uri_pb2 import UUri
+from uprotocol.v1.ustatus_pb2 import UStatus
 
 logger = logging.getLogger(__name__)
 DISPATCHER_ADDR: tuple = ("127.0.0.1", 44444)
 BYTES_MSG_LENGTH: int = 32767
-RESPONSE_URI = UUri(
-    entity=UEntity(name="test_agent_py", version_major=1),
-    resource=UResourceBuilder.for_rpc_response(),
-)
 
 
-def timeout_counter(response, req_id, timeout):
-    time.sleep(timeout / 1000)
-    if not response.done():
-        response.set_exception(
-            TimeoutError(
-                "Not received response for request "
-                + LongUuidSerializer.instance().serialize(req_id)
-                + " within "
-                + str(timeout / 1000)
-                + " seconds"
-            )
-        )
-
-
-class SocketUTransport(UTransport, RpcClient):
-    def __init__(self):
+class SocketUTransport(UTransport):
+    def __init__(self, source: UUri):
         """
         Creates a uEntity with Socket Connection, as well as a map of registered topics.
+        param source: The URI associated with the UTransport.
         """
 
+        self.source = source
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(DISPATCHER_ADDR)
 
@@ -161,27 +136,21 @@ class SocketUTransport(UTransport, RpcClient):
             return UStatus(code=UCode.INTERNAL, message=f"INTERNAL ERROR: {e}")
         return UStatus(code=UCode.OK, message="OK")
 
-    def register_listener(self, topic: UUri, listener: UListener) -> UStatus:
+    def register_listener(self, source_filter: UUri, listener: UListener, sink_filer: UUri = None) -> UStatus:
         """
         Registers a listener for the specified topic/method URI.
         """
 
-        status = UriValidator.validate(topic)
-        if status.is_failure():
-            return status.to_status()
-        uri: bytes = topic.SerializeToString()
+        uri: bytes = source_filter.SerializeToString()
         self.uri_to_listener[uri].append(listener)
         return UStatus(code=UCode.OK, message="OK")
 
-    def unregister_listener(self, topic: UUri, listener: UListener) -> UStatus:
+    def unregister_listener(self, source_filter: UUri, listener: UListener, sink_filer: UUri = None) -> UStatus:
         """
         Unregisters a listener for the specified topic URI.
         """
 
-        status = UriValidator.validate(topic)
-        if status.is_failure():
-            return status.to_status()
-        uri: bytes = topic.SerializeToString()
+        uri: bytes = source_filter.SerializeToString()
 
         listeners = self.uri_to_listener.get(uri, [])
 
@@ -196,21 +165,15 @@ class SocketUTransport(UTransport, RpcClient):
             message="Listener not found for the given UUri",
         )
 
-    def invoke_method(self, method_uri: UUri, request_payload: UPayload, options: CallOptions) -> Future:
+    def get_source(self) -> UUri:
         """
-        Invokes a method with the provided URI, request payload, and options.
+        Returns the source URI of the UTransport.
         """
-        attributes = UAttributesBuilder.request(RESPONSE_URI, method_uri, UPriority.UPRIORITY_CS4, options.ttl).build()
-        # Get uAttributes's request id
-        request_id = attributes.id
+        return self.source
 
-        response = Future()
-        self.reqid_to_future[request_id.SerializeToString()] = response
-        # Start a thread to count the timeout
-        timeout_thread = threading.Thread(target=timeout_counter, args=(response, request_id, options.ttl))
-        timeout_thread.start()
-
-        umsg = UMessage(payload=request_payload, attributes=attributes)
-        self.send(umsg)
-
-        return response
+    def close(self):
+        """
+        Closes the socket connection.
+        """
+        self.socket.close()
+        logger.info(f"{self.__class__.__name__} Socket Connection Closed")
