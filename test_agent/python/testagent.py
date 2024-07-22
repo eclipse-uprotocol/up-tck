@@ -203,8 +203,8 @@ async def handle_send_command(json_msg):
 
 async def handle_register_listener_command(json_msg) -> UStatus:
     uri = dict_to_proto(json_msg["data"], UUri())
-    status: UStatus = transport.register_listener(uri, listener)
-    return await status
+    status: UStatus = await transport.register_listener(uri, listener)
+    return status
 
 
 async def handle_unregister_listener_command(json_msg):
@@ -415,10 +415,11 @@ async def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
 
 
 async def handle_initialize_transport_command(json_msg: Dict[str, Any]):
-    global transport
+    global transport, listener
     source = dict_to_proto(json_msg["data"], UUri())
     if transport_name == "socket":
         transport = SocketUTransport(source)
+        listener = SocketUListener()
     else:
         send_to_test_manager(
             UStatus(code=UCode.FAILED_PRECONDITION, message="Transport not implemented"),

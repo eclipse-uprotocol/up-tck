@@ -70,24 +70,18 @@ def before_all(context):
         context.logger.info(all_languages)
 
         current_uri = {
-            "data": {
-                "uuri": {
-                    "ue_id": random.randrange(0, 0x7FFF),
-                    "ue_version_major": 1,
-                    "resource_id": 0,
-                }
-            }
+            "authority_name": "myAuthority",
+            "ue_id": str(random.randrange(0, 0x7FFF)),
+            "ue_version_major": str(1),
+            "resource_id": str(0),
         }
 
         while current_uri in all_uris:
             current_uri = {
-                "data": {
-                    "uuri": {
-                        "ue_id": random.randrange(0, 0x7FFF),
-                        "ue_version_major": 1,
-                        "resource_id": 0,
-                    }
-                }
+                "authority_name": "myAuthority",
+                "ue_id": str(random.randrange(0, 0x7FFF)),
+                "ue_version_major": str(1),
+                "resource_id": str(0),
             }
 
         all_uris.append(current_uri)

@@ -169,7 +169,7 @@ def create_sdk_data(context, sdk_name: str, command: str):
             sdk_name, "initialize_transport", context.ue_tracker[int(ue_number) - 1][2]
         )
         context.logger.info(f"Response Json {command} -> {response_json}")
-        assert_that(response_json["data"]["code"], equal_to(UCode.OK))
+        assert_that(int(response_json["data"]["code"]), equal_to(UCode.OK))
 
         context.logger.info(f"{sdk_name} connected to Test Manager...")
 
