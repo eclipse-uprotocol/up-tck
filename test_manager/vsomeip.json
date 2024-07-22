@@ -16,6 +16,7 @@
     "level": "trace"
   },
   "netmask": "255.255.255.0",
+  "routing": "23456_Service",
   "service-discovery": {
     "cyclic_offer_delay": "2000",
     "enable": "true",

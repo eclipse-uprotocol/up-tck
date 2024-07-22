@@ -108,9 +108,11 @@ class Helper(VsomeipHelper):
             )
         ]
 
+RESPONSE_URI = UUri(ue_id=random.randrange(0, 0x7FFF), ue_version_major=1, resource_id=0)
+# transport = SocketUTransport(RESPONSE_URI)
+# listener = SocketUListener()
 transport = None
 listener = None
-
 
 def message_to_dict(message: Message) -> Dict[str, Any]:
     """Converts protobuf Message to Dict and keeping respective data types
@@ -428,11 +430,14 @@ async def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
 
 
 async def handle_initialize_transport_command(json_msg: Dict[str, Any]):
-    global transport
+    global transport, listener
     source = dict_to_proto(json_msg["data"], UUri())
     if transport_name == "socket":
+        print("INSOCKET")
         transport = SocketUTransport(source)
+        listener = SocketUListener()
     elif transport_name == "someip":
+        print("INSOMEIP")
         transport = VsomeipTransport(
             helper=Helper(), source=source
         )
