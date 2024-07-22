@@ -161,11 +161,17 @@ def create_sdk_data(context, sdk_name: str, command: str):
 
         context.logger.info(f"Created {sdk_name} process...")
 
-    while not context.tm.has_sdk_connection(sdk_name):
-        time.sleep(1)
-        context.logger.info(f"Waiting for {sdk_name} to connect...")
+        while not context.tm.has_sdk_connection(sdk_name):
+            time.sleep(1)
+            context.logger.info(f"Waiting for {sdk_name} to connect...")
 
-    context.logger.info(f"{sdk_name} connected to Test Manager...")
+        response_json: Dict[str, Any] = context.tm.request(
+            sdk_name, "initialize_transport", context.ue_tracker[int(ue_number) - 1][2]
+        )
+        context.logger.info(f"Response Json {command} -> {response_json}")
+        assert_that(response_json["data"]["code"], equal_to(UCode.OK))
+
+        context.logger.info(f"{sdk_name} connected to Test Manager...")
 
     try:
         context.rust_sender
