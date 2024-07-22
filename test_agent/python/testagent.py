@@ -21,6 +21,7 @@ import socket
 import sys
 import time
 from argparse import ArgumentParser
+from argparse import ArgumentParser
 from datetime import datetime, timezone
 from threading import Thread
 from typing import Any, Dict, List, Union
@@ -103,10 +104,9 @@ class SocketUListener(UListener):
         else:
             send_to_test_manager(umsg, actioncommands.RESPONSE_ON_RECEIVE)
 
-
-transport = SocketUTransport(RESPONSE_URI)
+transport = VsomeipTransport(
+    helper=Helper(), source=RESPONSE_URI)
 listener = SocketUListener()
-
 
 def message_to_dict(message: Message) -> Dict[str, Any]:
     """Converts protobuf Message to Dict and keeping respective data types
