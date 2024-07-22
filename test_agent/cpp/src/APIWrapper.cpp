@@ -15,24 +15,23 @@ using namespace rapidjson;
 using namespace uprotocol::v1;
 using namespace std;
 
-APIWrapper::APIWrapper(const std::string transportType) {
+APIWrapper::APIWrapper(const std::string transportType)
+    : transportType_(transportType) {
 	// Log the creation of the APIWrapper with the specified transport type
 	spdlog::info(
 	    "APIWrapper::APIWrapper(), Creating APIWrapper with transport type: {}",
 	    transportType);
 
-	// Create the transport with the specified type
-	// transportPtr_ = createTransport(transportType);
-	// TODO:: TEMP solution to avoid compilation error
+	// Create default transport with preset uri
 	def_src_uuri_.set_authority_name("TestAgentCpp");
 	def_src_uuri_.set_ue_id(0x18000);
 	def_src_uuri_.set_ue_version_major(1);
 	def_src_uuri_.set_resource_id(0);
 
-	transportPtr_ = createTransport(transportType);
+	transportPtr_ = createTransport(def_src_uuri_);
 
 	// If the transport creation failed, log an error and exit
-	if (nullptr == transportPtr_) {
+	if (!transportPtr_) {
 		spdlog::error("APIWrapper::APIWrapper(), Failed to create transport");
 		exit(1);
 	}
@@ -53,18 +52,40 @@ void APIWrapper::sendToTestManager(rapidjson::Document& doc,
                                    const std::string action,
                                    const std::string& strTest_id) const {}
 
-std::shared_ptr<uprotocol::transport::UTransport>
-APIWrapper::createTransport(
-    const std::string& transportType) {
+std::shared_ptr<uprotocol::transport::UTransport> APIWrapper::createTransport(
+    const UUri& uri) {
 	// If the transport type is "socket", create a new SocketUTransport.
-	if (transportType == "socket") {
-		return std::make_shared<SocketUTransport>(def_src_uuri_);
+	if (transportType_ == "socket") {
+		return std::make_shared<SocketUTransport>(uri);
 	} else {
 		// If the transport type is neither "socket" nor "zenoh", log an error
 		// and return null.
-		spdlog::error("Invalid transport type: {}", transportType);
+		spdlog::error("Invalid transport type: {}", transportType_);
 		return nullptr;
 	}
+}
+
+UStatus APIWrapper::handleCreateTransportCommand(Document& jsonData) {
+	UStatus status;
+
+	// Create a v1 UUri object from the provided jsonData.
+	def_src_uuri_ = ProtoConverter::distToUri(jsonData[Constants::DATA],
+	                                          jsonData.GetAllocator());
+
+	// Create transport with the created URI
+	transportPtr_ = createTransport(def_src_uuri_);
+
+	// Check if the transport creation failed
+	if (!transportPtr_) {
+		spdlog::error(
+		    "APIWrapper::handleCreateTransportCommand, Unable to create transport");
+		status.set_code(UCode::FAILED_PRECONDITION);
+		status.set_message("Unable to create transport");
+		return status;
+	}
+
+	status.set_code(UCode::OK);
+	return status;
 }
 
 UStatus APIWrapper::addHandleToUriCallbackMap(CommunicationVariantType&& handle,
@@ -87,12 +108,6 @@ UStatus APIWrapper::removeHandleOrProvideError(Document& jsonData) {
 UStatus APIWrapper::removeHandleOrProvideError(const UUri& uri) {
 	UStatus status;
 
-	auto count = uriCallbackMap_.erase(uri.SerializeAsString());
-	if (count == 0) {
-		spdlog::error("APIWrapper::removeCallbackToMap, URI not found.");
-		status.set_code(UCode::NOT_FOUND);
-	}
-
 	// Remove the rpc handles that are not valid
 	rpcClientHandles_.erase(
 	    std::remove_if(
@@ -100,6 +115,13 @@ UStatus APIWrapper::removeHandleOrProvideError(const UUri& uri) {
 	        [](const uprotocol::communication::RpcClient::InvokeHandle&
 	               handle) { return !handle; }),
 	    rpcClientHandles_.end());
+
+	auto count = uriCallbackMap_.erase(uri.SerializeAsString());
+	if (count == 0) {
+		spdlog::error("APIWrapper::removeCallbackToMap, URI not found.");
+		status.set_code(UCode::NOT_FOUND);
+		return status;
+	}
 
 	status.set_code(UCode::OK);
 

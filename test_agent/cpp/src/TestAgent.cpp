@@ -22,6 +22,13 @@ TestAgent::TestAgent(const std::string transportType)
 
 	// Initialize the action handlers
 	actionHandlers_ = {
+
+	    // Handle the "initialize_transport" action
+	    {string(Constants::CREATE_TRANSPORT_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handleCreateTransportCommand(doc);
+	     })},
+
 	    // Handle the "sendCommand" action
 	    {string(Constants::SEND_COMMAND),
 	     std::function<UStatus(Document&)>(
@@ -77,8 +84,9 @@ TestAgent::TestAgent(const std::string transportType)
 
 	    // Handle the "deserializeUri" action
 	    {string(Constants::SUBSCRIBER_COMMAND),
-	     std::function<void(Document&)>(
-	         [this](Document& doc) { this->handleSubscriberCommand(doc); })}};
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handleSubscriberCommand(doc);
+	     })}};
 }
 
 TestAgent::~TestAgent() {}
@@ -351,26 +359,36 @@ int main(int argc, char* argv[]) {
 	spdlog::info(" *** Starting CPP Test Agent *** ");
 
 	// Check if the correct number of command line arguments were provided
-	if (argc < 3) {
+	if (argc < 5) {
 		spdlog::error("Incorrect input params: {} ", argv[0]);
 		return 1;
 	}
 
 	// Initialize transport type and command line arguments
 	std::string transportType;
+	std::string sdkNameValue;
 	std::vector<std::string> args(argv + 1, argv + argc);
 
 	// Iterate over command line arguments to find the transport type
 	for (auto it = args.begin(); it != args.end(); ++it) {
 		if (*it == "--transport" && (it + 1) != args.end()) {
 			transportType = *(it + 1);
-			break;
+			it++;
+		} else if (*it == "--sdkname" && (it + 1) != args.end()) {
+			sdkNameValue = *(it + 1);
+			it++;
 		}
 	}
 
 	// If no transport type was specified, log an error and exit
 	if (transportType.empty()) {
 		spdlog::error("Transport type not specified");
+		return 1;
+	}
+
+	// If no SDK name was specified, log an error and exit
+	if (sdkNameValue.empty()) {
+		spdlog::error("SDK name not specified");
 		return 1;
 	}
 
@@ -387,7 +405,9 @@ int main(int argc, char* argv[]) {
 		Document document;
 		document.SetObject();
 		Value sdkName(kObjectType);  // Create an empty object
-		sdkName.AddMember("SDK_name", "cpp", document.GetAllocator());
+		sdkName.AddMember("SDK_name",
+		                  Value(sdkNameValue.c_str(), document.GetAllocator()),
+		                  document.GetAllocator());
 
 		// Send the JSON document to the Test Manager to initialize the test
 		testAgent.sendToTestManager(document, sdkName, "initialize");

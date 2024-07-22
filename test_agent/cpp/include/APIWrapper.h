@@ -13,6 +13,7 @@
 #define _API_WRAPPER_H_
 
 #include <SocketUTransport.h>
+
 #include "ProtoConverter.h"
 #include "utils.h"
 
@@ -72,6 +73,13 @@ public:
 	/// @return UStatus indicating success or failure of the operation.
 	uprotocol::v1::UStatus removeHandleOrProvideError(
 	    const uprotocol::v1::UUri& uri);
+
+	/// @brief Handles the "initialize_transport" command received from the test
+	/// manager to address multiple uEs.
+	/// @param[in,out] jsonData The JSON data of the command.
+	/// @return The status of the command handling.
+	uprotocol::v1::UStatus handleCreateTransportCommand(
+	    rapidjson::Document& jsonData);
 
 	/// @brief Handles the "sendCommand" command received from the test manager.
 	/// @param[in,out] jsonData The JSON data of the command.
@@ -146,6 +154,9 @@ private:
 	// Default source uri for transport
 	uprotocol::v1::UUri def_src_uuri_;
 
+	// Transport type
+	std::string transportType_;
+
 	// The transport layer used for communication.
 	std::shared_ptr<uprotocol::transport::UTransport> transportPtr_;
 
@@ -169,10 +180,10 @@ private:
 
 	/// @brief Creates a transport layer object based on the specified transport
 	/// type.
-	/// @param[in] transportType The type of transport to be created.
+	/// @param[in] uri The default uri for transport.
 	/// @return A shared pointer to the created transport layer object.
 	std::shared_ptr<uprotocol::transport::UTransport> createTransport(
-	    const std::string& transportType);
+	    const uprotocol::v1::UUri& uri);
 };
 
 #endif  //_API_WRAPPER_H_
