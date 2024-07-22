@@ -22,3 +22,6 @@ MANIFEST
 *.jar
 **/.DS_Store
 **/target
+**/summary.json
+**/up-java/
+**/up-python/

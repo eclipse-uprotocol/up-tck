@@ -15,12 +15,14 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
+import asyncio
 import json
 import logging
+import random
 import socket
 import sys
 import time
-from concurrent.futures import Future
+from argparse import ArgumentParser
 from datetime import datetime, timezone
 from threading import Thread
 from typing import Any, Dict, List, Union
@@ -31,31 +33,28 @@ from google.protobuf import any_pb2
 from google.protobuf.descriptor import FieldDescriptor
 from google.protobuf.message import Message
 from google.protobuf.wrappers_pb2 import StringValue
-from uprotocol.proto.uattributes_pb2 import (
-    CallOptions,
-    UAttributes,
-    UMessageType,
-    UPriority,
-)
-from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.proto.uri_pb2 import UUri
-from uprotocol.proto.ustatus_pb2 import UCode, UStatus
-from uprotocol.proto.uuid_pb2 import UUID
-from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
+from uprotocol.communication.upayload import UPayload
+from uprotocol.transport.builder.umessagebuilder import UMessageBuilder
 from uprotocol.transport.ulistener import UListener
-from uprotocol.transport.validate import uattributesvalidator
-from uprotocol.transport.validate.uattributesvalidator import (
+from uprotocol.transport.validator import uattributesvalidator
+from uprotocol.transport.validator.uattributesvalidator import (
     UAttributesValidator,
 )
-from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
-from uprotocol.uri.serializer.microuriserializer import MicroUriSerializer
+from uprotocol.uri.serializer.uriserializer import UriSerializer
 from uprotocol.uri.validator.urivalidator import UriValidator
 from uprotocol.uuid.factory.uuidfactory import Factories
 from uprotocol.uuid.factory.uuidutils import UUIDUtils
-from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
-from uprotocol.uuid.validate.uuidvalidator import UuidValidator, Validators
+from uprotocol.uuid.serializer.uuidserializer import UuidSerializer
+from uprotocol.uuid.validator.uuidvalidator import UuidValidator, Validators
+from uprotocol.v1.uattributes_pb2 import UAttributes, UMessageType, UPayloadFormat
+from uprotocol.v1.ucode_pb2 import UCode
+from uprotocol.v1.umessage_pb2 import UMessage
+from uprotocol.v1.uri_pb2 import UUri
+from uprotocol.v1.ustatus_pb2 import UStatus
+from uprotocol.v1.uuid_pb2 import UUID
 from uprotocol.validation.validationresult import ValidationResult
+
+from uprotocol_vsomeip.vsomeip_utransport import VsomeipHelper, VsomeipTransport
 
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
@@ -65,30 +64,55 @@ logging.basicConfig(format="%(levelname)s| %(filename)s:%(lineno)s %(message)s")
 logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 
+sdkname = "python"
+transport_name = "socket"  # Not used right now, will be when more transports are added to python
+
 
 class SocketUListener(UListener):
     def on_receive(self, umsg: UMessage) -> None:
         logger.info("Listener received")
+        if umsg is None:
+            raise ValueError("UMessage is None")
+        elif not isinstance(umsg, UMessage):
+            raise TypeError("umsg is not of type UMessage")
+        elif umsg.attributes is None:
+            raise ValueError("UMessage attributes is None")
         if umsg.attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
-            attributes = UAttributesBuilder.response(
-                umsg.attributes.sink,
-                umsg.attributes.source,
-                UPriority.UPRIORITY_CS4,
-                umsg.attributes.id,
-            ).build()
             any_obj = any_pb2.Any()
             any_obj.Pack(StringValue(value="SuccessRPCResponse"))
-            res_msg = UMessage(
-                attributes=attributes,
-                payload=UPayload(
-                    value=any_obj.SerializeToString(),
-                    format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY,
-                ),
+            payload = UPayload(
+                data=any_obj.SerializeToString(),
+                format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY,
             )
+            res_msg = UMessageBuilder.response(
+                umsg.attributes.sink,
+                umsg.attributes.source,
+                umsg.attributes.id,
+            ).build_from_upayload(payload)
             transport.send(res_msg)
         else:
             send_to_test_manager(umsg, actioncommands.RESPONSE_ON_RECEIVE)
 
+class Helper(VsomeipHelper):
+    """
+    Helper class to provide list of services to be offered
+    """
+
+    def services_info(self) -> List[VsomeipHelper.UEntityInfo]:
+        return [
+            VsomeipHelper.UEntityInfo(
+                Id=23456,
+                Events=[0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 32768, 32769],
+                Port=30509,
+                MajorVersion=1,
+            )
+        ]
+
+RESPONSE_URI = UUri(ue_id=random.randrange(0, 0x7FFF), ue_version_major=1, resource_id=0)
+# transport = SocketUTransport(RESPONSE_URI)
+# listener = SocketUListener()
+transport = None
+listener = None
 
 def message_to_dict(message: Message) -> Dict[str, Any]:
     """Converts protobuf Message to Dict and keeping respective data types
@@ -141,7 +165,7 @@ def send_to_test_manager(
     response_dict = {
         "data": response,
         "action": action,
-        "ue": "python",
+        "ue": sdkname,
         "test_id": received_test_id,
     }
     response_dict = json.dumps(response_dict).encode("utf-8")
@@ -164,17 +188,18 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
                 else:
                     field_type = type(getattr(proto_obj, field_name))
                     try:
-                        if field_type == int:
+                        if field_type is int:
                             value = int(value)
-                        elif field_type == float:
+                        elif field_type is float:
                             value = float(value)
-                        elif field_type == bytes:
+                        elif field_type is bytes:
                             if isinstance(value, str):
                                 value = value.encode("utf-8")
 
                     except Exception:
                         pass
 
+                    logger.info(f"setting {field_name} to {value}")
                     setattr(proto_obj, field_name, value)
         return proto_obj
 
@@ -186,42 +211,25 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
     return parent_proto_obj
 
 
-def handle_send_command(json_msg):
+async def handle_send_command(json_msg):
     umsg = dict_to_proto(json_msg["data"], UMessage())
     umsg.attributes.id.CopyFrom(Factories.UPROTOCOL.create())
-    return transport.send(umsg)
+    return await transport.send(umsg)
 
 
-def handle_register_listener_command(json_msg) -> UStatus:
+async def handle_register_listener_command(json_msg):
     uri = dict_to_proto(json_msg["data"], UUri())
-    status: UStatus = transport.register_listener(uri, listener)
-    return status
+    return await transport.register_listener(uri, listener)
 
 
-def handle_unregister_listener_command(json_msg):
+async def handle_unregister_listener_command(json_msg):
     uri = dict_to_proto(json_msg["data"], UUri())
-    return transport.unregister_listener(uri, listener)
+    return await transport.unregister_listener(uri, listener)
 
 
-def handle_invoke_method_command(json_msg):
-    uri = dict_to_proto(json_msg["data"], UUri())
-    payload = dict_to_proto(json_msg["data"]["payload"], UPayload())
-    res_future: Future = transport.invoke_method(uri, payload, CallOptions(ttl=10000))
-
-    def handle_response(message):
-        message: Message = message.result()
-        send_to_test_manager(
-            message,
-            actioncommands.INVOKE_METHOD_COMMAND,
-            received_test_id=json_msg["test_id"],
-        )
-
-    res_future.add_done_callback(handle_response)
-
-
-def handle_long_serialize_uuri(json_msg: Dict[str, Any]):
+async def handle_serialize_uuri(json_msg: Dict[str, Any]):
     uri: UUri = dict_to_proto(json_msg["data"], UUri())
-    serialized_uuri: str = LongUriSerializer().serialize(uri)
+    serialized_uuri: str = UriSerializer.serialize(uri).lower()
     send_to_test_manager(
         serialized_uuri,
         actioncommands.SERIALIZE_URI,
@@ -229,8 +237,8 @@ def handle_long_serialize_uuri(json_msg: Dict[str, Any]):
     )
 
 
-def handle_long_deserialize_uri(json_msg: Dict[str, Any]):
-    uuri: UUri = LongUriSerializer().deserialize(json_msg["data"])
+async def handle_deserialize_uri(json_msg: Dict[str, Any]):
+    uuri: UUri = UriSerializer.deserialize(json_msg["data"])
     send_to_test_manager(
         uuri,
         actioncommands.DESERIALIZE_URI,
@@ -238,8 +246,8 @@ def handle_long_deserialize_uri(json_msg: Dict[str, Any]):
     )
 
 
-def handle_long_deserialize_uuid(json_msg: Dict[str, Any]):
-    uuid: UUID = LongUuidSerializer().deserialize(json_msg["data"])
+async def handle_deserialize_uuid(json_msg: Dict[str, Any]):
+    uuid: UUID = UuidSerializer.deserialize(json_msg["data"])
     send_to_test_manager(
         uuid,
         actioncommands.DESERIALIZE_UUID,
@@ -247,9 +255,9 @@ def handle_long_deserialize_uuid(json_msg: Dict[str, Any]):
     )
 
 
-def handle_long_serialize_uuid(json_msg: Dict[str, Any]):
+def handle_serialize_uuid(json_msg: Dict[str, Any]):
     uuid: UUID = dict_to_proto(json_msg["data"], UUID())
-    serialized_uuid: str = LongUuidSerializer().serialize(uuid)
+    serialized_uuid: str = UuidSerializer.serialize(uuid)
     send_to_test_manager(
         serialized_uuid,
         actioncommands.SERIALIZE_UUID,
@@ -257,24 +265,27 @@ def handle_long_serialize_uuid(json_msg: Dict[str, Any]):
     )
 
 
-def handle_uri_validate_command(json_msg: Dict[str, Any]):
+async def handle_uri_validate_command(json_msg: Dict[str, Any]):
     val_type: str = json_msg["data"]["validation_type"]
     uuri_data: Dict[str, Any] = json_msg["data"]["uuri"]
 
     uuri: UUri = dict_to_proto(uuri_data, UUri())
 
     validator_func = {
-        "uri": UriValidator.validate,
-        "rpc_response": UriValidator.validate_rpc_response,
-        "rpc_method": UriValidator.validate_rpc_method,
         "is_empty": UriValidator.is_empty,
-        "is_resolved": UriValidator.is_resolved,
-        "is_micro_form": UriValidator.is_micro_form,
-        "is_long_form": UriValidator.is_long_form,
+        "is_rpc_method": UriValidator.is_rpc_method,
+        "is_rpc_response": UriValidator.is_rpc_response,
+        "is_default_resource_id": UriValidator.is_default_resource_id,
+        "is_topic": UriValidator.is_topic,
+        "matches": UriValidator.matches,
     }.get(val_type)
 
     if validator_func:
-        status: Union[bool, ValidationResult] = validator_func(uuri)
+        if val_type == "matches":
+            uri_to_match = UriSerializer.deserialize(json_msg["data"]["uuri_2"])
+            status: Union[bool, ValidationResult] = validator_func(uuri, uri_to_match)
+        else:
+            status: Union[bool, ValidationResult] = validator_func(uuri)
         if isinstance(status, bool):
             result = str(status)
             message = ""
@@ -297,31 +308,7 @@ def handle_uri_validate_command(json_msg: Dict[str, Any]):
         )
 
 
-def handle_micro_serialize_uri_command(json_msg: Dict[str, Any]):
-    uri: UUri = dict_to_proto(json_msg["data"], UUri())
-    serialized_uuri: bytes = MicroUriSerializer().serialize(uri)
-    # Use "iso-8859-1" to decode bytes -> str, so no UnicodeDecodeError if "utf-8" decode
-    serialized_uuri_json_packed: str = serialized_uuri.decode("iso-8859-1")
-    send_to_test_manager(
-        serialized_uuri_json_packed,
-        actioncommands.MICRO_SERIALIZE_URI,
-        received_test_id=json_msg["test_id"],
-    )
-
-
-def handle_micro_deserialize_uri_command(json_msg: Dict[str, Any]):
-    sent_micro_serialized_uuri: str = json_msg["data"]
-    # Incoming micro serialized uuri is sent as an "iso-8859-1" str
-    micro_serialized_uuri: bytes = sent_micro_serialized_uuri.encode("iso-8859-1")
-    uuri: UUri = MicroUriSerializer().deserialize(micro_serialized_uuri)
-    send_to_test_manager(
-        uuri,
-        actioncommands.MICRO_DESERIALIZE_URI,
-        received_test_id=json_msg["test_id"],
-    )
-
-
-def handle_uuid_validate_command(json_msg):
+async def handle_uuid_validate_command(json_msg):
     uuid_type = json_msg["data"].get("uuid_type")
     validator_type = json_msg["data"]["validator_type"]
 
@@ -330,7 +317,7 @@ def handle_uuid_validate_command(json_msg):
         "invalid": UUID(msb=0, lsb=0),
         "uprotocol_time": Factories.UPROTOCOL.create(datetime.utcfromtimestamp(0).replace(tzinfo=timezone.utc)),
         "uuidv6": Factories.UUIDV6.create(),
-        "uuidv4": LongUuidSerializer().deserialize("195f9bd1-526d-4c28-91b1-ff34c8e3632d"),
+        "uuidv4": UuidSerializer.deserialize("195f9bd1-526d-4c28-91b1-ff34c8e3632d"),
     }.get(uuid_type)
 
     status = {
@@ -354,13 +341,13 @@ def handle_uuid_validate_command(json_msg):
     )
 
 
-def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
+async def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
     data = json_msg["data"]
     val_method = data.get("validation_method")
     val_type = data.get("validation_type")
     if data.get("attributes"):
         attributes = dict_to_proto(data["attributes"], UAttributes())
-        if attributes.sink.authority.name == "default":
+        if attributes.sink.authority_name == "default":
             attributes.sink.CopyFrom(UUri())
     else:
         attributes = UAttributes()
@@ -442,35 +429,60 @@ def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
     )
 
 
+async def handle_initialize_transport_command(json_msg: Dict[str, Any]):
+    global transport, listener
+    source = dict_to_proto(json_msg["data"], UUri())
+    if transport_name == "socket":
+        print("INSOCKET")
+        transport = SocketUTransport(source)
+        listener = SocketUListener()
+    elif transport_name == "someip":
+        print("INSOMEIP")
+        transport = VsomeipTransport(
+            helper=Helper(), source=source
+        )
+        listener = SocketUListener()
+    else:
+        send_to_test_manager(
+            UStatus(code=UCode.FAILED_PRECONDITION, message="Transport not implemented"),
+            actioncommands.INITIALIZE_TRANSPORT,
+            received_test_id=json_msg["test_id"],
+        )
+        return
+    send_to_test_manager(
+        UStatus(code=UCode.OK, message=""),
+        actioncommands.INITIALIZE_TRANSPORT,
+        received_test_id=json_msg["test_id"],
+    )
+
+
 action_handlers = {
     actioncommands.SEND_COMMAND: handle_send_command,
     actioncommands.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
     actioncommands.UNREGISTER_LISTENER_COMMAND: handle_unregister_listener_command,
-    actioncommands.INVOKE_METHOD_COMMAND: handle_invoke_method_command,
-    actioncommands.SERIALIZE_URI: handle_long_serialize_uuri,
-    actioncommands.DESERIALIZE_URI: handle_long_deserialize_uri,
-    actioncommands.SERIALIZE_UUID: handle_long_serialize_uuid,
-    actioncommands.DESERIALIZE_UUID: handle_long_deserialize_uuid,
+    actioncommands.SERIALIZE_URI: handle_serialize_uuri,
+    actioncommands.DESERIALIZE_URI: handle_deserialize_uri,
+    actioncommands.SERIALIZE_UUID: handle_serialize_uuid,
+    actioncommands.DESERIALIZE_UUID: handle_deserialize_uuid,
     actioncommands.VALIDATE_URI: handle_uri_validate_command,
     actioncommands.VALIDATE_UATTRIBUTES: handle_uattributes_validate_command,
-    actioncommands.MICRO_SERIALIZE_URI: handle_micro_serialize_uri_command,
-    actioncommands.MICRO_DESERIALIZE_URI: handle_micro_deserialize_uri_command,
     actioncommands.VALIDATE_UUID: handle_uuid_validate_command,
+    actioncommands.INITIALIZE_TRANSPORT: handle_initialize_transport_command,
 }
 
 
-def process_message(json_data):
+async def process_message(json_data):
     action: str = json_data["action"]
     status = None
     if action in action_handlers:
-        status: UStatus = action_handlers[action](json_data)
+        status: UStatus = await action_handlers[action](json_data)
 
     # For UTransport interface methods
     if status is not None:
         send_to_test_manager(status, action, received_test_id=json_data["test_id"])
 
 
-def receive_from_tm():
+async def receive_from_tm():
     while True:
         recv_data = ta_socket.recv(constants.BYTES_MSG_LENGTH)
         if not recv_data or recv_data == b"":
@@ -478,14 +490,26 @@ def receive_from_tm():
         # Deserialize the JSON data
         json_data = json.loads(recv_data.decode("utf-8"))
         logger.info("Received data from test manager: %s", json_data)
-        process_message(json_data)
+        await process_message(json_data)
 
 
 if __name__ == "__main__":
-    listener = SocketUListener()
-    transport = SocketUTransport()
+    parser = ArgumentParser()
+
+    parser.add_argument("-t", "--transport", dest="transport", help="Select Transport", metavar="TRANSPORT")
+
+    parser.add_argument("-s", "--sdkname", dest="sdkname", help="Write SDK Name", metavar="SDKNAME")
+
+    args = parser.parse_args()
+
+    if args.sdkname is not None:
+        sdkname = args.sdkname
+
+    if args.transport is not None:
+        transport_name = args.transport
+
     ta_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ta_socket.connect(constants.TEST_MANAGER_ADDR)
-    thread = Thread(target=receive_from_tm)
+    thread = Thread(target=asyncio.run, args=(receive_from_tm(),))
     thread.start()
-    send_to_test_manager({"SDK_name": "python"}, "initialize")
+    send_to_test_manager({"SDK_name": sdkname}, "initialize")

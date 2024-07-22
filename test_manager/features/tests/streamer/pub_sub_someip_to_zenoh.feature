@@ -22,9 +22,10 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Testing Publish and Subscribe Functionality
+Feature: Testing Publishing and Subscribing Across the Streamer
 
-  Scenario Outline: To test the registerlistener and send apis
+Scenario Outline: To test one uE Subscribing and one uE Publishing
+
     Given "uE1" creates data for "registerlistener"
     And sets "authority_name" to "me_authority"
     And sets "ue_id" to "23456"
@@ -35,8 +36,8 @@ Feature: Testing Publish and Subscribe Functionality
     Then the status received with "code" is "OK"
 
     When "uE2" creates data for "send"
-    And sets "attributes.id.msb" to "112808788591603906"
-    And sets "attributes.id.lsb" to "11713802770567977244"
+    And sets "attributes.id.msb" to "112128268635242497"
+    And sets "attributes.id.lsb" to "11155833020022798372"
     And sets "attributes.source.authority_name" to "me_authority"
     And sets "attributes.source.ue_id" to "23456"
     And sets "attributes.source.ue_version_major" to "1"
@@ -46,10 +47,11 @@ Feature: Testing Publish and Subscribe Functionality
     And sets "attributes.commstatus" to "OK"
     And sets "attributes.traceparent" to "traceparentTest"
     And sets "payload" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+
     And sends "send" request
 
     Then the status received with "code" is "OK"
-      And "uE1" sends onreceive message with field "payload" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+    And "uE1" sends onreceive message with field "payload" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
 
     # Unregister in the end for cleanup
     When "uE1" creates data for "unregisterlistener"

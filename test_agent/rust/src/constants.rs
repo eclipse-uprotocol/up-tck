@@ -22,11 +22,12 @@
 pub const SEND_COMMAND: &str = "send";
 pub const REGISTER_LISTENER_COMMAND: &str = "registerlistener";
 pub const UNREGISTER_LISTENER_COMMAND: &str = "unregisterlistener";
-pub const SDK_INIT_MESSAGE: &str =
-    r#"{"ue":"rust","data":{"SDK_name":"rust"},"action":"initialize"}"#;
+pub const INITIALIZE_TRANSPORT_COMMAND: &str = "initialize_transport";
 
 pub const RESPONSE_ON_RECEIVE: &str = "onreceive";
 
-pub const TEST_MANAGER_ADDR: (&str, u16) = ("127.0.0.5", 12345);
+pub const TEST_MANAGER_ADDR: (&str, u16) = ("127.0.0.5", 33333);
 
 pub const ZENOH_TRANSPORT: &str = "zenoh";
+pub const SOCKET_TRANSPORT: &str = "socket";
+pub const SOMEIP_TRANSPORT: &str = "someip";

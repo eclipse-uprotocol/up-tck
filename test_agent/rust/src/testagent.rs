@@ -22,7 +22,8 @@
 use async_trait::async_trait;
 use log::{debug, error};
 use serde_json::Value;
-use up_rust::{Data, UCode, UListener};
+//use up_rust::{Data, UCode, UListener};
+use up_rust::{UCode, UListener};
 use up_rust::{UMessage, UStatus, UTransport};
 
 use std::io::{Read, Write};
@@ -31,7 +32,6 @@ use tokio::sync::Mutex;
 
 use serde::Serialize;
 
-use crate::constants::SDK_INIT_MESSAGE;
 use crate::utils::{convert_json_to_jsonstring, WrapperUMessage, WrapperUUri};
 use crate::{constants, utils};
 use std::net::TcpStream;
@@ -54,11 +54,12 @@ pub struct SocketTestAgent {
 #[derive(Clone)]
 pub struct ListenerHandlers {
     clientsocket_to_tm: Arc<Mutex<TcpStream>>,
+    sdk_name: String,
 }
 impl ListenerHandlers {
-    pub fn new(test_clientsocket_to_tm: TcpStream) -> Self {
+    pub fn new(test_clientsocket_to_tm: TcpStream, sdk_name: &str) -> Self {
         let clientsocket_to_tm = Arc::new(Mutex::new(test_clientsocket_to_tm));
-        Self { clientsocket_to_tm }
+        Self { clientsocket_to_tm, sdk_name: sdk_name.to_string() }
     }
 }
 
@@ -67,52 +68,19 @@ impl UListener for ListenerHandlers {
     async fn on_receive(&self, msg: UMessage) {
         debug!("OnReceive called");
 
-        let data_payload = match &msg.payload.data {
-            Some(data) => {
-                // Now we have access to the Data enum
-                match data {
-                    Data::Reference(reference) => reference.to_string(),
-                    Data::Value(value) => {
-                        let value_str = String::from_utf8_lossy(value);
-                        value_str.to_string()
-                    }
-                    _ => "none".into(),
-                }
-            }
-            None => {
-                debug!("No data available");
-                "none".into()
-            }
+        let value = match &msg.payload {
+            Some(bytes) => String::from_utf8_lossy(bytes).to_string(),
+            None => "default_value".to_string(),
         };
 
-        let Ok(value_str) = serde_json::to_string(
-            &[("value".to_string(), data_payload.to_string())]
-                .iter()
-                .cloned()
-                .collect::<HashMap<_, _>>(),
-        ) else {
-            error!("Issue in converting to payload");
-            return;
-        };
+        // Create a HashMap and insert the key-value pair
+        let mut data = HashMap::new();
+        data.insert("payload".to_string(), value);
 
-        let Ok(payload_str) = serde_json::to_string(
-            &[("payload".to_string(), value_str.to_string())]
-                .iter()
-                .cloned()
-                .collect::<HashMap<_, _>>(),
-        ) else {
-            error!("Issue in converting to payload");
-            return;
-        };
-
-        let data = [("data".to_string(), payload_str.to_string())]
-            .iter()
-            .cloned()
-            .collect::<HashMap<_, _>>();
         let json_message = JsonResponseData {
             action: constants::RESPONSE_ON_RECEIVE.to_owned(),
             data,
-            ue: "rust".to_string(),
+            ue: self.sdk_name.clone(),
             test_id: "1".to_string(),
         };
 
@@ -161,6 +129,8 @@ impl SocketTestAgent {
             }
         };
         let u_message = wrapper_umessage.0;
+        let u_message_id = u_message.attributes.id.clone();
+        println!("{u_message_id:?}");
         utransport.send(u_message).await
     }
 
@@ -179,7 +149,7 @@ impl SocketTestAgent {
         };
         let u_uuri = wrapper_uuri.0;
         utransport
-            .register_listener(u_uuri, Arc::clone(&self.clone().listener))
+            .register_listener(&u_uuri, None, Arc::clone(&self.clone().listener))
             .await
     }
 
@@ -198,16 +168,70 @@ impl SocketTestAgent {
         };
         let u_uuri = wrapper_uuri.0;
         utransport
-            .unregister_listener(u_uuri, Arc::clone(&self.clone().listener))
+            .unregister_listener(&u_uuri, None, Arc::clone(&self.clone().listener))
             .await
     }
+
+    async fn handle_initialize_transport_command(
+        &self,
+        utransport: &dyn UTransport,
+        json_data_value: Value,
+    ) -> Result<(), UStatus> {
+        let wrapper_uuri: WrapperUUri = match serde_json::from_value(json_data_value) {
+            Ok(message) => message,
+            Err(err) => {
+                let err_string = format!("Failed to Deserialize: {err}");
+                error!("{err_string}");
+                return Err(UStatus::fail_with_code(UCode::INTERNAL, err_string));
+            }
+        };
+        let u_uuri = wrapper_uuri.0;
+        Ok(())
+    }
+
+    // async fn handle_uuid_validate_command(
+    //     &self,
+    //     json_data_value: Value,
+    // ) -> Result<(), UStatus> {
+    //     let uuid_type: &str = json_data_value.get("uuid_type").unwrap().as_str().unwrap();
+    //     let validator_type = json_data_value.get("validator_type").unwrap().as_str().unwrap();
+
+    //     let uuid = match uuid_type {
+    //         "uprotocol" => UUID::build(),
+    //         "invalid" => match UUID::from_u64_pair(0, 0) {
+    //             Ok(uuid) => uuid,
+    //             Err(err) => {
+    //                 error!("Failed to create UUID: {}", err);
+    //                 return Err(UStatus::fail_with_code(UCode::INTERNAL, err.to_string()));
+    //             }
+    //         },
+    //         "uprotocol_time" => {
+    //             let start = SystemTime::now();
+    //             let since_the_epoch = start
+    //                 .duration_since(UNIX_EPOCH)
+    //                 .expect("Time went backwards");
+    //             match UUID::build_for_timestamp(since_the_epoch) {
+    //                 Ok(uuid) => uuid,
+    //                 Err(err) => {
+    //                     error!("Failed to create UUID: {}", err);
+    //                     return Err(UStatus::fail_with_code(UCode::INTERNAL, err.to_string()));
+    //                 }
+    //             }
+    //         },
+    //         _ => UUID::build(),
+    //     };
+
+    //     Ok(())
+
+    // }
 
     pub async fn receive_from_tm(
         &mut self,
         utransport: Box<dyn UTransport>,
         ta_to_tm_socket: TcpStream,
+        sdk_name: &str,
     ) {
-        self.clone().inform_tm_ta_starting().await;
+        self.clone().inform_tm_ta_starting(sdk_name).await;
         let clientsocket = self.clientsocket.clone();
         let mut socket = clientsocket.lock().await;
 
@@ -254,6 +278,10 @@ impl SocketTestAgent {
                     self.handle_unregister_listener_command(&*utransport, json_data_value)
                         .await
                 }
+                constants::INITIALIZE_TRANSPORT_COMMAND => {
+                    self.handle_initialize_transport_command(&*utransport, json_data_value)
+                        .await
+                }
                 _ => Ok(()),
             };
 
@@ -281,7 +309,7 @@ impl SocketTestAgent {
             let json_message = JsonResponseData {
                 action: json_str_ref.to_owned(),
                 data: status_dict.clone(),
-                ue: "rust".to_owned(),
+                ue: sdk_name.to_string(),
                 test_id: test_id.to_string(),
             };
 
@@ -304,11 +332,14 @@ impl SocketTestAgent {
         self.close_connection().await;
     }
 
-    async fn inform_tm_ta_starting(self) {
-        let sdk_init = SDK_INIT_MESSAGE;
+    async fn inform_tm_ta_starting(self, sdk_name: &str) {
+        let sdk_init = r#"{"ue":""#.to_owned() + sdk_name + r#"","data":{"SDK_name":""#
+            + sdk_name
+            + r#""},"action":"initialize"}"#;
 
         //inform TM that rust TA is running
         debug!("Sending SDK name to Test Manager!");
+        println!("{sdk_init}");
         let message = sdk_init.as_bytes();
         let clientsocket = self.clientsocket.clone();
         let mut socket = clientsocket.lock().await;

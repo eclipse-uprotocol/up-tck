@@ -1,0 +1,41 @@
+{
+  "applications": [
+    {
+      "id": "1",
+      "name": "23456_Service"
+    }
+  ],
+  "clients": [],
+  "logging": {
+    "console": "true",
+    "dlt": "false",
+    "file": {
+      "enable": "false",
+      "path": "vsomeip_template.log"
+    },
+    "level": "trace"
+  },
+  "netmask": "255.255.255.0",
+  "routing": "23456_Service",
+  "service-discovery": {
+    "cyclic_offer_delay": "2000",
+    "enable": "true",
+    "initial_delay_max": "100",
+    "initial_delay_min": "10",
+    "multicast": "224.244.224.245",
+    "port": "30490",
+    "protocol": "udp",
+    "repetitions_base_delay": "200",
+    "repetitions_max": "3",
+    "request_response_delay": "1500",
+    "ttl": "0xFFFFFF"
+  },
+  "services": [
+    {
+      "instance": "0",
+      "service": "23456",
+      "unreliable": "30509"
+    }
+  ],
+  "unicast": "127.0.0.1"
+}

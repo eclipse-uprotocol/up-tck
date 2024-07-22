@@ -104,6 +104,7 @@ class Dispatcher:
         """
         # for up_client_socket in self.connected_sockets.copy():  # copy() to avoid RuntimeError
         for up_client_socket in self.connected_sockets:
+            logger.info(f"sending data to {up_client_socket.getpeername()}")
             try:
                 up_client_socket.sendall(data)
             except ConnectionAbortedError as e:

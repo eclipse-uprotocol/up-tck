@@ -18,25 +18,25 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Build Rust Test Agent
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --manifest-path test_agent/rust/Cargo.toml
-    - name: Set up JDK 11
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build up_client_socket_java with Maven
-      working-directory: up_client_socket/java
-      run: |
-            mvn clean install --file pom.xml
-    - name: Build java_test_agent with Maven
-      working-directory: test_agent/java
-      run: |
-            mvn clean install --file pom.xml
+    # - name: Build Rust Test Agent
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: build
+    #     args: --manifest-path test_agent/rust/Cargo.toml
+    # - name: Set up JDK 11
+    #   uses: actions/setup-java@v3
+    #   with:
+    #     java-version: '11'
+    #     distribution: 'temurin'
+    #     cache: maven
+    # - name: Build up_client_socket_java with Maven
+    #   working-directory: up_client_socket/java
+    #   run: |
+    #         mvn clean install --file pom.xml
+    # - name: Build java_test_agent with Maven
+    #   working-directory: test_agent/java
+    #   run: |
+    #         mvn clean install --file pom.xml
     - name: Set up Python 3.8.7
       uses: actions/setup-python@v3
       with:
@@ -76,19 +76,19 @@ jobs:
           
           var feature_json = JSON.parse(fs.readFileSync('./test_manager/testData/workflow_test_data.json', 'utf8'));
           const command_list = [];
-          for(var feature_file_name in feature_json){
-            for (var language in feature_json[feature_file_name]["ue1"]){
-              for (var transport in feature_json[feature_file_name]["transports"]){
-                var port_language = feature_json[feature_file_name]["ue1"][language]
-                var port_transport = feature_json[feature_file_name]["transports"][transport]
-                if ("ue2" in feature_json[feature_file_name]){
-                  for (var language_two in feature_json[feature_file_name]["ue2"]){
-                    var second_ue = feature_json[feature_file_name]["ue2"][language_two]
-                    var command_str = "behave --define uE1=" + port_language + " --define uE2=" + second_ue + " --define transport=" + port_transport + " --format json --outfile './reports/" + feature_file_name + "_" + port_language + ".json' --format html --outfile './reports/" + feature_file_name + "_" + port_language + ".html' './features/tests/" + feature_json[feature_file_name]["path"] + "/" + feature_file_name + ".feature'"
+          for(var feature of feature_json){
+            for (var language in feature["ue1"]){
+              for (var transport in feature["transports"]){
+                var port_language = feature["ue1"][language]
+                var port_transport = feature["transports"][transport]
+                if ("ue2" in feature){
+                  for (var language_two in feature["ue2"]){
+                    var second_ue = feature["ue2"][language_two]
+                    var command_str = "behave --define uE1=" + port_language + " --define uE2=" + second_ue + " --define transport1=" + port_transport +  " --define transport2=" + port_transport + " --format json --outfile './reports/" + feature["feature_name"] + "_" + port_language + "_" + second_ue + ".json' --format html --outfile './reports/" + feature["feature_name"] + "_" + port_language + "_" + second_ue + ".html' './features/tests/" + feature["path"] + "/" + feature["feature_name"] + ".feature'"
                     command_list.push(command_str);
                   }
                 } else {
-                  var command_str = "behave --define uE1=" + port_language + " --define transport=" + port_transport + " --format json --outfile './reports/" + feature_file_name + "_" + port_language + ".json' --format html --outfile './reports/" + feature_file_name + "_" + port_language + ".html' './features/tests/" + feature_json[feature_file_name]["path"] + "/" + feature_file_name + ".feature'"
+                  var command_str = "behave --define uE1=" + port_language + " --define transport1=" + port_transport + " --format json --outfile './reports/" + feature["feature_name"] + "_" + port_language + ".json' --format html --outfile './reports/" + feature["feature_name"] + "_" + port_language + ".html' './features/tests/" + feature["path"] + "/" + feature["feature_name"] + ".feature'"
                   command_list.push(command_str);
                 }
               }

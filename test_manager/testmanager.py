@@ -177,9 +177,11 @@ class TestManager:
         self._process_receive_message(json_data, test_agent)
 
     def _process_receive_message(self, response_json: Dict[str, Any], ta_socket: socket.socket):
+        logger.info(f"Processing response_json: {response_json}")
         if response_json["action"] == "initialize":
-            test_agent_sdk: str = response_json["data"]["SDK_name"].lower().strip()
-            self.test_agent_database.add(ta_socket, test_agent_sdk)
+            ta_name: str = response_json["data"]["SDK_name"].lower().strip()
+            logger.info(f"New TA name: {ta_name}")
+            self.test_agent_database.add(ta_socket, ta_name)
             return
 
         action_type: str = response_json["action"]

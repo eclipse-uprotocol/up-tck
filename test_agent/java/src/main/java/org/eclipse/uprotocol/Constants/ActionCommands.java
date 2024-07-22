@@ -35,7 +35,6 @@ public class ActionCommands {
     public static final String SERIALIZE_UUID = "uuid_serialize";
     public static final String DESERIALIZE_UUID = "uuid_deserialize";
     public static final String VALIDATE_UATTRIBUTES = "uattributes_validate";
-    public static final String MICRO_SERIALIZE_URI = "micro_serialize_uri";
-    public static final String MICRO_DESERIALIZE_URI = "micro_deserialize_uri";
+    public static final String INITIALIZE_TRANSPORT = "initialize_transport";
 
 }

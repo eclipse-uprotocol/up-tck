@@ -21,14 +21,11 @@
 
 package org.eclipse.uprotocol;
 
-import org.eclipse.uprotocol.rpc.RpcClient;
+import org.eclipse.uprotocol.communication.UPayload;
 import org.eclipse.uprotocol.transport.UListener;
 import org.eclipse.uprotocol.transport.UTransport;
-import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
-import org.eclipse.uprotocol.uri.factory.UResourceBuilder;
 import org.eclipse.uprotocol.uri.validator.UriValidator;
 import org.eclipse.uprotocol.v1.*;
-import org.eclipse.uprotocol.validation.ValidationResult;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,25 +37,21 @@ import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class SocketUTransport implements UTransport, RpcClient {
+public class SocketUTransport implements UTransport {
     private static final Logger logger = Logger.getLogger("JavaSocketUTransport");
     private static final String DISPATCHER_IP = "127.0.0.1";
     private static final Integer DISPATCHER_PORT = 44444;
     private static final int BYTES_MSG_LENGTH = 32767;
-    private static final UUri RESPONSE_URI;
-
-    static {
-        RESPONSE_URI = UUri.newBuilder().setEntity(UEntity.newBuilder().setName("test_agent_java").setVersionMajor(1))
-                .setResource(UResourceBuilder.forRpcResponse()).build();
-    }
 
     private final Socket socket;
-    private final ConcurrentHashMap<UUID, CompletionStage<UMessage>> reqid_to_future;
+    private final ConcurrentHashMap<UUID, CompletionStage<UPayload>> reqid_to_future;
     private final ConcurrentHashMap<UUri, ArrayList<UListener>> uri_to_listener;
     private final Object lock = new Object();
 
+    private UUri source;
 
-    public SocketUTransport() throws IOException {
+    public SocketUTransport(UUri newSource) throws IOException {
+        source = newSource;
         reqid_to_future = new ConcurrentHashMap<>();
         uri_to_listener = new ConcurrentHashMap<>();
         socket = new Socket(DISPATCHER_IP, DISPATCHER_PORT);
@@ -165,10 +158,11 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param umsg The response message to handle.
      */
     private void handleResponseMessage(UMessage umsg) {
+        UPayload payload = new UPayload(umsg.getPayload(), umsg.getAttributes().getPayloadFormat());
         UUID requestId = umsg.getAttributes().getReqid();
-        CompletionStage<UMessage> responseFuture = reqid_to_future.remove(requestId);
+        CompletionStage<UPayload> responseFuture = reqid_to_future.remove(requestId);
         if (responseFuture != null) {
-            responseFuture.toCompletableFuture().complete(umsg);
+            responseFuture.toCompletableFuture().complete(payload);
         }
     }
 
@@ -178,16 +172,18 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param message The message to be sent.
      * @return A status indicating the outcome of the send operation.
      */
-    public UStatus send(UMessage message) {
+    public CompletionStage<UStatus> send(UMessage message) {
         byte[] umsgSerialized = message.toByteArray();
         try {
             OutputStream outputStream = socket.getOutputStream();
             outputStream.write(umsgSerialized);
             logger.info("uMessage Sent to dispatcher fron java socket transport");
-            return UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build();
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.OK)
+                    .setMessage("uMessage Sent to dispatcher").build());
         } catch (IOException e) {
             logger.log(Level.SEVERE, "INTERNAL ERROR: ", e);
-            return UStatus.newBuilder().setCode(UCode.INTERNAL).setMessage("INTERNAL ERROR: " + e.getMessage()).build();
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.INTERNAL)
+                    .setMessage("INTERNAL ERROR: " + e.getMessage()).build());
         }
     }
 
@@ -198,13 +194,13 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param listener The listener to be registered.
      * @return A status indicating the outcome of the registration operation.
      */
-    public UStatus registerListener(UUri topic, UListener listener) {
-        ValidationResult result = UriValidator.validate(topic);
-        if (result.isFailure()) {
-            return result.toStatus();
+    public CompletionStage<UStatus> registerListener(UUri sourceFilter, UUri sinkFilter, UListener listener) {
+        if (!UriValidator.isTopic(sourceFilter)) {
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.INVALID_ARGUMENT)
+                    .setMessage("Is not a valid topic URI").build());
         }
-        uri_to_listener.computeIfAbsent(topic, k -> new ArrayList<>()).add(listener);
-        return UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build();
+        uri_to_listener.computeIfAbsent(sourceFilter, k -> new ArrayList<>()).add(listener);
+        return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build());
     }
 
     /**
@@ -214,61 +210,41 @@ public class SocketUTransport implements UTransport, RpcClient {
      * @param listener The listener to be removed.
      * @return A status indicating the outcome of the unregistration operation.
      */
-    public UStatus unregisterListener(UUri topic, UListener listener) {
-        ValidationResult result = UriValidator.validate(topic);
-        if (result.isFailure()) {
-            return result.toStatus();
+    public CompletionStage<UStatus> unregisterListener(UUri sourceFilter, UUri sinkFilter, UListener listener) {
+        if (!UriValidator.isTopic(sourceFilter)) {
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.INVALID_ARGUMENT)
+                    .setMessage("Is not a valid topic URI").build());
         }
-        ArrayList<UListener> listeners = uri_to_listener.get(topic);
+        ArrayList<UListener> listeners = uri_to_listener.get(sourceFilter);
         if (listeners != null && listeners.remove(listener)) {
             if (listeners.isEmpty()) {
-                uri_to_listener.remove(topic);
+                uri_to_listener.remove(sourceFilter);
             }
-            return UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build();
+            return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.OK).setMessage("OK").build());
         }
-        return UStatus.newBuilder().setCode(UCode.NOT_FOUND).setMessage("Listener not found for the given UUri")
-                .build();
+        return CompletableFuture.completedFuture(UStatus.newBuilder().setCode(UCode.NOT_FOUND)
+                .setMessage("Listener not found for the given URI").build());
     }
 
     /**
-     * Invokes a remote method with provided parameters and returns a CompletableFuture for the response.
-     *
-     * @param methodUri      The URI identifying the remote method to be invoked.
-     * @param requestPayload The payload of the request message.
-     * @param options        The call options specifying timeout.
-     * @return A CompletableFuture that will hold the response message for the request.
+     * Closes the socket connection and releases any resources associated with it.
      */
-    public CompletionStage<UMessage> invokeMethod(UUri methodUri, UPayload requestPayload, CallOptions options) {
-        UAttributes attributes = UAttributesBuilder.request(RESPONSE_URI, methodUri, UPriority.UPRIORITY_CS4,
-                options.getTtl()).build();
-        UUID requestId = attributes.getId();
-        CompletableFuture<UMessage> responseFuture = new CompletableFuture<>();
-        reqid_to_future.put(requestId, responseFuture);
-
-        Thread timeoutThread = new Thread(() -> timeoutCounter(responseFuture, requestId, options.getTtl()));
-        timeoutThread.start();
-
-        UMessage umsg = UMessage.newBuilder().setPayload(requestPayload).setAttributes(attributes).build();
-        send(umsg);
-        return responseFuture;
-    }
-
-    /**
-     * Waits for the specified timeout and completes the CompletableFuture exceptionally if no response is received.
-     *
-     * @param responseFuture The CompletableFuture to complete exceptionally.
-     * @param requestId      The request ID associated with the response.
-     * @param timeout        The timeout duration.
-     */
-    private void timeoutCounter(CompletableFuture<UMessage> responseFuture, UUID requestId, int timeout) {
+    public void close() {
         try {
-            Thread.sleep(timeout);
-            if (!responseFuture.isDone()) {
-                responseFuture.completeExceptionally(new TimeoutException(
-                        "Not received response for request " + requestId.toString() + " within " + timeout + " ms"));
+            if (!socket.isClosed()) {
+                socket.close();
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "INTERNAL ERROR: ", e);
         }
+    }
+
+    /**
+     * Returns the source.
+     *
+     * @return The source.
+     */
+    public UUri getSource() {
+        return source;
     }
 }

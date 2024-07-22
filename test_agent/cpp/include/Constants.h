@@ -17,7 +17,7 @@
 
 namespace Constants {
 constexpr static const char* TEST_MANAGER_IP = "127.0.0.5";
-constexpr static const int TEST_MANAGER_PORT = 12345;
+constexpr static const int TEST_MANAGER_PORT = 33333;
 constexpr static const int BYTES_MSG_LENGTH = 32767;
 constexpr static const char* SEND_COMMAND = "send";
 constexpr static const char* REGISTER_LISTENER_COMMAND = "registerlistener";
