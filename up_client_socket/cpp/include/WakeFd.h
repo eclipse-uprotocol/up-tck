@@ -45,7 +45,7 @@ public:
 			data.resize(0);
 			return true;
 		}
-		data.reserve(max_read_bytes);
+		data.resize(max_read_bytes);
 		int readSize = ::read(fd_, data.data(), max_read_bytes);
 		if (readSize < 0)
 			return false;
