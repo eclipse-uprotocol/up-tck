@@ -4,5 +4,18 @@
         "path": "validators",
         "ue1": ["python"],
         "transports": ["socket"]
+    },
+    {
+        "feature_name" : "register_and_send",
+        "path": "transport_rpc",
+        "ue1": ["python"],
+        "ue2": ["python"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "register_and_unregister",
+        "path": "transport_rpc",
+        "ue1": ["python"],
+        "transports": ["socket"]
     }
 ]
