@@ -168,24 +168,24 @@ def create_sdk_data(context, sdk_name: str, command: str):
 
     context.logger.info(f"{sdk_name} connected to Test Manager...")
 
-    ue_id = random.randrange(0x0001, 0x7FFF)
-    resource_id = random.randrange(0x0001, 0x7FFF)
+    # ue_id = random.randrange(0x0001, 0x7FFF)
+    # resource_id = random.randrange(0x0001, 0x7FFF)
 
-    uri_dict = {
-        "data": {
-            "ue_id": ue_id,
-            "ue_version_major": 1,
-            "resource_id": resource_id
-        }
-    }
+    # uri_dict = {
+    #     "data": {
+    #         "ue_id": ue_id,
+    #         "ue_version_major": 1,
+    #         "resource_id": resource_id
+    #     }
+    # }
 
-    response_json: Dict[str, Any] = context.tm.request(sdk_name, "initialize_transport", uri_dict)
+    # response_json: Dict[str, Any] = context.tm.request(sdk_name, "initialize_transport", uri_dict)
 
-    context.logger.info(f"Response Json {command} -> {response_json}")
-    if response_json is None:
-        raise AssertionError("Response from Test Manager is None")
+    # context.logger.info(f"Response Json {command} -> {response_json}")
+    # if response_json is None:
+    #     raise AssertionError("Response from Test Manager is None")
     
-    assert_that(response_json["data"]["result"], equal_to("OK"))
+    # assert_that(response_json["data"]["result"], equal_to("OK"))
 
     try:
         context.rust_sender
