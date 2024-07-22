@@ -25,18 +25,26 @@ mod utils;
 
 use std::{sync::Arc, thread};
 
-use crate::constants::{SOCKET_TRANSPORT, TEST_MANAGER_ADDR, ZENOH_TRANSPORT};
+use crate::constants::{SOCKET_TRANSPORT, TEST_MANAGER_ADDR, ZENOH_TRANSPORT, SOMEIP_TRANSPORT};
 use testagent::{ListenerHandlers, SocketTestAgent};
 use up_rust::UTransport;
 mod testagent;
 use clap::Parser;
 use log::{debug, error};
+use std::fs::canonicalize;
+use std::path::PathBuf;
+use log::trace;
 use std::net::TcpStream;
 use std::str::FromStr;
 use tokio::runtime::Runtime;
 use up_transport_zenoh::UPClientZenoh;
 use utransport_socket::UTransportSocket;
 use zenoh::config::{Config, EndPoint};
+use up_transport_vsomeip::UPTransportVsomeip;
+
+const CLIENT_AUTHORITY: &str = "me_authority";
+const REMOTE_AUTHORITY: &str = "linux";
+const CLIENT_UE_ID: u16 = 0x5BA0;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -59,6 +67,34 @@ fn connect_to_socket(addr: &str, port: u16) -> Result<TcpStream, Box<dyn std::er
     }
 }
 
+async fn create_someip_u_transport() -> Box<dyn UTransport> {
+    
+    dbg!("someip transport is being created");
+
+    env_logger::init();
+
+    println!("mE_client");
+
+    let crate_dir = env!("CARGO_MANIFEST_DIR");
+    // TODO: Make configurable to pass the path to the vsomeip config as a command line argument
+    let vsomeip_config = PathBuf::from(crate_dir).join("vsomeip-configs/mE_client.json");
+    let vsomeip_config = canonicalize(vsomeip_config).ok();
+    trace!("vsomeip_config: {vsomeip_config:?}");
+
+    // There will be a single vsomeip_transport, as there is a connection into device and a streamer
+    // TODO: Add error handling if we fail to create a UPTransportVsomeip
+    Box::new(
+        UPTransportVsomeip::new_with_config(
+            &CLIENT_AUTHORITY.to_string(),
+            &REMOTE_AUTHORITY.to_string(),
+            CLIENT_UE_ID,
+            &vsomeip_config.unwrap(),
+        )
+        .unwrap(),
+    )
+
+}
+
 async fn create_zenoh_u_transport(sdk_name: &str) -> Box<dyn UTransport> {
     dbg!("zenoh transport created successfully");
 
@@ -66,7 +102,7 @@ async fn create_zenoh_u_transport(sdk_name: &str) -> Box<dyn UTransport> {
 
     // Take the number from end of sdk_name ex: "rust_1" => 1 and add 7445 to it, then convert to string
     let sdk_num = sdk_name.chars().last().unwrap().to_digit(10).unwrap();
-    let port = 7445 + sdk_num;
+    let port = 7445;
     let port_str = port.to_string();
 
     let tcp_endpoint_string = "tcp/0.0.0.0:".to_owned() + &port_str;
@@ -101,6 +137,7 @@ async fn connect_and_receive(
     let u_transport: Box<dyn UTransport> = match transport_name {
         ZENOH_TRANSPORT => create_zenoh_u_transport(&sdk_name).await,
         SOCKET_TRANSPORT => Box::new(UTransportSocket::new()?),
+        SOMEIP_TRANSPORT => create_someip_u_transport().await,
         _ => create_zenoh_u_transport(&sdk_name).await,
     };
 

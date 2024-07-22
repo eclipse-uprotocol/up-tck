@@ -30,3 +30,4 @@ pub const TEST_MANAGER_ADDR: (&str, u16) = ("127.0.0.5", 33333);
 
 pub const ZENOH_TRANSPORT: &str = "zenoh";
 pub const SOCKET_TRANSPORT: &str = "socket";
+pub const SOMEIP_TRANSPORT: &str = "someip";

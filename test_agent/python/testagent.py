@@ -51,6 +51,7 @@ from uprotocol.v1.uri_pb2 import UUri
 from uprotocol.v1.ustatus_pb2 import UStatus
 from uprotocol.v1.uuid_pb2 import UUID
 from uprotocol.validation.validationresult import ValidationResult
+from uprotocol_vsomeip.vsomeip_utransport import VsomeipHelper, VsomeipTransport
 
 repo = git.Repo(".", search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
@@ -65,8 +66,23 @@ RESPONSE_URI = UUri(ue_id=1, ue_version_major=1, resource_id=0)
 sdkname = "python"
 transport_name = "socket"
 
-sdkname = "python"
-transport_name = "socket"
+class Helper(VsomeipHelper):
+    """
+    Helper class to provide list of services to be offered
+    """
+
+    def services_info(self) -> List[VsomeipHelper.UEntityInfo]:
+        return [
+            VsomeipHelper.UEntityInfo(
+                Id=1,
+                Events=[0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 32768],
+                Port=30509,
+                MajorVersion=1,
+            )
+        ]
+
+
+uuri = UUri(ue_id=1, ue_version_major=1, resource_id=0x8000)
 
 class SocketUListener(UListener):
     def on_receive(self, umsg: UMessage) -> None:
@@ -413,6 +429,10 @@ def handle_initialize_transport_command(json_msg: Dict[str, Any]):
     uri = dict_to_proto(json_msg["data"], UUri())
     if transport_name == "socket":
         transport = SocketUTransport(uri)
+        listener = SocketUListener()
+    elif transport_name == "someip":
+        transport = VsomeipTransport(
+            helper=Helper(), source=uri)
         listener = SocketUListener()
     else:
         raise ValueError("Invalid transport name")
