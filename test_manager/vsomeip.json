@@ -2,7 +2,7 @@
   "applications": [
     {
       "id": "1",
-      "name": "1_Service"
+      "name": "23456_Service"
     }
   ],
   "clients": [],
@@ -16,7 +16,6 @@
     "level": "trace"
   },
   "netmask": "255.255.255.0",
-  "routing": "1_Service",
   "service-discovery": {
     "cyclic_offer_delay": "2000",
     "enable": "true",
@@ -33,7 +32,7 @@
   "services": [
     {
       "instance": "0",
-      "service": "1",
+      "service": "23456",
       "unreliable": "30509"
     }
   ],

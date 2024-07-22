@@ -15,6 +15,7 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
+import random
 import sys
 import time
 from threading import Thread
@@ -62,16 +63,35 @@ def before_all(context):
     counter = 1
     all_languages = []
     all_transports = []
+    all_uris = []
     while context.config.userdata.get(f"uE{str(counter)}") is not None:
         all_languages.append(context.config.userdata[f"uE{str(counter)}"])
         all_transports.append(context.config.userdata[f"transport{str(counter)}"])
         context.logger.info(all_languages)
+
+        current_uri = {
+                "authority_name": "myAuthority",
+                "ue_id": str(random.randrange(0, 0x7FFF)),
+                "ue_version_major": str(1),
+                "resource_id": str(0),
+        }
+
+        while current_uri in all_uris:
+            current_uri = {
+                    "authority_name": "myAuthority",
+                    "ue_id": str(random.randrange(0, 0x7FFF)),
+                    "ue_version_major": str(1),
+                    "resource_id": str(0),
+            }
+
+        all_uris.append(current_uri)
         context.ue_tracker.append(
             (
                 context.config.userdata[f"uE{str(counter)}"]
                 + "_"
                 + str(all_languages.count(context.config.userdata[f"uE{str(counter)}"])),
                 context.config.userdata[f"transport{str(counter)}"],
+                current_uri,
                 False,
             )
         )
@@ -84,6 +104,8 @@ def before_all(context):
         thread.start()
         context.dispatcher = dispatcher
         time.sleep(5)
+    else:
+        context.logger.info("No Dispatcher Required...")
 
     context.logger.info("Created Test Manager...")
 

@@ -172,24 +172,22 @@ impl SocketTestAgent {
             .await
     }
 
-    // async fn handle_initialize_transport_command(
-    //     &self,
-    //     utransport: &dyn UTransport,
-    //     json_data_value: Value,
-    // ) -> Result<(), UStatus> {
-    //     let wrapper_uuri: WrapperUUri = match serde_json::from_value(json_data_value) {
-    //         Ok(message) => message,
-    //         Err(err) => {
-    //             let err_string = format!("Failed to Deserialize: {err}");
-    //             error!("{err_string}");
-    //             return Err(UStatus::fail_with_code(UCode::INTERNAL, err_string));
-    //         }
-    //     };
-    //     let u_uuri = wrapper_uuri.0;
-    //     let u_message_id = u_message.attributes.id.clone();
-    //     println!("{u_message_id:?}");
-    //     utransport.send(u_message).await
-    // }
+    async fn handle_initialize_transport_command(
+        &self,
+        utransport: &dyn UTransport,
+        json_data_value: Value,
+    ) -> Result<(), UStatus> {
+        let wrapper_uuri: WrapperUUri = match serde_json::from_value(json_data_value) {
+            Ok(message) => message,
+            Err(err) => {
+                let err_string = format!("Failed to Deserialize: {err}");
+                error!("{err_string}");
+                return Err(UStatus::fail_with_code(UCode::INTERNAL, err_string));
+            }
+        };
+        let u_uuri = wrapper_uuri.0;
+        Ok(())
+    }
 
     // async fn handle_uuid_validate_command(
     //     &self,
@@ -280,10 +278,10 @@ impl SocketTestAgent {
                     self.handle_unregister_listener_command(&*utransport, json_data_value)
                         .await
                 }
-                // constants::INITIALIZE_TRANSPORT_COMMAND => {
-                //     self.handle_initialize_transport_command(&*utransport, json_data_value)
-                //         .await
-                // }
+                constants::INITIALIZE_TRANSPORT_COMMAND => {
+                    self.handle_initialize_transport_command(&*utransport, json_data_value)
+                        .await
+                }
                 _ => Ok(()),
             };
 
