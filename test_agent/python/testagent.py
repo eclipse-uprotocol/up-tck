@@ -15,8 +15,10 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
+import asyncio
 import json
 import logging
+import random
 import socket
 import sys
 import time
@@ -60,15 +62,21 @@ logging.basicConfig(format="%(levelname)s| %(filename)s:%(lineno)s %(message)s")
 logger = logging.getLogger("File:Line# Debugger")
 logger.setLevel(logging.DEBUG)
 
-RESPONSE_URI = UUri(ue_id=1, ue_version_major=1, resource_id=0)
+RESPONSE_URI = UUri(ue_id=random.randrange(0, 0x7FFF), ue_version_major=1, resource_id=0)
 
 sdkname = "python"
-transport_name = "socket"
+transport_name = "socket"  # Not used right now, will be when more transports are added to python
 
 
 class SocketUListener(UListener):
     def on_receive(self, umsg: UMessage) -> None:
         logger.info("Listener received")
+        if umsg is None:
+            raise ValueError("UMessage is None")
+        elif not isinstance(umsg, UMessage):
+            raise TypeError("umsg is not of type UMessage")
+        elif umsg.attributes is None:
+            raise ValueError("UMessage attributes is None")
         if umsg.attributes.type == UMessageType.UMESSAGE_TYPE_REQUEST:
             any_obj = any_pb2.Any()
             any_obj.Pack(StringValue(value="SuccessRPCResponse"))
@@ -187,24 +195,24 @@ def dict_to_proto(parent_json_obj: Dict[str, Any], parent_proto_obj: Message):
     return parent_proto_obj
 
 
-def handle_send_command(json_msg):
+async def handle_send_command(json_msg):
     umsg = dict_to_proto(json_msg["data"], UMessage())
     umsg.attributes.id.CopyFrom(Factories.UPROTOCOL.create())
-    return transport.send(umsg)
+    return await transport.send(umsg)
 
 
-def handle_register_listener_command(json_msg) -> UStatus:
+async def handle_register_listener_command(json_msg) -> UStatus:
     uri = dict_to_proto(json_msg["data"], UUri())
     status: UStatus = transport.register_listener(uri, listener)
-    return status
+    return await status
 
 
-def handle_unregister_listener_command(json_msg):
+async def handle_unregister_listener_command(json_msg):
     uri = dict_to_proto(json_msg["data"], UUri())
-    return transport.unregister_listener(uri, listener)
+    return await transport.unregister_listener(uri, listener)
 
 
-def handle_serialize_uuri(json_msg: Dict[str, Any]):
+async def handle_serialize_uuri(json_msg: Dict[str, Any]):
     uri: UUri = dict_to_proto(json_msg["data"], UUri())
     serialized_uuri: str = UriSerializer.serialize(uri).lower()
     send_to_test_manager(
@@ -214,7 +222,7 @@ def handle_serialize_uuri(json_msg: Dict[str, Any]):
     )
 
 
-def handle_deserialize_uri(json_msg: Dict[str, Any]):
+async def handle_deserialize_uri(json_msg: Dict[str, Any]):
     uuri: UUri = UriSerializer.deserialize(json_msg["data"])
     send_to_test_manager(
         uuri,
@@ -223,7 +231,7 @@ def handle_deserialize_uri(json_msg: Dict[str, Any]):
     )
 
 
-def handle_deserialize_uuid(json_msg: Dict[str, Any]):
+async def handle_deserialize_uuid(json_msg: Dict[str, Any]):
     uuid: UUID = UuidSerializer.deserialize(json_msg["data"])
     send_to_test_manager(
         uuid,
@@ -242,7 +250,7 @@ def handle_serialize_uuid(json_msg: Dict[str, Any]):
     )
 
 
-def handle_uri_validate_command(json_msg: Dict[str, Any]):
+async def handle_uri_validate_command(json_msg: Dict[str, Any]):
     val_type: str = json_msg["data"]["validation_type"]
     uuri_data: Dict[str, Any] = json_msg["data"]["uuri"]
 
@@ -285,7 +293,7 @@ def handle_uri_validate_command(json_msg: Dict[str, Any]):
         )
 
 
-def handle_uuid_validate_command(json_msg):
+async def handle_uuid_validate_command(json_msg):
     uuid_type = json_msg["data"].get("uuid_type")
     validator_type = json_msg["data"]["validator_type"]
 
@@ -318,7 +326,7 @@ def handle_uuid_validate_command(json_msg):
     )
 
 
-def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
+async def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
     data = json_msg["data"]
     val_method = data.get("validation_method")
     val_type = data.get("validation_type")
@@ -406,6 +414,25 @@ def handle_uattributes_validate_command(json_msg: Dict[str, Any]):
     )
 
 
+async def handle_initialize_transport_command(json_msg: Dict[str, Any]):
+    global transport
+    source = dict_to_proto(json_msg["data"], UUri())
+    if transport_name == "socket":
+        transport = SocketUTransport(source)
+    else:
+        send_to_test_manager(
+            UStatus(code=UCode.FAILED_PRECONDITION, message="Transport not implemented"),
+            actioncommands.INITIALIZE_TRANSPORT,
+            received_test_id=json_msg["test_id"],
+        )
+        return
+    send_to_test_manager(
+        UStatus(code=UCode.OK, message=""),
+        actioncommands.INITIALIZE_TRANSPORT,
+        received_test_id=json_msg["test_id"],
+    )
+
+
 action_handlers = {
     actioncommands.SEND_COMMAND: handle_send_command,
     actioncommands.REGISTER_LISTENER_COMMAND: handle_register_listener_command,
@@ -417,21 +444,22 @@ action_handlers = {
     actioncommands.VALIDATE_URI: handle_uri_validate_command,
     actioncommands.VALIDATE_UATTRIBUTES: handle_uattributes_validate_command,
     actioncommands.VALIDATE_UUID: handle_uuid_validate_command,
+    actioncommands.INITIALIZE_TRANSPORT: handle_initialize_transport_command,
 }
 
 
-def process_message(json_data):
+async def process_message(json_data):
     action: str = json_data["action"]
     status = None
     if action in action_handlers:
-        status: UStatus = action_handlers[action](json_data)
+        status: UStatus = await action_handlers[action](json_data)
 
     # For UTransport interface methods
     if status is not None:
         send_to_test_manager(status, action, received_test_id=json_data["test_id"])
 
 
-def receive_from_tm():
+async def receive_from_tm():
     while True:
         recv_data = ta_socket.recv(constants.BYTES_MSG_LENGTH)
         if not recv_data or recv_data == b"":
@@ -439,7 +467,7 @@ def receive_from_tm():
         # Deserialize the JSON data
         json_data = json.loads(recv_data.decode("utf-8"))
         logger.info("Received data from test manager: %s", json_data)
-        process_message(json_data)
+        await process_message(json_data)
 
 
 if __name__ == "__main__":
@@ -459,6 +487,6 @@ if __name__ == "__main__":
 
     ta_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ta_socket.connect(constants.TEST_MANAGER_ADDR)
-    thread = Thread(target=receive_from_tm)
+    thread = Thread(target=asyncio.run, args=(receive_from_tm(),))
     thread.start()
     send_to_test_manager({"SDK_name": sdkname}, "initialize")
