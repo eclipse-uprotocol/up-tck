@@ -167,8 +167,18 @@ struct SocketUTransport::Impl {
 				    __LINE__, umsg.DebugString());
 
 				auto& attributes = umsg.attributes();
-				auto key = makeKey(attributes.source());
+				auto key = makeKey(attributes.sink(), attributes.source());
 				auto ptr = callback_data_.find(key);
+				if (ptr == nullptr) {
+					key = makeKey(attributes.sink());
+					ptr = callback_data_.find(key);
+				}
+
+				if (ptr == nullptr) {
+					key = makeKey(attributes.source());
+					ptr = callback_data_.find(key);
+				}
+				
 				if (ptr != nullptr) {
 					unique_lock<mutex> lock(ptr->mtx);
 					for (auto callback : ptr->listeners) {
