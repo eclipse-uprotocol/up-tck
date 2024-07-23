@@ -215,7 +215,7 @@ UStatus APIWrapper::handleInvokeMethodCommand(Document& jsonData) {
 
 	// Define a lambda function for handling received messages.
 	auto callBack = [this, strTest_id](auto responseOrError) {
-		spdlog::info("APIWrapper::onReceive(), received.");
+		spdlog::info("APIWrapper::handleInvokeMethodCommand(), response received.");
 
 		if (!responseOrError.has_value()) {
 			auto& status = responseOrError.error();
@@ -275,6 +275,8 @@ UStatus APIWrapper::handleRpcServerCommand(Document& jsonData) {
 
 	auto rpcServerCallback = [payload](const uprotocol::v1::UMessage& message)
 	    -> std::optional<uprotocol::datamodel::builder::Payload> {
+				spdlog::info(
+	    "APIWrapper::handleRpcServerCommand(), Sending response to client");
 		return payload;
 	};
 

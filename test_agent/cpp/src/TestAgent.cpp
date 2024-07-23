@@ -353,7 +353,7 @@ void TestAgent::socketDisconnect() {
 
 int main(int argc, char* argv[]) {
 	// Uncomment this line to set log level to debug
-	// spdlog::set_level(spdlog::level::level_enum::debug);
+	spdlog::set_level(spdlog::level::level_enum::debug);
 
 	// Log the start of the Test Agent
 	spdlog::info(" *** Starting CPP Test Agent *** ");
