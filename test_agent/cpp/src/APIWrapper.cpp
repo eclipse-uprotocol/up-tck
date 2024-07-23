@@ -214,6 +214,7 @@ UStatus APIWrapper::handleInvokeMethodCommand(Document& jsonData) {
 	                                        format.value()));
 
 	// Define a lambda function for handling received messages.
+	// TODO: Temprary using Constants::RESPONSE_ON_RECEIVE to integrate with test manager
 	auto callBack = [this, strTest_id](auto responseOrError) {
 		spdlog::info("APIWrapper::handleInvokeMethodCommand(), response received.");
 
@@ -222,10 +223,10 @@ UStatus APIWrapper::handleInvokeMethodCommand(Document& jsonData) {
 			spdlog::error("APIWrapper rpc callback, Error received: {}",
 			              status.message());
 			sendToTestManager(std::move(responseOrError).error(),
-			                  Constants::INVOKE_METHOD_COMMAND, strTest_id);
+			                  Constants::RESPONSE_ON_RECEIVE);
 		}
 		sendToTestManager(std::move(responseOrError).value(),
-		                  Constants::INVOKE_METHOD_COMMAND, strTest_id);
+		                  Constants::RESPONSE_ON_RECEIVE);
 	};
 
 	// Retrieve the rpc client as it is already added or existing
@@ -357,11 +358,12 @@ UStatus APIWrapper::handleSubscriberCommand(Document& jsonData) {
 
 	// Define a lambda function for handling received messages.
 	// This function logs the reception of a message and forwards it to the TM.
+	// TODO: Temprary using Constants::RESPONSE_ON_RECEIVE to integrate with test manager
 	auto callBack = [this, strTest_id](const UMessage response) {
 		spdlog::info("Subscribe response received.");
 
 		// Send the message to the Test Manager.
-		sendToTestManager(response, Constants::SUBSCRIBER_COMMAND, strTest_id);
+		sendToTestManager(response, Constants::RESPONSE_ON_RECEIVE);
 	};
 
 	// Create a subscriber object.
@@ -420,12 +422,13 @@ UStatus APIWrapper::handleNotificationSinkCommand(Document& jsonData) {
 	    "{}",
 	    uri.DebugString());
 
+	// TODO: Temprary using Constants::RESPONSE_ON_RECEIVE to integrate with test manager
 	auto callback = [this, strTest_id](const UMessage& transportUMessage) {
-		spdlog::info("APIWrapper::onReceive(), received.");
+		spdlog::info("APIWrapper::handleNotificationSinkCommand(), received.");
 
 		// Send the message to the Test Manager with a response.
 		sendToTestManager(transportUMessage,
-		                  Constants::NOTIFICATION_SINK_COMMAND, strTest_id);
+		                  Constants::RESPONSE_ON_RECEIVE);
 	};
 	// Serialize the URI
 	std::string serializedUri = uri.SerializeAsString();

@@ -46,7 +46,7 @@ Feature: Testing Publish and Subscribe Functionality
     And sends "invokemethod" request
 
     Then the status received with "code" is "OK"
-      And "uE1" receives data field "payload" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
+      And "uE2" sends onreceive message with field "payload" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
 
     Examples:
       | ignore | ignore |
