@@ -51,7 +51,7 @@ public:
 	/// protobuf message.
 	/// @return The populated JSON value.
 	static rapidjson::Value convertMessageToJson(
-	    const google::protobuf::Message& message, rapidjson::Document& doc);
+	    const uprotocol::v1::UMessage& message, rapidjson::Document& doc);
 
 private:
 	/// @brief Process nested JSON objects.

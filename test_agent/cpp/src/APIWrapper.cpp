@@ -78,7 +78,8 @@ UStatus APIWrapper::handleCreateTransportCommand(Document& jsonData) {
 	// Check if the transport creation failed
 	if (!transportPtr_) {
 		spdlog::error(
-		    "APIWrapper::handleCreateTransportCommand, Unable to create transport");
+		    "APIWrapper::handleCreateTransportCommand, Unable to create "
+		    "transport");
 		status.set_code(UCode::FAILED_PRECONDITION);
 		status.set_message("Unable to create transport");
 		return status;
@@ -155,6 +156,8 @@ UStatus APIWrapper::handleRegisterListenerCommand(Document& jsonData) {
 	    // callback =
 	    [this](const UMessage& transportUMessage) {
 		    spdlog::info("APIWrapper::onReceive(), received.");
+		    spdlog::info("APIWrapper::onReceive(), umsg string is: {}",
+		                 transportUMessage.DebugString());
 
 		    // Send the message to the Test Manager with a predefined response.
 		    sendToTestManager(transportUMessage,

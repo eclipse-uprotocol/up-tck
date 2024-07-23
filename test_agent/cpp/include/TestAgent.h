@@ -34,7 +34,7 @@ class TestAgent : public APIWrapper {
 public:
 	/// @brief Constructs a TestAgent object with the specified transport type.
 	/// @param[in] transportType The type of transport to be used by the agent.
-	TestAgent(const std::string transportType);
+	TestAgent(const std::string transportType, const std::string uEName);
 
 	/// @brief Destroys the TestAgent object.
 	~TestAgent();
@@ -73,6 +73,9 @@ public:
 	                       const std::string& strTest_id = "") const override;
 
 private:
+	// Name of uE
+	std::string uEName_;
+
 	// The socket used for communication with the test manager.
 	int clientSocket_;
 	// The address of the test manager.

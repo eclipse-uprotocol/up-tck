@@ -15,8 +15,8 @@ using namespace rapidjson;
 using namespace uprotocol::v1;
 using namespace std;
 
-TestAgent::TestAgent(const std::string transportType)
-    : APIWrapper(transportType) {
+TestAgent::TestAgent(const std::string transportType, const std::string uEName)
+    : APIWrapper(transportType), uEName_(uEName) {
 	// Initialize the client socket
 	clientSocket_ = 0;
 
@@ -204,7 +204,7 @@ void TestAgent::sendToTestManager(Document& document, Value& jsonData,
 	// Create a RapidJSON string value for the UE key.
 	rapidjson::Value keyUE = createRapidJsonString(document, Constants::UE);
 	// Create a RapidJSON string value for the UE value.
-	rapidjson::Value valUE(Constants::TEST_AGENT, document.GetAllocator());
+	rapidjson::Value valUE = createRapidJsonString(document, uEName_);
 	// Add the UE key-value pair to the response document.
 	document.AddMember(keyUE, valUE, document.GetAllocator());
 
@@ -393,7 +393,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Create a new TestAgent with the specified transport type
-	TestAgent testAgent = TestAgent(transportType);
+	TestAgent testAgent = TestAgent(transportType, sdkNameValue);
 
 	// If the TestAgent successfully connects to the server
 	if (testAgent.socketConnect()) {

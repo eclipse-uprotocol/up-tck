@@ -31,6 +31,11 @@ from dispatcher.dispatcher import Dispatcher
 from test_manager.features.utils import loggerutils
 from test_manager.testmanager import TestManager
 
+def generate_ue_id():
+    while True:
+        ue_id = random.randrange(1, 0x7FFFFFFF)  
+        if (ue_id & 0xFFFF) != 0xFFFF: 
+            return str(ue_id)
 
 def before_all(context):
     """Set up test environment
@@ -71,7 +76,7 @@ def before_all(context):
 
         current_uri = {
             "authority_name": "myAuthority",
-            "ue_id": str(random.randrange(0, 0x7FFF)),
+            "ue_id": str(generate_ue_id()),
             "ue_version_major": str(1),
             "resource_id": str(0),
         }
@@ -79,7 +84,7 @@ def before_all(context):
         while current_uri in all_uris:
             current_uri = {
                 "authority_name": "myAuthority",
-                "ue_id": str(random.randrange(0, 0x7FFF)),
+                "ue_id": str(generate_ue_id()),
                 "ue_version_major": str(1),
                 "resource_id": str(0),
             }
