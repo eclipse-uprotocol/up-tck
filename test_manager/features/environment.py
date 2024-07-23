@@ -32,6 +32,22 @@ from test_manager.features.utils import loggerutils
 from test_manager.testmanager import TestManager
 
 
+def environment_generate_uri(transport_name: str) -> dict:
+    """Generate a random URI for the test environment.
+    :param transport_name: The name of the transport.
+    :return: A dictionary containing the URI.
+    """
+    while True:
+        ue_id = random.randrange(1, 0x7FFFFFFF)
+        if (ue_id & 0xFFFF) != 0xFFFF:
+            return {
+                "authority_name": transport_name + "_authority",
+                "ue_id": ue_id,
+                "ue_version_major": str(1),
+                "resource_id": str(0),
+            }
+
+
 def before_all(context):
     """Set up test environment
     Create driver based on the desired capabilities provided.
@@ -69,27 +85,21 @@ def before_all(context):
         all_transports.append(context.config.userdata[f"transport{str(counter)}"])
         context.logger.info(all_languages)
 
-        current_uri = {
-            "authority_name": "myAuthority",
-            "ue_id": str(random.randrange(0, 0x7FFF)),
-            "ue_version_major": str(1),
-            "resource_id": str(0),
-        }
+        # Build the transport name, which includes the language and the number UE of that language that it is.
+        test_agent_name = (
+            context.config.userdata[f"uE{str(counter)}"]
+            + "_"
+            + str(all_languages.count(context.config.userdata[f"uE{str(counter)}"]))
+        )
 
+        current_uri = environment_generate_uri(test_agent_name)
         while current_uri in all_uris:
-            current_uri = {
-                "authority_name": "myAuthority",
-                "ue_id": str(random.randrange(0, 0x7FFF)),
-                "ue_version_major": str(1),
-                "resource_id": str(0),
-            }
+            current_uri = environment_generate_uri(test_agent_name)
 
         all_uris.append(current_uri)
         context.ue_tracker.append(
             (
-                context.config.userdata[f"uE{str(counter)}"]
-                + "_"
-                + str(all_languages.count(context.config.userdata[f"uE{str(counter)}"])),
+                test_agent_name,
                 context.config.userdata[f"transport{str(counter)}"],
                 current_uri,
                 False,
