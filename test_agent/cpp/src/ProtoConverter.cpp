@@ -110,7 +110,30 @@ void ProtoConverter::dictToProto(Value& parentJsonObj, Message& parentProtoObj,
 	}
 }
 
-Value ProtoConverter::convertMessageToJson(const Message& message,
+uprotocol::v1::UUri ProtoConverter::distToUri(
+    rapidjson::Value& parentJsonObj,
+    rapidjson::Document::AllocatorType& allocator) {
+	uprotocol::v1::UUri uri;
+	dictToProto(parentJsonObj, uri, allocator);
+	return uri;
+}
+
+std::optional<uprotocol::v1::UPayloadFormat> ProtoConverter::distToUPayFormat(
+    const rapidjson::Value& formatStrValue) {
+	if (formatStrValue.IsString()) {
+		const std::string formatStr = formatStrValue.GetString();
+		const google::protobuf::EnumDescriptor* descriptor =
+		    uprotocol::v1::UPayloadFormat_descriptor();
+		const google::protobuf::EnumValueDescriptor* value =
+		    descriptor->FindValueByName(formatStr);
+		if (value) {
+			return static_cast<uprotocol::v1::UPayloadFormat>(value->number());
+		}
+	}
+	return std::nullopt;
+}
+
+Value ProtoConverter::convertMessageToJson(const uprotocol::v1::UMessage& message,
                                            Document& doc) {
 	std::string jsonString;
 	util::JsonPrintOptions options;
@@ -120,17 +143,11 @@ Value ProtoConverter::convertMessageToJson(const Message& message,
 	Document jsonDoc;
 	jsonDoc.Parse(jsonString.c_str());
 
-	// TODO: Optimize this code to avoid unnecessary base64 decoding
-	if (jsonDoc.HasMember("payload") && jsonDoc["payload"].HasMember("value")) {
-		std::string byteString = jsonDoc["payload"]["value"].GetString();
-		if (isValidBase64(
-		        byteString)) {  // Check if the string is base64 encoded
-			std::string base64Decoded = base64Decode(byteString);
-			jsonDoc["payload"]["value"].SetString(
-			    base64Decoded.c_str(),
-			    static_cast<rapidjson::SizeType>(base64Decoded.length()),
-			    doc.GetAllocator());
-		}
+	// This setep is needed to ensure payload value isn't encoded by
+	// MessageToJsonString
+	if (jsonDoc.HasMember("payload")) {
+		jsonDoc["payload"].SetString(message.payload().data(),
+		                             doc.GetAllocator());
 	}
 
 	// Convert the modified JSON document back to a string
