@@ -75,13 +75,6 @@ private:
 	// The map of action handlers.
 	std::unordered_map<std::string, FunctionType> actionHandlers_;
 
-	/// @brief Callback function called when a message is received from the
-	/// transport layer.
-	/// @param[in] transportUMessage The received message.
-	/// @return The status of the message processing.
-	uprotocol::v1::UStatus onReceive(
-	    uprotocol::utransport::UMessage& transportUMessage) const;
-
 	/// @brief Processes the received message.
 	/// @param[in,out] jsonData The JSON data of the received message.
 	void processMessage(rapidjson::Document& jsonData);
@@ -106,23 +99,13 @@ private:
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
 	/// @return The status of the command handling.
-	uprotocol::v1::UStatus handleUnregisterListenerCommand(
+	uprotocol::v1::UStatus removeHandleOrProvideError(
 	    rapidjson::Document& jsonData);
 
 	/// @brief Handles the "invokeMethod" command received from the test
 	/// manager.
 	/// @param[in,out] jsonData The JSON data of the command.
-	void handleInvokeMethodCommand(rapidjson::Document& jsonData);
-
-	/// @brief Handles the "serializeUri" command received from the test
-	/// manager.
-	/// @param[in,out] jsonData The JSON data of the command.
-	void handleSerializeUriCommand(rapidjson::Document& jsonData);
-
-	/// @brief Handles the "deserializeUri" command received from the test
-	/// manager.
-	/// @param[in,out] jsonData The JSON data of the command.
-	void handleDeserializeUriCommand(rapidjson::Document& jsonData);
+	uprotocol::v1::UStatus handleInvokeMethodCommand(rapidjson::Document& jsonData);
 
 	/// @brief Creates a transport layer object based on the specified transport
 	/// type.
