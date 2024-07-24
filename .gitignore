@@ -22,3 +22,4 @@ MANIFEST
 *.jar
 **/.DS_Store
 **/target
+test_manager/reports/summary/summary.json
