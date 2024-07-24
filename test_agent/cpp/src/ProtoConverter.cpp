@@ -110,6 +110,14 @@ void ProtoConverter::dictToProto(Value& parentJsonObj, Message& parentProtoObj,
 	}
 }
 
+uprotocol::v1::UAttributes ProtoConverter::distToAttributes(
+    rapidjson::Value& parentJsonObj,
+    rapidjson::Document::AllocatorType& allocator) {
+	uprotocol::v1::UAttributes attributes;
+	dictToProto(parentJsonObj, attributes, allocator);
+	return attributes;
+}
+
 uprotocol::v1::UUri ProtoConverter::distToUri(
     rapidjson::Value& parentJsonObj,
     rapidjson::Document::AllocatorType& allocator) {
@@ -133,8 +141,8 @@ std::optional<uprotocol::v1::UPayloadFormat> ProtoConverter::distToUPayFormat(
 	return std::nullopt;
 }
 
-Value ProtoConverter::convertMessageToJson(const uprotocol::v1::UMessage& message,
-                                           Document& doc) {
+Value ProtoConverter::convertMessageToJson(
+    const uprotocol::v1::UMessage& message, Document& doc) {
 	std::string jsonString;
 	util::JsonPrintOptions options;
 	options.preserve_proto_field_names = true;

@@ -103,6 +103,53 @@ public:
 	uprotocol::v1::UStatus handleInvokeMethodCommand(
 	    rapidjson::Document& jsonData);
 
+	/// @brief Handles the "rpcserver" command received from the test
+	/// manager.
+	/// @param[in,out] jsonData A rapidjson::Document object containing the
+	/// command's JSON data. The JSON structure should include attributes.sink,
+	/// attributes.payload_format, and the payload.
+	/// @return uprotocol::v1::UStatus The status of the operation, indicating
+	/// success or failure.
+	uprotocol::v1::UStatus handleRpcServerCommand(
+	    rapidjson::Document& jsonData);
+
+	/// @brief Handles the "publisher" command received from the test
+	/// manager.
+	/// @param[in,out] jsonData A rapidjson::Document object containing the
+	/// command's JSON data. The JSON structure should include attributes.sink,
+	/// attributes.payload_format, and the payload.
+	/// @return uprotocol::v1::UStatus The status of the operation, indicating
+	/// success or failure.
+	uprotocol::v1::UStatus handlePublisherCommand(
+	    rapidjson::Document& jsonData);
+
+	/// @brief Handles the "subscribe" command received from the test manager.
+	/// @param[in,out] jsonData A rapidjson::Document object containing the
+	/// command's JSON data. The JSON structure should include uri.
+	/// @return uprotocol::v1::UStatus The status of the operation, indicating
+	/// success or failure.
+	uprotocol::v1::UStatus handleSubscriberCommand(
+	    rapidjson::Document& jsonData);
+
+	/// @brief Handles the "notificationsource" command received from the test
+	/// manager. uses default uri from tranport
+	/// @param[in,out] jsonData A rapidjson::Document object containing the
+	/// command's JSON data. The JSON structure should include attributes.sink,
+	/// attributes.payload_format, and the payload.
+	/// @return uprotocol::v1::UStatus The status of the operation, indicating
+	/// success or failure.
+	uprotocol::v1::UStatus handleNotificationSourceCommand(
+	    rapidjson::Document& jsonData);
+
+	/// @brief Handles the "notificationsink" command received from the test
+	/// manager. uses default uri from tranport
+	/// @param[in,out] jsonData A rapidjson::Document object containing the
+	/// command's JSON data. The JSON structure should include uri.
+	/// @return uprotocol::v1::UStatus The status of the operation, indicating
+	/// success or failure.
+	uprotocol::v1::UStatus handleNotificationSinkCommand(
+	    rapidjson::Document& jsonData);
+
 private:
 	// Default source uri for transport
 	uprotocol::v1::UUri def_src_uuri_;
