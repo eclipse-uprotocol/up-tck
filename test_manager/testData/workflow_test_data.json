@@ -1,73 +1,21 @@
-{
-    "long_uri_deserializer": {
-        "path": "serializers",
-        "ue1": ["python", "java"],
-        "transports": ["socket"]
-    },
-    "long_uri_serializer": {
-        "path": "serializers",
-        "ue1": ["python", "java"],
-        "transports": ["socket"]
-    },
-    "long_uuid_deserializer": {
-        "path": "serializers",
-        "ue1": ["python", "java"],
-        "transports": ["socket"]
-    },
-    "long_uuid_serializer": {
-        "path": "serializers",
-        "ue1": ["python", "java"],
-        "transports": ["socket"]
-    },
-    "micro_uri_deserializer": {
-        "path": "serializers",
-        "ue1": ["python", "java"],
-        "transports": ["socket"]
-    },
-    "micro_uri_serializer": {
-        "path": "serializers",
-        "ue1": ["python", "java"],
-        "transports": ["socket"]
-    },
-    "register_and_invoke": {
-        "path": "transport_rpc",
-        "ue1": ["all"],
-        "transports": ["socket"]
-    },
-    "register_and_send": {
-        "path": "transport_rpc",
-        "ue1": ["all"],
-        "transports": ["socket"]
-    },
-    "register_and_unregister": {
-        "path": "transport_rpc",
-        "ue1": ["all"],
-        "transports": ["socket"]
-    },
-    "register_and_send_zenoh": {
-        "path": "transport_rpc",
-        "ue1": ["all"],
-        "transports": ["zenoh"]
-    },
-    "register_and_unregister_zenoh": {
-        "path": "transport_rpc",
-        "ue1": ["all"],
-        "transports": ["zenoh"]
-    },
-    "uattributes_validator": {
+[
+    {
+        "feature_name" : "uuid_validator",
         "path": "validators",
-        "ue1": ["python", "java"],
+        "ue1": ["python"],
         "transports": ["socket"]
     },
-    "uri_validator": {
-        "path": "validators",
-        "ue1": ["python", "java"],
-        "ue2": ["python", "java"],
+    {
+        "feature_name" : "register_and_send",
+        "path": "transport_rpc",
+        "ue1": ["python"],
+        "ue2": ["python"],
         "transports": ["socket"]
     },
-    "uuid_validator": {
-        "path": "validators",
-        "ue1": ["python", "java"],
+    {
+        "feature_name" : "register_and_unregister",
+        "path": "transport_rpc",
+        "ue1": ["python"],
         "transports": ["socket"]
     }
-}
+]
