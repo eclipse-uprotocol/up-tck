@@ -330,7 +330,7 @@ UStatus APIWrapper::handlePublisherCommand(Document& jsonData) {
 
 	// Log the UUri string.
 	spdlog::debug(
-	    "APIWrapper::handleInvokeMethodCommand(), UUri in string format is :  "
+	    "APIWrapper::handlePublisherCommand(), UUri in string format is :  "
 	    "{}",
 	    uri.DebugString());
 

@@ -58,12 +58,6 @@ TestAgent::TestAgent(const std::string transportType, const std::string uEName)
 		     return this->handleRpcServerCommand(doc);
 	     })},
 
-	    // Handle the "publisher" action
-	    {string(Constants::PUBLISHER_COMMAND),
-	     std::function<UStatus(Document&)>([this](Document& doc) {
-		     return this->handlePublisherCommand(doc);
-	     })},
-
 	    // Handle the "removehandle" action
 	    {string(Constants::REMOVE_HANDLE_COMMAND),
 	     std::function<UStatus(Document&)>([this](Document& doc) {
@@ -82,7 +76,13 @@ TestAgent::TestAgent(const std::string transportType, const std::string uEName)
 		     return this->handleNotificationSinkCommand(doc);
 	     })},
 
-	    // Handle the "deserializeUri" action
+	    // Handle the "publisher" action
+	    {string(Constants::PUBLISHER_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handlePublisherCommand(doc);
+	     })},
+
+	    // Handle the "subscriber" action
 	    {string(Constants::SUBSCRIBER_COMMAND),
 	     std::function<UStatus(Document&)>([this](Document& doc) {
 		     return this->handleSubscriberCommand(doc);
