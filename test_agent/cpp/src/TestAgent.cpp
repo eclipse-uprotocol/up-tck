@@ -46,10 +46,46 @@ TestAgent::TestAgent(const std::string transportType, const std::string uEName)
 		     return this->removeHandleOrProvideError(doc);
 	     })},
 
+	    // Handle the "rpcclient" action
+	    {string(Constants::INVOKE_METHOD_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handleInvokeMethodCommand(doc);
+	     })},
+
+	    // Handle the "rpcserver" action
+	    {string(Constants::RPC_SERVER_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handleRpcServerCommand(doc);
+	     })},
+
 	    // Handle the "removehandle" action
 	    {string(Constants::REMOVE_HANDLE_COMMAND),
 	     std::function<UStatus(Document&)>([this](Document& doc) {
 		     return this->removeHandleOrProvideError(doc);
+	     })},
+
+	    // Handle the "notificationsource" action
+	    {string(Constants::NOTIFICATION_SOURCE_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handleNotificationSourceCommand(doc);
+	     })},
+
+	    // Handle the "notificationsink" action
+	    {string(Constants::NOTIFICATION_SINK_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handleNotificationSinkCommand(doc);
+	     })},
+
+	    // Handle the "publisher" action
+	    {string(Constants::PUBLISHER_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handlePublisherCommand(doc);
+	     })},
+
+	    // Handle the "subscriber" action
+	    {string(Constants::SUBSCRIBER_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handleSubscriberCommand(doc);
 	     })}};
 }
 

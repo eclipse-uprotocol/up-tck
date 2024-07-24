@@ -214,9 +214,11 @@ UStatus APIWrapper::handleInvokeMethodCommand(Document& jsonData) {
 	                                        format.value()));
 
 	// Define a lambda function for handling received messages.
-	// TODO: Temprary using Constants::RESPONSE_ON_RECEIVE to integrate with test manager
+	// TODO: Temprary using Constants::RESPONSE_ON_RECEIVE to integrate with
+	// test manager
 	auto callBack = [this, strTest_id](auto responseOrError) {
-		spdlog::info("APIWrapper::handleInvokeMethodCommand(), response received.");
+		spdlog::info(
+		    "APIWrapper::handleInvokeMethodCommand(), response received.");
 
 		if (!responseOrError.has_value()) {
 			auto& status = responseOrError.error();
@@ -242,3 +244,214 @@ UStatus APIWrapper::handleInvokeMethodCommand(Document& jsonData) {
 	return status;
 }
 
+UStatus APIWrapper::handleRpcServerCommand(Document& jsonData) {
+	// Get the data and test ID from the JSON document.
+	Value& data = jsonData[Constants::DATA];
+	std::string strTest_id = jsonData[Constants::TEST_ID].GetString();
+	UStatus status;
+
+	auto format = ProtoConverter::distToUPayFormat(
+	    data[Constants::ATTRIBUTES][Constants::FORMAT]);
+
+	if (!format.has_value()) {
+		spdlog::error(
+		    "APIWrapper::handleRpcServerCommand(), Invalid format received.");
+		status.set_code(UCode::NOT_FOUND);
+		status.set_message("Invalid payload format received in the request.");
+		return status;
+	}
+
+	// Build payload
+	std::string valueStr = std::string(data[Constants::PAYLOAD].GetString());
+
+	uprotocol::datamodel::builder::Payload payload(valueStr, format.value());
+
+	// Create a UUri object.
+	auto uri = ProtoConverter::distToUri(
+	    data[Constants::ATTRIBUTES][Constants::SINK], jsonData.GetAllocator());
+
+	// Log the UUri string.
+	spdlog::debug(
+	    "APIWrapper::handleRpcServerCommand(), UUri in string format is :  "
+	    "{}",
+	    uri.DebugString());
+
+	auto rpcServerCallback = [payload](const uprotocol::v1::UMessage& message)
+	    -> std::optional<uprotocol::datamodel::builder::Payload> {
+		spdlog::info(
+		    "APIWrapper::handleRpcServerCommand(), Sending response to client");
+		return payload;
+	};
+
+	// Serialize the URI
+	std::string serializedUri = uri.SerializeAsString();
+
+	// Attempt to find the range of elements with the matching key
+	if (MultiMapUtils::checkKeyValueType<
+	        std::unique_ptr<uprotocol::communication::RpcServer>>(
+	        uriCallbackMap_, serializedUri)) {
+		status.set_code(UCode::ALREADY_EXISTS);
+		status.set_message("RPC Server already exists for the given URI.");
+		return status;
+	}
+
+	// Create RPC Client object
+	auto rpcServer = uprotocol::communication::RpcServer::create(
+	    transportPtr_, uri, rpcServerCallback, format);
+
+	return rpcServer.has_value()
+	           ? addHandleToUriCallbackMap(std::move(rpcServer).value(), uri)
+	           : rpcServer.error();
+}
+
+UStatus APIWrapper::handlePublisherCommand(Document& jsonData) {
+	// Get the data and test ID from the JSON document.
+	Value& data = jsonData[Constants::DATA];
+	std::string strTest_id = jsonData[Constants::TEST_ID].GetString();
+
+	auto format = ProtoConverter::distToUPayFormat(
+	    data[Constants::ATTRIBUTES][Constants::FORMAT]);
+
+	if (!format.has_value()) {
+		spdlog::error(
+		    "APIWrapper::handlePublisherCommand(), Invalid format received.");
+		UStatus status;
+		status.set_code(UCode::NOT_FOUND);
+		status.set_message("Invalid payload format received in the request.");
+		return status;
+	}
+
+	// Build payload
+	auto valueStr = std::string(data[Constants::PAYLOAD].GetString());
+	uprotocol::datamodel::builder::Payload payload(valueStr, format.value());
+
+	// Create a UUri object.
+	auto uri = ProtoConverter::distToUri(
+	    data[Constants::ATTRIBUTES][Constants::SOURCE],
+	    jsonData.GetAllocator());
+
+	// Log the UUri string.
+	spdlog::debug(
+	    "APIWrapper::handlePublisherCommand(), UUri in string format is :  "
+	    "{}",
+	    uri.DebugString());
+
+	std::string serializedUri = uri.SerializeAsString();
+
+	// Check and add NotificationSource if not exists
+	MultiMapUtils::checkOrAdd(
+	    uriCallbackMap_, serializedUri,
+	    uprotocol::communication::Publisher(transportPtr_, std::move(uri),
+	                                        format.value()));
+
+	auto& publisherHandle = std::get<uprotocol::communication::Publisher>(
+	    uriCallbackMap_.find(serializedUri)->second);
+
+	return publisherHandle.publish(std::move(payload));
+}
+
+UStatus APIWrapper::handleSubscriberCommand(Document& jsonData) {
+	// Create a UUri object.
+	auto uri = ProtoConverter::distToUri(jsonData[Constants::DATA],
+	                                     jsonData.GetAllocator());
+
+	// Get the test ID from the JSON data.
+	std::string strTest_id = jsonData[Constants::TEST_ID].GetString();
+
+	// Define a lambda function for handling received messages.
+	// This function logs the reception of a message and forwards it to the TM.
+	// TODO: Temprary using Constants::RESPONSE_ON_RECEIVE to integrate with
+	// test manager
+	auto callBack = [this, strTest_id](const UMessage response) {
+		spdlog::info("Subscribe response received.");
+
+		// Send the message to the Test Manager.
+		sendToTestManager(response, Constants::RESPONSE_ON_RECEIVE);
+	};
+
+	// Create a subscriber object.
+	auto subscriber = uprotocol::communication::Subscriber::subscribe(
+	    transportPtr_, uri, std::move(callBack));
+
+	// Add the subscriber object to the URI callback map.
+	return subscriber.has_value()
+	           ? addHandleToUriCallbackMap(std::move(subscriber).value(), uri)
+	           : subscriber.error();
+}
+
+UStatus APIWrapper::handleNotificationSourceCommand(Document& jsonData) {
+	Value& data = jsonData[Constants::DATA];
+
+	auto uriSource = def_src_uuri_;
+	auto uriSink = ProtoConverter::distToUri(
+	    data[Constants::ATTRIBUTES][Constants::SINK], jsonData.GetAllocator());
+
+	auto format = ProtoConverter::distToUPayFormat(
+	    data[Constants::ATTRIBUTES][Constants::FORMAT]);
+
+	// Build payload
+	auto payloadValueStr = std::string(data[Constants::PAYLOAD].GetString());
+	uprotocol::datamodel::builder::Payload payload(payloadValueStr,
+	                                               format.value());
+
+	std::string serializedUri = uriSink.SerializeAsString();
+
+	// Check and add NotificationSource if not exists
+	MultiMapUtils::checkOrAdd(uriCallbackMap_, serializedUri,
+	                          uprotocol::communication::NotificationSource(
+	                              transportPtr_, std::move(uriSource),
+	                              std::move(uriSink), format.value()));
+
+	// Retrieve the handle as it is already added or existing
+	auto& notificationSourceHandle =
+	    std::get<uprotocol::communication::NotificationSource>(
+	        uriCallbackMap_.find(serializedUri)->second);
+
+	return notificationSourceHandle.notify(std::move(payload));
+}
+
+UStatus APIWrapper::handleNotificationSinkCommand(Document& jsonData) {
+	// Get the data and test ID from the JSON document.
+	Value& data = jsonData[Constants::DATA];
+	std::string strTest_id = jsonData[Constants::TEST_ID].GetString();
+	UStatus status;
+
+	// Create a UUri object.
+	auto uri = ProtoConverter::distToUri(data, jsonData.GetAllocator());
+
+	// Log the UUri string.
+	spdlog::debug(
+	    "APIWrapper::handleRpcServerCommand(), UUri in string format is :  "
+	    "{}",
+	    uri.DebugString());
+
+	// TODO: Temprary using Constants::RESPONSE_ON_RECEIVE to integrate with
+	// test manager
+	auto callback = [this, strTest_id](const UMessage& transportUMessage) {
+		spdlog::info("APIWrapper::handleNotificationSinkCommand(), received.");
+
+		// Send the message to the Test Manager with a response.
+		sendToTestManager(transportUMessage, Constants::RESPONSE_ON_RECEIVE);
+	};
+	// Serialize the URI
+	std::string serializedUri = uri.SerializeAsString();
+
+	// Attempt to find the range of elements with the matching key
+	if (MultiMapUtils::checkKeyValueType<
+	        std::unique_ptr<uprotocol::communication::NotificationSink>>(
+	        uriCallbackMap_, serializedUri)) {
+		status.set_code(UCode::ALREADY_EXISTS);
+		status.set_message("RPC Server already exists for the given URI.");
+		return status;
+	}
+
+	// Create NotificationSink object
+	auto NotificationSinkHandle =
+	    uprotocol::communication::NotificationSink::create(
+	        transportPtr_, std::move(uri), std::move(callback), std::nullopt);
+
+	return NotificationSinkHandle.has_value()
+	           ? addHandleToUriCallbackMap(
+	                 std::move(NotificationSinkHandle).value(), uri)
+	           : NotificationSinkHandle.error();
+}

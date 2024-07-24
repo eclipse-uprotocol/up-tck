@@ -133,8 +133,8 @@ std::optional<uprotocol::v1::UPayloadFormat> ProtoConverter::distToUPayFormat(
 	return std::nullopt;
 }
 
-Value ProtoConverter::convertMessageToJson(const uprotocol::v1::UMessage& message,
-                                           Document& doc) {
+Value ProtoConverter::convertMessageToJson(
+    const uprotocol::v1::UMessage& message, Document& doc) {
 	std::string jsonString;
 	util::JsonPrintOptions options;
 	options.preserve_proto_field_names = true;

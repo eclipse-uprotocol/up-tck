@@ -2,7 +2,6 @@
 #define UTILS_H
 
 #include <Constants.h>
-#include <UTransportMock.h>
 #include <up-cpp/communication/NotificationSink.h>
 #include <up-cpp/communication/NotificationSource.h>
 #include <up-cpp/communication/Publisher.h>
