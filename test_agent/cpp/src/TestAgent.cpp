@@ -11,31 +11,24 @@
 
 #include <TestAgent.h>
 
-using namespace google::protobuf;
 using namespace rapidjson;
-using namespace uprotocol::uri;
 using namespace uprotocol::v1;
+using namespace std;
 
-TestAgent::TestAgent(const std::string transportType) {
-	// Log the creation of the TestAgent with the specified transport type
-	spdlog::info(
-	    "TestAgent::TestAgent(), Creating TestAgent with transport type: {}",
-	    transportType);
-
-	// Create the transport with the specified type
-	transportPtr_ = createTransport(transportType);
-
-	// If the transport creation failed, log an error and exit
-	if (nullptr == transportPtr_) {
-		spdlog::error("TestAgent::TestAgent(), Failed to create transport");
-		exit(1);
-	}
-
+TestAgent::TestAgent(const std::string transportType, const std::string uEName)
+    : APIWrapper(transportType), uEName_(uEName) {
 	// Initialize the client socket
 	clientSocket_ = 0;
 
 	// Initialize the action handlers
 	actionHandlers_ = {
+
+	    // Handle the "initialize_transport" action
+	    {string(Constants::CREATE_TRANSPORT_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->handleCreateTransportCommand(doc);
+	     })},
+
 	    // Handle the "sendCommand" action
 	    {string(Constants::SEND_COMMAND),
 	     std::function<UStatus(Document&)>(
@@ -50,43 +43,20 @@ TestAgent::TestAgent(const std::string transportType) {
 	    // Handle the "unregisterListener" action
 	    {string(Constants::UNREGISTER_LISTENER_COMMAND),
 	     std::function<UStatus(Document&)>([this](Document& doc) {
-		     return this->handleUnregisterListenerCommand(doc);
+		     return this->removeHandleOrProvideError(doc);
 	     })},
 
-	    // Handle the "invokeMethod" action
-	    {string(Constants::INVOKE_METHOD_COMMAND),
-	     std::function<UStatus(Document&)>(
-	         [this](Document& doc) { return this->handleInvokeMethodCommand(doc); })} 
-		}
-
+	    // Handle the "removehandle" action
+	    {string(Constants::REMOVE_HANDLE_COMMAND),
+	     std::function<UStatus(Document&)>([this](Document& doc) {
+		     return this->removeHandleOrProvideError(doc);
+	     })}};
 }
 
 TestAgent::~TestAgent() {}
 
-std::shared_ptr<uprotocol::utransport::UTransport> TestAgent::createTransport(
-    const std::string& transportType) {
-	// If the transport type is "socket", create a new SocketUTransport.
-	if (transportType == "socket") {
-		return std::make_shared<SocketUTransport>();
-	}
-	// If the transport type is "zenoh", create a new UpZenohClient.
-	else if (transportType == "zenoh") {
-		return uprotocol::client::UpZenohClient::instance(
-		    BuildUAuthority().setName("cpp").build(), BuildUEntity()
-		                                                  .setName("rpc.client")
-		                                                  .setMajorVersion(1)
-		                                                  .setId(1)
-		                                                  .build());
-	} else {
-		// If the transport type is neither "socket" nor "zenoh", log an error
-		// and return null.
-		spdlog::error("Invalid transport type: {}", transportType);
-		return nullptr;
-	}
-}
-
-Value TestAgent::createRapidJsonStringValue(Document& doc,
-                                            const std::string& data) const {
+Value TestAgent::createRapidJsonString(Document& doc,
+                                       const std::string& data) const {
 	// Create a RapidJSON value of string type.
 	Value stringValue(rapidjson::kStringType);
 	// Set the string value with the provided data using the document's
@@ -96,24 +66,7 @@ Value TestAgent::createRapidJsonStringValue(Document& doc,
 	return stringValue;
 }
 
-void TestAgent::writeDataToTMSocket(Document& responseDoc,
-                                    const std::string action) const {
-	// Create a RapidJSON string value for the action key.
-	rapidjson::Value keyAction =
-	    createRapidJsonStringValue(responseDoc, Constants::ACTION);
-	// Create a RapidJSON string value for the action value.
-	rapidjson::Value valAction(action.c_str(), responseDoc.GetAllocator());
-	// Add the action key-value pair to the response document.
-	responseDoc.AddMember(keyAction, valAction, responseDoc.GetAllocator());
-
-	// Create a RapidJSON string value for the UE key.
-	rapidjson::Value keyUE =
-	    createRapidJsonStringValue(responseDoc, Constants::UE);
-	// Create a RapidJSON string value for the UE value.
-	rapidjson::Value valUE(Constants::TEST_AGENT, responseDoc.GetAllocator());
-	// Add the UE key-value pair to the response document.
-	responseDoc.AddMember(keyUE, valUE, responseDoc.GetAllocator());
-
+void TestAgent::writeDataToTMSocket(Document& responseDoc) const {
 	// Create a RapidJSON string buffer and a writer.
 	rapidjson::StringBuffer buffer;
 	Writer<rapidjson::StringBuffer> writer(buffer);
@@ -133,7 +86,7 @@ void TestAgent::writeDataToTMSocket(Document& responseDoc,
 	}
 }
 
-void TestAgent::sendToTestManager(const Message& proto, const string& action,
+void TestAgent::sendToTestManager(const UMessage& proto, const string& action,
                                   const string& strTest_id) const {
 	// Create a RapidJSON document and set it as an object.
 	Document responseDict;
@@ -146,200 +99,81 @@ void TestAgent::sendToTestManager(const Message& proto, const string& action,
 	spdlog::info("TestAgent::sendToTestManager(), dataValue is : {}",
 	             dataValue.GetString());
 
-	// Create a RapidJSON string value for the data key.
-	rapidjson::Value keyData =
-	    createRapidJsonStringValue(responseDict, Constants::DATA);
+	sendToTestManager(responseDict, dataValue, action, strTest_id);
+}
 
-	// Add the data key-value pair to the response document.
-	responseDict.AddMember(keyData, dataValue, responseDict.GetAllocator());
+void TestAgent::sendToTestManager(const UStatus& status, const string& action,
+                                  const string& strTest_id) const {
+	// Log the received status.
+	spdlog::info("TestAgent::processMessage(), received status is : {}",
+	             status.message());
 
-	// Create a RapidJSON string value for the test ID key.
-	rapidjson::Value keyTestID =
-	    createRapidJsonStringValue(responseDict, Constants::TEST_ID);
+	// Create a new JSON document and status object.
+	Document document;
+	document.SetObject();
 
-	// If the test ID string is not empty, create a RapidJSON string value for
-	// it and add it to the response document.
-	if (!strTest_id.empty()) {
-		Value jsonStrValue(rapidjson::kStringType);
-		jsonStrValue.SetString(
-		    strTest_id.c_str(),
-		    static_cast<rapidjson::SizeType>(strTest_id.length()),
-		    responseDict.GetAllocator());
-		responseDict.AddMember(keyTestID, jsonStrValue,
-		                       responseDict.GetAllocator());
-	} else {
-		// If the test ID string is empty, add an empty string to the response
-		// document.
-		responseDict.AddMember(keyTestID, "", responseDict.GetAllocator());
-	}
+	Value statusObj(rapidjson::kObjectType);
 
-	// Write the response document to the TM socket.
-	writeDataToTMSocket(responseDict, action);
+	// Add the status message to the status object.
+	Value uStatusMessage = createRapidJsonString(document, status.message());
+	rapidjson::Value keyMessage =
+	    createRapidJsonString(document, Constants::MESSAGE);
+
+	statusObj.AddMember(keyMessage, uStatusMessage, document.GetAllocator());
+
+	// Add the status ucode to the status object.
+	rapidjson::Value keyCode = createRapidJsonString(document, Constants::CODE);
+	statusObj.AddMember(keyCode, status.code(), document.GetAllocator());
+
+	// Add an empty details array to the status object.
+	rapidjson::Value keyDetails =
+	    createRapidJsonString(document, Constants::DETAILS);
+	rapidjson::Value detailsArray(rapidjson::kArrayType);
+	statusObj.AddMember(keyDetails, detailsArray, document.GetAllocator());
+
+	// Send the status object to the Test Manager.
+	sendToTestManager(document, statusObj, action, strTest_id);
 }
 
 void TestAgent::sendToTestManager(Document& document, Value& jsonData,
                                   const string action,
                                   const string& strTest_id) const {
 	// Create a RapidJSON string value for the data key.
-	Value keyData = createRapidJsonStringValue(document, Constants::DATA);
+	Value keyData = createRapidJsonString(document, Constants::DATA);
 	// Add the data key-value pair to the document.
 	document.AddMember(keyData, jsonData, document.GetAllocator());
 
 	// Create a RapidJSON string value for the test ID key.
 	rapidjson::Value keyTestID =
-	    createRapidJsonStringValue(document, Constants::TEST_ID);
+	    createRapidJsonString(document, Constants::TEST_ID);
 
 	// If the test ID string is not empty, create a RapidJSON string value for
 	// it and add it to the document.
 	if (!strTest_id.empty()) {
-		Value jsonStrValue(rapidjson::kStringType);
-		jsonStrValue.SetString(
-		    strTest_id.c_str(),
-		    static_cast<rapidjson::SizeType>(strTest_id.length()),
-		    document.GetAllocator());
-		document.AddMember(keyTestID, jsonStrValue, document.GetAllocator());
+		Value testIdJson = createRapidJsonString(document, strTest_id);
+		document.AddMember(keyTestID, testIdJson, document.GetAllocator());
 	} else {
 		// If the test ID string is empty, add an empty string to the document.
 		document.AddMember(keyTestID, "", document.GetAllocator());
 	}
 
+	// Create a RapidJSON string value for the action key.
+	rapidjson::Value keyAction =
+	    createRapidJsonString(document, Constants::ACTION);
+	// Create a RapidJSON string value for the action value.
+	rapidjson::Value valAction(action.c_str(), document.GetAllocator());
+	// Add the action key-value pair to the response document.
+	document.AddMember(keyAction, valAction, document.GetAllocator());
+
+	// Create a RapidJSON string value for the UE key.
+	rapidjson::Value keyUE = createRapidJsonString(document, Constants::UE);
+	// Create a RapidJSON string value for the UE value.
+	rapidjson::Value valUE = createRapidJsonString(document, uEName_);
+	// Add the UE key-value pair to the response document.
+	document.AddMember(keyUE, valUE, document.GetAllocator());
+
 	// Write the document to the TM socket.
-	writeDataToTMSocket(document, action);
-}
-
-UStatus APIWrapper::handleSendCommand(Document& jsonData) {
-	// Create a v1 UMessage object.
-	UMessage umsg;
-	// Convert the jsonData to a proto message.
-	ProtoConverter::dictToProto(jsonData[Constants::DATA], umsg,
-	                            jsonData.GetAllocator());
-	// Log the UMessage string.
-	spdlog::info("APIWrapper::handleSendCommand(), umsg string is: {}",
-	             umsg.DebugString());
-
-	// Send the UMessage and return the status.
-	return transportPtr_->send(umsg);
-}
-
-UStatus APIWrapper::handleRegisterListenerCommand(Document& jsonData) {
-	// Create a v1 UUri object.
-	auto uri = ProtoConverter::distToUri(jsonData[Constants::DATA],
-	                                     jsonData.GetAllocator());
-
-	// Register the lambda function as a listener for messages on the specified
-	// URI.
-	auto result = transportPtr_->registerListener(
-	    // sink_uri =
-	    uri,
-	    // callback =
-	    [this](const UMessage& transportUMessage) {
-		    spdlog::info("APIWrapper::onReceive(), received.");
-		    spdlog::info("APIWrapper::onReceive(), umsg string is: {}",
-		                 transportUMessage.DebugString());
-
-		    // Send the message to the Test Manager with a predefined response.
-		    sendToTestManager(transportUMessage,
-		                      Constants::RESPONSE_ON_RECEIVE);
-	    });
-
-	return result.has_value()
-	           ? addHandleToUriCallbackMap(std::move(result).value(), uri)
-	           : result.error();
-}
-
-UStatus APIWrapper::removeHandleOrProvideError(const UUri& uri) {
-	UStatus status;
-
-	// Remove the rpc handles that are not valid
-	rpcClientHandles_.erase(
-	    std::remove_if(
-	        rpcClientHandles_.begin(), rpcClientHandles_.end(),
-	        [](const uprotocol::communication::RpcClient::InvokeHandle&
-	               handle) { return !handle; }),
-	    rpcClientHandles_.end());
-
-	auto count = uriCallbackMap_.erase(uri.SerializeAsString());
-	if (count == 0) {
-		spdlog::error("APIWrapper::removeCallbackToMap, URI not found.");
-		status.set_code(UCode::NOT_FOUND);
-		return status;
-	}
-
-	status.set_code(UCode::OK);
-
-	return status;
-}
-UStatus APIWrapper::handleInvokeMethodCommand(Document& jsonData) {
-	// Get the data and test ID from the JSON document.
-	Value& data = jsonData[Constants::DATA];
-	std::string strTest_id = jsonData[Constants::TEST_ID].GetString();
-	UStatus status;
-
-	auto format = ProtoConverter::distToUPayFormat(
-	    data[Constants::ATTRIBUTES][Constants::FORMAT]);
-
-	if (!format.has_value()) {
-		spdlog::error(
-		    "APIWrapper::handleInvokeMethodCommand(), Invalid format "
-		    "received.");
-		status.set_code(UCode::NOT_FOUND);
-		status.set_message("Invalid payload format received in the request.");
-		return status;
-	}
-
-	// Build payload
-	std::string valueStr = std::string(data[Constants::PAYLOAD].GetString());
-	uprotocol::datamodel::builder::Payload payload(valueStr, format.value());
-
-	// Create a UUri object.
-	auto uri = ProtoConverter::distToUri(
-	    data[Constants::ATTRIBUTES][Constants::SINK], jsonData.GetAllocator());
-
-	// Log the UUri string.
-	spdlog::debug(
-	    "APIWrapper::handleInvokeMethodCommand(), UUri in string format is :  "
-	    "{}",
-	    uri.DebugString());
-
-	std::chrono::milliseconds ttl = std::chrono::milliseconds(10000);
-
-	// Serialize the URI
-	std::string serializedUri = uri.SerializeAsString();
-
-	// Check and add RpcClient if not exists
-	MultiMapUtils::checkOrAdd(
-	    uriCallbackMap_, serializedUri,
-	    uprotocol::communication::RpcClient(transportPtr_, std::move(uri),
-	                                        UPriority::UPRIORITY_CS4, ttl,
-	                                        format.value()));
-
-	// Define a lambda function for handling received messages.
-	// TODO: Temprary using Constants::RESPONSE_ON_RECEIVE to integrate with test manager
-	auto callBack = [this, strTest_id](auto responseOrError) {
-		spdlog::info("APIWrapper::handleInvokeMethodCommand(), response received.");
-
-		if (!responseOrError.has_value()) {
-			auto& status = responseOrError.error();
-			spdlog::error("APIWrapper rpc callback, Error received: {}",
-			              status.message());
-			sendToTestManager(std::move(responseOrError).error(),
-			                  Constants::RESPONSE_ON_RECEIVE);
-		}
-		sendToTestManager(std::move(responseOrError).value(),
-		                  Constants::RESPONSE_ON_RECEIVE);
-	};
-
-	// Retrieve the rpc client as it is already added or existing
-	auto& rpcClient = std::get<uprotocol::communication::RpcClient>(
-	    uriCallbackMap_.find(serializedUri)->second);
-
-	// Invoke the method
-	auto handle =
-	    rpcClient.invokeMethod(std::move(payload), std::move(callBack));
-	rpcClientHandles_.push_back(std::move(handle));
-
-	status.set_code(UCode::OK);
-	return status;
+	writeDataToTMSocket(document);
 }
 
 void TestAgent::processMessage(Document& json_msg) {
@@ -366,39 +200,8 @@ void TestAgent::processMessage(Document& json_msg) {
 			auto result =
 			    std::get<std::function<UStatus(Document&)>>(function)(json_msg);
 
-			// Log the received result.
-			spdlog::info("TestAgent::processMessage(), received result is : {}",
-			             result.message());
-
-			// Create a new JSON document and status object.
-			Document document;
-			document.SetObject();
-
-			Value statusObj(rapidjson::kObjectType);
-
-			// Add the result message to the status object.
-			Value strValMsg;
-			strValMsg.SetString(result.message().c_str(),
-			                    document.GetAllocator());
-			rapidjson::Value keyMessage =
-			    createRapidJsonStringValue(document, Constants::MESSAGE);
-			statusObj.AddMember(keyMessage, strValMsg, document.GetAllocator());
-
-			// Add the result code to the status object.
-			rapidjson::Value keyCode =
-			    createRapidJsonStringValue(document, Constants::CODE);
-			statusObj.AddMember(keyCode, result.code(),
-			                    document.GetAllocator());
-
-			// Add an empty details array to the status object.
-			rapidjson::Value keyDetails =
-			    createRapidJsonStringValue(document, Constants::DETAILS);
-			rapidjson::Value detailsArray(rapidjson::kArrayType);
-			statusObj.AddMember(keyDetails, detailsArray,
-			                    document.GetAllocator());
-
 			// Send the status object to the Test Manager.
-			sendToTestManager(document, statusObj, action, strTest_id);
+			sendToTestManager(result, action, strTest_id);
 		} else {
 			// If the function does not return a UStatus, call it without
 			// getting a result.
@@ -514,26 +317,30 @@ void TestAgent::socketDisconnect() {
 
 int main(int argc, char* argv[]) {
 	// Uncomment this line to set log level to debug
-	// spdlog::set_level(spdlog::level::level_enum::debug);
+	spdlog::set_level(spdlog::level::level_enum::debug);
 
 	// Log the start of the Test Agent
 	spdlog::info(" *** Starting CPP Test Agent *** ");
 
 	// Check if the correct number of command line arguments were provided
-	if (argc < 3) {
+	if (argc < 5) {
 		spdlog::error("Incorrect input params: {} ", argv[0]);
 		return 1;
 	}
 
 	// Initialize transport type and command line arguments
 	std::string transportType;
+	std::string sdkNameValue;
 	std::vector<std::string> args(argv + 1, argv + argc);
 
 	// Iterate over command line arguments to find the transport type
 	for (auto it = args.begin(); it != args.end(); ++it) {
 		if (*it == "--transport" && (it + 1) != args.end()) {
 			transportType = *(it + 1);
-			break;
+			it++;
+		} else if (*it == "--sdkname" && (it + 1) != args.end()) {
+			sdkNameValue = *(it + 1);
+			it++;
 		}
 	}
 
@@ -543,8 +350,14 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
+	// If no SDK name was specified, log an error and exit
+	if (sdkNameValue.empty()) {
+		spdlog::error("SDK name not specified");
+		return 1;
+	}
+
 	// Create a new TestAgent with the specified transport type
-	TestAgent testAgent = TestAgent(transportType);
+	TestAgent testAgent = TestAgent(transportType, sdkNameValue);
 
 	// If the TestAgent successfully connects to the server
 	if (testAgent.socketConnect()) {
@@ -556,7 +369,9 @@ int main(int argc, char* argv[]) {
 		Document document;
 		document.SetObject();
 		Value sdkName(kObjectType);  // Create an empty object
-		sdkName.AddMember("SDK_name", "cpp", document.GetAllocator());
+		sdkName.AddMember("SDK_name",
+		                  Value(sdkNameValue.c_str(), document.GetAllocator()),
+		                  document.GetAllocator());
 
 		// Send the JSON document to the Test Manager to initialize the test
 		testAgent.sendToTestManager(document, sdkName, "initialize");
