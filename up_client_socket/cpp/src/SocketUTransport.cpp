@@ -24,27 +24,12 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <cxxabi.h>
 #include "SafeTupleMap.h"
 #include "WakeFd.h"
 
 using namespace uprotocol::v1;
 using uprotocol::transport::UTransport;
-// using uprotocol::datamodel::serializer::uri::AsString;
 using namespace std;
-
-// const string dispatcher_ip = "127.0.0.1";
-// const int diaptcher_port = 44444;
-
-template <typename T>
-std::string demangle(const T& t)
-{
-	auto info = typeid(t).name();
-	int status;
-	auto realname = abi::__cxa_demangle(info, NULL, NULL, &status);
-	return std::string(realname);
-}
-
 
 string repr(const string& input)
 {
@@ -63,16 +48,6 @@ string repr(const string& input)
 	return ss.str();
 }
 
-template <auto Start, auto End, auto Inc, class F>
-constexpr void constexpr_for(F&& f)
-{
-    if constexpr (Start < End)
-    {
-        f(std::integral_constant<decltype(Start), Start>());
-        constexpr_for<Start + Inc, End, Inc>(f);
-    }
-}
-
 struct SocketUTransport::Impl {
 	struct CallbackData {
 		mutex mtx;  // this is to protect set insertion and deletion
@@ -84,80 +59,60 @@ struct SocketUTransport::Impl {
 	thread process_thread_;
 	string buffer_;
 
-	using UUriKey = tuple<optional<string>, optional<uint32_t>,
-	                      optional<uint32_t>, optional<uint32_t> >;
-	// using UUriKey = tuple<optional<string>, optional<uint32_t>,
-	//                       optional<uint32_t>, uint32_t >;
+	using UUriTuple = tuple<
+		optional<string>,
+		optional<uint32_t>,
+	    optional<uint32_t>,
+		optional<uint32_t>
+		>;
 
-	// using CallbackKey = tuple<UUriKey, optional<UUriKey> >;
+	using CallbackKey = tuple_cat_t<UUriTuple, UUriTuple>;
 
-	SafeTupleMap<UUriKey, CallbackData> callback_data_;
+	SafeTupleMap<CallbackKey, CallbackData> callback_data_;
 
 	//
 	// This function is going to map the protobuf fields for a uuri into a tuple suitable for compile time expansion
 	//
-	static UUriKey makeUUriKey(const UUri& uuri) {
-		UUriKey key;
-		if (uuri.authority_name() != "*") {
-			cout << "authority_name wildcard" << endl;
-			get<0>(key) = uuri.authority_name();
+	static CallbackKey makeCallbackKey(const optional<UUri>& left, const optional<UUri>& right) {
+		CallbackKey key;
+		if (left) {
+			if (left->authority_name() != "*") {
+				cout << "left authority_name wildcard" << endl;
+				get<0>(key) = left->authority_name();
+			}
+			if (left->ue_id() != 0xffff) {
+				cout << "left ue_id wildcard" << endl;
+				get<1>(key) = left->ue_id();
+			}
+			if (left->ue_version_major() != 0xffff) {
+				cout << "left version_major wildcard" << endl;
+				get<2>(key) = left->ue_version_major();
+			}
+			if (left->resource_id() != 0xffff) {
+				cout << "left resource_id wildcard" << endl;
+				get<3>(key) = left->resource_id();
+			}
 		}
-		if (uuri.ue_id() != 0xffff) {
-			cout << "ue_id wildcard" << endl;
-			get<1>(key) = uuri.ue_id();
-		}
-		if (uuri.ue_version_major() != 0xffff) {
-			cout << "version_major wildcard" << endl;
-			get<2>(key) = uuri.ue_version_major();
-		}
-		if (uuri.resource_id() != 0xffff) {
-			cout << "resource_id wildcard" << endl;
-			get<3>(key) = uuri.resource_id();
+		if (right) {
+			if (right->authority_name() != "*") {
+				cout << "right authority_name wildcard" << endl;
+				get<4>(key) = right->authority_name();
+			}
+			if (right->ue_id() != 0xffff) {
+				cout << "right ue_id wildcard" << endl;
+				get<5>(key) = right->ue_id();
+			}
+			if (right->ue_version_major() != 0xffff) {
+				cout << "right version_major wildcard" << endl;
+				get<6>(key) = right->ue_version_major();
+			}
+			if (right->resource_id() != 0xffff) {
+				cout << "right resource_id wildcard" << endl;
+				get<7>(key) = right->resource_id();
+			}
 		}
 		return key;
 	}
-
-	template <typename T>
-	static void assign_if(T& field, size_t& cnt, size_t i, size_t bits)
-	{
-	}
-
-	template <typename T>
-	static void assign_if(optional<T>& field, size_t& cnt, size_t i, size_t bits)
-	{
-		if (((1<<i) & bits) && (field != nullopt)) {
-			field = nullopt;
-			cnt++;
-		}
-	}
-
-	//
-	// This function is going to take a tuple key, and return a vector of alternatives with wildcard substitutions.
-	//
-	static vector<UUriKey> makeWildcardKeys(const UUriKey& key)
-	{
-		const auto len = std::tuple_size_v<UUriKey>;
-		vector<UUriKey> ret;
-		ret.push_back(key);
-		constexpr_for<1, (1<<len), 1>([&](const auto bits) {
-			auto out = key;
-			size_t cnt = 0;
-			constexpr_for<0, len, 1>([&](const auto i) { assign_if(get<i>(out), cnt, i, bits); });
-			if (cnt > 0) {
-				ret.push_back(out);
-			}
-		});
-		return ret;
-	}
-
-	// static CallbackKey makeKey(const UUri& req,
-	//                            const optional<UUri>& opt = nullopt) {
-	// 	CallbackKey key;
-	// 	get<0>(key) = makeUUriKey(req);
-	// 	if (opt)
-	// 		get<1>(key) = makeUUriKey(*opt);
-	// 	return key;
-	// }
 
 	Impl(const std::string& dispatcher_ip, int dispatcher_port) {
 		struct sockaddr_in serv_addr;
@@ -260,8 +215,8 @@ struct SocketUTransport::Impl {
 				    __LINE__, umsg.DebugString());
 
 				auto& attributes = umsg.attributes();
-				auto key = makeUUriKey(attributes.source());
-				auto patterns = makeWildcardKeys(key);
+				auto key = makeCallbackKey(attributes.source(), attributes.sink());
+				auto patterns = generateOptionals(key);
 				for (const auto& pattern : patterns) {
 					cout << "pattern = " << pattern << endl;
 					auto ptr = callback_data_.find(pattern);
@@ -291,8 +246,7 @@ struct SocketUTransport::Impl {
 	                             optional<UUri>& source_filter) {
 		UStatus retval;
 		retval.set_code(UCode::OK);
-		// auto key = makeKey(sink_filter, source_filter);
-		auto key = makeUUriKey(sink_filter);
+		auto key = makeCallbackKey(sink_filter, source_filter);
 		cout << "inserting " << key << endl;
 		auto ptr = callback_data_.find(key, true);
 		unique_lock<mutex> lock(ptr->mtx);

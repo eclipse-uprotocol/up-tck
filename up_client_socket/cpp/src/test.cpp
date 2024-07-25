@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
     auto lhandle0 = transport->registerListener(topic, action_exact); ///, source_filter);
     // auto lhandle1 = transport->registerListener(topic_recv_all_topic, action_all_topic); ///, source_filter);
-    auto lhandle2 = transport->registerListener(topic_recv_all_ue_id, action_all_ue_id); ///, source_filter);
+    // auto lhandle2 = transport->registerListener(topic_recv_all_ue_id, action_all_ue_id); ///, source_filter);
     auto lhandle3 = transport->registerListener(topic_recv_all_vers_major, action_all_vers_major); ///, source_filter);
     // auto lhandle4 = transport->registerListener(topic_recv_all_resource_id, action_all_resource_id); ///, source_filter);
 
