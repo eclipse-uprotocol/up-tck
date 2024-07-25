@@ -15,15 +15,6 @@ constexpr void constexpr_for(F&& f)
     }
 }
 
-// template <typename T>
-// struct is_optional : std::false_type {};
-
-// template <typename T>
-// struct is_optional<std::optional<T>> : std::true_type {};
-
-// template <typename T>
-// constexpr bool is_optional_v = is_optional<T>::value;
-
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const std::optional<T>& arg)
 {
@@ -45,44 +36,31 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<Args...>& t)
 
 using namespace std;
 
-using UUriKey = tuple<optional<string>, optional<uint32_t>, optional<uint32_t>, uint32_t >;
-
 template <typename T>
 void assign_if(T& field, size_t& cnt, size_t i, size_t bits)
 {
-    cout << "is not optional" << endl;
 }
 
 template <typename T>
 void assign_if(optional<T>& field, size_t& cnt, size_t i, size_t bits)
 {
-    cout << "is optional" << endl;
     if (((1<<i) & bits) && (field != nullopt)) {
         field = nullopt;
         cnt++;
     }
 }
 
-vector<UUriKey> makeWildcardKeys(const UUriKey& key)
+template <typename T>
+vector<T> makeWildcardKeys(const T& key)
 {
-    const auto len = std::tuple_size_v<UUriKey>;
-    vector<UUriKey> ret;
+    const auto len = std::tuple_size_v<T>;
+    vector<T> ret;
     ret.push_back(key);
-    constexpr_for<1, len, 1>([&](const auto bits) {
+    constexpr_for<1, (1<<len), 1>([&](const auto bits) {
         auto out = key;
         size_t cnt = 0;
         constexpr_for<0, len, 1>([&](const auto i) {
             assign_if(get<i>(out), cnt, i, bits);
-            // if constexpr (is_optional_v<decltype(get<i>(key))>) {
-            //     cout << "is optional" << endl;
-            //     if (((1<<i) & bits) && (get<i>(out) != nullopt)) {
-            //         get<i>(out) = nullopt;
-            //         cnt++;
-            //     }
-            // }
-            // else {
-            //     cout << "is not optional" << endl;					
-            // }
         });
         if (cnt > 0) {
             ret.push_back(out);
@@ -90,6 +68,24 @@ vector<UUriKey> makeWildcardKeys(const UUriKey& key)
     });
     return ret;
 }
+
+using UUriKey = tuple<optional<string>, optional<uint32_t>, optional<uint32_t>, uint32_t >;
+
+template<typename ... input_t>
+using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
+
+using CallbackKey = tuple_cat_t<UUriKey, UUriKey>;
+
+// using CallbackKey = tuple<
+//     optional<string>,
+//     optional<uint32_t>,
+//     optional<uint32_t>,
+//     optional<uint32_t>,
+//     optional<string>,
+//     optional<uint32_t>,
+//     optional<uint32_t>,
+//     optional<uint32_t>
+// >;
 
 int main(int argc, char *argv[])
 {
@@ -99,7 +95,10 @@ int main(int argc, char *argv[])
     // cout << is_optional_v<decltype(x)> << endl;
     // cout << is_optional_v<decltype(y)> << endl;
 
-    UUriKey k{string{"hello"}, 1, 2, 3};
+    CallbackKey k{string{"hello"}, 1, 2, 3, string{"goodbye"}, 4, 5, 6};
     cout << k << endl;
     auto v = makeWildcardKeys(k);
+    for (const auto& x : v) {
+        cout << x << endl;
+    }
 }
