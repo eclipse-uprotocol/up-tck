@@ -17,69 +17,48 @@ string make_payload(int i)
     ss << "payload_" << i;
     return ss.str();
 }
+struct TestUUri {
+        std::string auth;
+        uint32_t ue_id;
+        uint32_t ue_version_major;
+        uint32_t resource_id;
 
-int main(int argc, char *argv[])
+        operator uprotocol::v1::UUri() const
+        {
+                uprotocol::v1::UUri ret;
+                ret.set_authority_name(auth);
+                ret.set_ue_id(ue_id);
+                ret.set_ue_version_major(ue_version_major);
+                ret.set_resource_id(resource_id);
+                return ret;
+        }
+
+        std::string to_string() const
+        {
+                return std::string("<< ") + uprotocol::v1::UUri(*this).ShortDebugString() + " >>";
+        }
+
+        TestUUri withReqIdZero()
+        {
+            TestUUri ret = *this;
+            ret.resource_id = 0;
+            return ret;
+        }
+};
+
+void test_pub_sub(shared_ptr<SocketUTransport> transport)
 {
-    uprotocol::v1::UUri def_src_uuri;
-    def_src_uuri.set_authority_name("def_src");
-    def_src_uuri.set_ue_id(0x18000);
-    def_src_uuri.set_ue_version_major(1);
-    def_src_uuri.set_resource_id(0);
+    TestUUri src{"10.0.0.1", 0x10001, 1, 0x8000};
+    auto action_exact = [&](const uprotocol::v1::UMessage& msg) { cout << "#### got sub from pub" << endl; };
 
-    auto transport = make_shared<SocketUTransport>(def_src_uuri);
+    auto lhandle1 = transport->registerListener(src, action_exact);
 
-    uprotocol::v1::UUri topic;
-    topic.set_authority_name("topic");
-    topic.set_ue_id(0x00010001);
-    topic.set_ue_version_major(1);
-    topic.set_resource_id(0x8000);
-    auto action_exact = [&](const uprotocol::v1::UMessage& msg) { cout << "## action_exact" << endl; };
-
-    uprotocol::v1::UUri topic_recv_all_topic;
-    topic_recv_all_topic.set_authority_name("*");
-    topic_recv_all_topic.set_ue_id(0x00010001);
-    topic_recv_all_topic.set_ue_version_major(1);
-    topic_recv_all_topic.set_resource_id(0x8000);
-    auto action_all_topic = [&](const uprotocol::v1::UMessage& msg) { cout << "## action_all_topic" << endl; };
-
-
-    uprotocol::v1::UUri topic_recv_all_ue_id;
-    topic_recv_all_ue_id.set_authority_name("topic");
-    topic_recv_all_ue_id.set_ue_id(0xffff);
-    topic_recv_all_ue_id.set_ue_version_major(1);
-    topic_recv_all_ue_id.set_resource_id(0x8000);
-    auto action_all_ue_id = [&](const uprotocol::v1::UMessage& msg) { cout << "## action_all_ue_id" << endl; };
-
-    uprotocol::v1::UUri topic_recv_all_vers_major;
-    topic_recv_all_vers_major.set_authority_name("topic");
-    topic_recv_all_vers_major.set_ue_id(0x00010001);
-    topic_recv_all_vers_major.set_ue_version_major(0xffff);
-    topic_recv_all_vers_major.set_resource_id(0x8000);
-    auto action_all_vers_major = [&](const uprotocol::v1::UMessage& msg) { cout << "## action_all_vers_major" << endl; };
-
-    uprotocol::v1::UUri topic_recv_all_resource_id;
-    topic_recv_all_resource_id.set_authority_name("topic");
-    topic_recv_all_resource_id.set_ue_id(0x00010001);
-    topic_recv_all_resource_id.set_ue_version_major(1);
-    topic_recv_all_resource_id.set_resource_id(0xffff);
-    auto action_all_resource_id = [&](const uprotocol::v1::UMessage& msg) { cout << "## action_all_resource_id" << endl; };
-
-    auto lhandle0 = transport->registerListener(topic, action_exact); ///, source_filter);
-    // auto lhandle1 = transport->registerListener(topic_recv_all_topic, action_all_topic); ///, source_filter);
-    // auto lhandle2 = transport->registerListener(topic_recv_all_ue_id, action_all_ue_id); ///, source_filter);
-    auto lhandle3 = transport->registerListener(topic_recv_all_vers_major, action_all_vers_major); ///, source_filter);
-    // auto lhandle4 = transport->registerListener(topic_recv_all_resource_id, action_all_resource_id); ///, source_filter);
-
-    // auto lhandle2 = transport->registerListener(src1, action2); ///, source_filter);
-    // auto lhandle3 = transport->registerListener(src2, action2); ///, source_filter);
-
-    for (auto i = 0; i < 1; i++) {
+    for (auto i = 0; i < 2; i++) {
         {
             uprotocol::v1::UAttributes attr;
             attr.set_type(uprotocol::v1::UMESSAGE_TYPE_PUBLISH);
             *attr.mutable_id() = make_uuid();
-            *attr.mutable_source() = topic;
-            // *attr.mutable_sink() = dest;
+            *attr.mutable_source() = src;
             attr.set_payload_format(uprotocol::v1::UPAYLOAD_FORMAT_TEXT);
             attr.set_ttl(1000);
 
@@ -90,23 +69,110 @@ int main(int argc, char *argv[])
             auto result = transport->send(msg);
             usleep(10000);
         }
-
-        // {
-        //     uprotocol::v1::UAttributes attr;
-        //     attr.set_type(uprotocol::v1::UMESSAGE_TYPE_PUBLISH);
-        //     *attr.mutable_id() = make_uuid();
-        //     *attr.mutable_source() = src2;
-        //     attr.set_payload_format(uprotocol::v1::UPAYLOAD_FORMAT_TEXT);
-        //     attr.set_ttl(1000);
-
-        //     uprotocol::v1::UMessage msg;
-        //     *msg.mutable_attributes() = attr;
-        //     msg.set_payload(make_payload(i*2));
-
-        //     auto result = transport->send(msg);
-        //     usleep(10000);
-        // }
-        sleep(1);
     }
-    // sleep(10);
+}
+
+void test_rpc_req(shared_ptr<SocketUTransport> transport)
+{
+    TestUUri src{"10.0.0.1", 0x10001, 1, 0};
+    auto action_exact = [&](const uprotocol::v1::UMessage& msg) { cout << "#### got rpc req" << endl; };
+
+    TestUUri sink{"10.0.0.2", 0x10002, 2, 2};
+
+    auto lhandle0 = transport->registerListener(src, action_exact, sink);
+    auto lhandle1 = transport->registerListener(src, action_exact);
+
+    for (auto i = 0; i < 2; i++) {
+        {
+            uprotocol::v1::UAttributes attr;
+            attr.set_type(uprotocol::v1::UMESSAGE_TYPE_REQUEST);
+            *attr.mutable_id() = make_uuid();
+            *attr.mutable_source() = src.withReqIdZero();
+            *attr.mutable_sink() = sink;
+            attr.set_priority(uprotocol::v1::UPRIORITY_CS4);
+            attr.set_payload_format(uprotocol::v1::UPAYLOAD_FORMAT_TEXT);
+            attr.set_ttl(1000);
+
+            uprotocol::v1::UMessage msg;
+            *msg.mutable_attributes() = attr;
+            msg.set_payload(make_payload(i));
+
+            auto result = transport->send(msg);
+            usleep(10000);
+        }
+    }
+}
+
+void test_rpc_resp(shared_ptr<SocketUTransport> transport)
+{
+    TestUUri src{"10.0.0.1", 0x10001, 1, 0};
+    auto action_exact = [&](const uprotocol::v1::UMessage& msg) { cout << "#### got rpc resp" << endl; };
+
+    TestUUri sink{"10.0.0.2", 0x10002, 2, 2};
+
+    auto lhandle0 = transport->registerListener(sink, action_exact, src);
+    // auto lhandle1 = transport->registerListener(src, action_exact);
+
+    for (auto i = 0; i < 2; i++) {
+        {
+            uprotocol::v1::UAttributes attr;
+            attr.set_type(uprotocol::v1::UMESSAGE_TYPE_RESPONSE);
+            *attr.mutable_id() = make_uuid();
+            *attr.mutable_source() = sink;
+            *attr.mutable_sink() = src;
+            attr.set_priority(uprotocol::v1::UPRIORITY_CS4);
+            attr.set_payload_format(uprotocol::v1::UPAYLOAD_FORMAT_TEXT);
+            *attr.mutable_reqid() = make_uuid();
+
+            uprotocol::v1::UMessage msg;
+            *msg.mutable_attributes() = attr;
+            msg.set_payload(make_payload(i));
+
+            auto result = transport->send(msg);
+            usleep(10000);
+        }
+    }
+}
+
+void test_notification(shared_ptr<SocketUTransport> transport)
+{
+    TestUUri src{"10.0.0.1", 0x18001, 1, 1};
+    auto action_exact = [&](const uprotocol::v1::UMessage& msg) { cout << "#### got notification" << endl; };
+
+    TestUUri sink{"10.0.0.2", 0x10002, 2, 1};
+
+    auto lhandle0 = transport->registerListener(sink, action_exact, src);
+    cout << "after registerListener" << endl;
+    // auto lhandle1 = transport->registerListener(src, action_exact);
+
+    for (auto i = 0; i < 2; i++) {
+        {
+            uprotocol::v1::UAttributes attr;
+            attr.set_type(uprotocol::v1::UMESSAGE_TYPE_NOTIFICATION);
+            *attr.mutable_id() = make_uuid();
+            *attr.mutable_source() = src;
+            *attr.mutable_sink() = sink.withReqIdZero();
+            // attr.set_priority(uprotocol::v1::UPRIORITY_CS4);
+            attr.set_payload_format(uprotocol::v1::UPAYLOAD_FORMAT_TEXT);
+            // *attr.mutable_reqid() = make_uuid();
+
+            uprotocol::v1::UMessage msg;
+            *msg.mutable_attributes() = attr;
+            msg.set_payload(make_payload(i));
+
+            auto result = transport->send(msg);
+            usleep(10000);
+        }
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    TestUUri def_src_uuri{"dev_src", 0x18000, 1, 0};
+    auto transport = make_shared<SocketUTransport>(def_src_uuri);
+
+    // test_pub_sub(transport);
+    // test_rpc_req(transport);
+    // test_rpc_resp(transport);
+    test_notification(transport);
 }

@@ -77,37 +77,29 @@ struct SocketUTransport::Impl {
 		CallbackKey key;
 		if (left) {
 			if (left->authority_name() != "*") {
-				cout << "left authority_name wildcard" << endl;
 				get<0>(key) = left->authority_name();
 			}
-			if (left->ue_id() != 0xffff) {
-				cout << "left ue_id wildcard" << endl;
+			if (left->ue_id() != 0xff) {
 				get<1>(key) = left->ue_id();
 			}
 			if (left->ue_version_major() != 0xffff) {
-				cout << "left version_major wildcard" << endl;
 				get<2>(key) = left->ue_version_major();
 			}
 			if (left->resource_id() != 0xffff) {
-				cout << "left resource_id wildcard" << endl;
 				get<3>(key) = left->resource_id();
 			}
 		}
 		if (right) {
 			if (right->authority_name() != "*") {
-				cout << "right authority_name wildcard" << endl;
 				get<4>(key) = right->authority_name();
 			}
-			if (right->ue_id() != 0xffff) {
-				cout << "right ue_id wildcard" << endl;
+			if (right->ue_id() != 0xff) {
 				get<5>(key) = right->ue_id();
 			}
 			if (right->ue_version_major() != 0xffff) {
-				cout << "right version_major wildcard" << endl;
 				get<6>(key) = right->ue_version_major();
 			}
 			if (right->resource_id() != 0xffff) {
-				cout << "right resource_id wildcard" << endl;
 				get<7>(key) = right->resource_id();
 			}
 		}
@@ -175,7 +167,7 @@ struct SocketUTransport::Impl {
 		status.set_code(UCode::OK);
 		status.set_message("OK");
 
-		cout << "sending " << repr(buf) << endl;
+		// cout << "sending " << repr(buf) << endl;
 		if (wake_fd_->send(buf.c_str(), buf.size(), 0) < 0) {
 			spdlog::error("SocketUTransport::send():{}, Error sending UMessage",
 			              __LINE__);
@@ -193,7 +185,7 @@ struct SocketUTransport::Impl {
 				if (wake_fd_->read(buffer_) == false)
 					break;
 
-				cout << "dispatcher received " << repr(buffer_) << endl;
+				// cout << "dispatcher received " << repr(buffer_) << endl;
 				UMessage umsg;
 				try {
 					if (!umsg.ParseFromString(buffer_)) {
@@ -218,10 +210,11 @@ struct SocketUTransport::Impl {
 				auto key = makeCallbackKey(attributes.source(), attributes.sink());
 				auto patterns = generateOptionals(key);
 				for (const auto& pattern : patterns) {
-					cout << "pattern = " << pattern << endl;
+					// cout << "looking up " << pattern << endl;
 					auto ptr = callback_data_.find(pattern);
 					if (ptr != nullptr) {
-						cout << "match" << endl;
+						cout << "matched " << key << endl;
+						cout << "to      " << pattern << endl << endl;
 						unique_lock<mutex> lock(ptr->mtx);
 						for (auto callback : ptr->listeners) {
 							callback(umsg);
