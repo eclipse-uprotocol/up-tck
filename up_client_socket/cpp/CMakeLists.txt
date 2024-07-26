@@ -13,6 +13,8 @@ cmake_minimum_required(VERSION 3.20.1)
 project(up_client_socket VERSION 0.1.0  LANGUAGES CXX DESCRIPTION "C++ socket transport")
 
 find_package(up-cpp REQUIRED)
+find_package(protobuf REQUIRED)
+find_package(up-core-api REQUIRED)
 find_package(spdlog REQUIRED)
 add_definitions(-DSPDLOG_FMT_EXTERNAL)
 find_package(fmt REQUIRED CONFIG)
@@ -39,6 +41,8 @@ target_include_directories(${PROJECT_NAME}
     $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}> 
     ${rapidjson_INCLUDE_DIRS}
     ${up-cpp_INCLUDE_DIR}
+    ${up-core-api_INCLUDE_DIR}
+    ${protobuf_INCLUDE_DIR}
     ${spdlog_INCLUDE_DIR})
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -50,9 +54,12 @@ target_link_libraries(${PROJECT_NAME}
     dl 
     spdlog::spdlog
     up-cpp::up-cpp
+    up-core-api::up-core-api
+    protobuf::libprotobuf
     fmt::fmt
     rapidjson)
 
 # Specify the install location for the library
 INSTALL(TARGETS ${PROJECT_NAME})
 INSTALL(DIRECTORY include DESTINATION .)
+
