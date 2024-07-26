@@ -158,12 +158,12 @@ public class TestAgent {
             if (transportName.equals("socket")) {
                 transport = new SocketUTransport(uri);
             } else {
-                UStatus status = UStatus.newBuilder().setCode(UCode.INVALID_ARGUMENT).setMessage("").build();
+                UStatus status = UStatus.newBuilder().setCode(UCode.FAILED_PRECONDITION).setMessage("").build();
                 sendToTestManager(status, ActionCommands.INITIALIZE_TRANSPORT, testID);
             }
         } catch (IOException e) {
             e.printStackTrace();
-            UStatus status = UStatus.newBuilder().setCode(UCode.INVALID_ARGUMENT).setMessage("").build();
+            UStatus status = UStatus.newBuilder().setCode(UCode.FAILED_PRECONDITION).setMessage("").build();
             sendToTestManager(status, ActionCommands.INITIALIZE_TRANSPORT, testID);
         }
         UStatus status = UStatus.newBuilder().setCode(UCode.OK).setMessage("").build();

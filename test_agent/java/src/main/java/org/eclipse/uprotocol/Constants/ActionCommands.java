@@ -25,7 +25,6 @@
      public static final String SEND_COMMAND = "send";
      public static final String REGISTER_LISTENER_COMMAND = "registerlistener";
      public static final String UNREGISTER_LISTENER_COMMAND = "unregisterlistener";
-     public static final String INVOKE_METHOD_COMMAND = "invokemethod";
      public static final String RESPONSE_ON_RECEIVE = "onreceive";
      public static final String RESPONSE_RPC = "rpcresponse";
      public static final String SERIALIZE_URI = "uri_serialize";
