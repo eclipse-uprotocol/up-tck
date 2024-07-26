@@ -202,7 +202,7 @@ struct SocketUTransport::Impl {
 
 				auto& attributes = umsg.attributes();
 				auto key =
-				    makeCallbackKey(attributes.source(), attributes.sink());
+				    makeCallbackKey(attributes.sink(), attributes.source());
 				auto patterns = generateOptionals(key);
 				size_t match_count = 0;
 				for (const auto& pattern : patterns) {
