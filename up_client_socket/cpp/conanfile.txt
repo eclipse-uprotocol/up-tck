@@ -5,7 +5,6 @@ up-cpp/1.0.0
 rapidjson/cci.20230929
 spdlog/1.13.0
 fmt/10.2.1
-openssl/1.1.1w
 
 [generators]
 CMakeDeps
