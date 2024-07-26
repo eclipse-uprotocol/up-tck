@@ -86,17 +86,15 @@ private:
 };
 
 //
-// These two assist in generating the optionals expansion, but need no outside exposure.
+// These two assist in generating the optionals expansion, but need no outside
+// exposure.
 //
 template <typename T>
-void assign_if(T& field, size_t& cnt, size_t i, size_t bits)
-{
-}
+void assign_if(T& field, size_t& cnt, size_t i, size_t bits) {}
 
 template <typename T>
-void assign_if(optional<T>& field, size_t& cnt, size_t i, size_t bits)
-{
-	if (((1<<i) & bits) && (field != nullopt)) {
+void assign_if(optional<T>& field, size_t& cnt, size_t i, size_t bits) {
+	if (((1 << i) & bits) && (field != nullopt)) {
 		field = nullopt;
 		cnt++;
 	}
@@ -131,30 +129,29 @@ ostream& print_tuple(ostream& os, const Tuple& t, index_sequence<Indices...>) {
 
 }  // namespace tuple_of_optionals
 
-
 template <auto Start, auto End, auto Inc, class F>
-constexpr void constexpr_for(F&& f)
-{
-    if constexpr (Start < End)
-    {
-        f(std::integral_constant<decltype(Start), Start>());
-        constexpr_for<Start + Inc, End, Inc>(f);
-    }
+constexpr void constexpr_for(F&& f) {
+	if constexpr (Start < End) {
+		f(std::integral_constant<decltype(Start), Start>());
+		constexpr_for<Start + Inc, End, Inc>(f);
+	}
 }
 
 //
-// This function is going to take a tuple key, and return a vector of alternatives with wildcard substitutions.
+// This function is going to take a tuple key, and return a vector of
+// alternatives with wildcard substitutions.
 //
 template <typename T>
-std::vector<T> generateOptionals(const T& key)
-{
+std::vector<T> generateOptionals(const T& key) {
 	const auto len = std::tuple_size_v<T>;
 	std::vector<T> ret;
 	ret.push_back(key);
-	constexpr_for<1, (1<<len), 1>([&](const auto bits) {
+	constexpr_for<1, (1 << len), 1>([&](const auto bits) {
 		auto out = key;
 		size_t cnt = 0;
-		constexpr_for<0, len, 1>([&](const auto i) { tuple_of_optionals::assign_if(std::get<i>(out), cnt, i, bits); });
+		constexpr_for<0, len, 1>([&](const auto i) {
+			tuple_of_optionals::assign_if(std::get<i>(out), cnt, i, bits);
+		});
 		if (cnt > 0) {
 			ret.push_back(out);
 		}
@@ -162,7 +159,7 @@ std::vector<T> generateOptionals(const T& key)
 	return ret;
 }
 
-template<typename ... input_t>
+template <typename... input_t>
 using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
 
 template <typename... Types>
@@ -170,4 +167,14 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<Types...>& t) {
 	os << "(";
 	tuple_of_optionals::print_tuple(os, t, std::index_sequence_for<Types...>{});
 	return os << ")";
+}
+
+template <typename... Types>
+std::string to_string(const std::tuple<Types...>& t)
+{
+	std::stringstream ss;
+	ss << "(";
+	tuple_of_optionals::print_tuple(ss, t, std::index_sequence_for<Types...>{});
+	ss << ")";
+	return ss.str();
 }

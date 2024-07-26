@@ -29,6 +29,7 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 add_library(${PROJECT_NAME} src/SocketUTransport.cpp)
+
 add_library(up_client_socket::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
@@ -51,8 +52,7 @@ target_link_libraries(${PROJECT_NAME}
     spdlog::spdlog
     up-cpp::up-cpp
     up-core-api::up-core-api
-    protobuf::libprotobuf
-    fmt::fmt)
+    protobuf::libprotobuf)
 
 add_executable(myTest src/test.cpp)
 target_include_directories(myTest
@@ -64,7 +64,7 @@ target_include_directories(myTest
     ${up-core-api_INCLUDE_DIR}
     ${protobuf_INCLUDE_DIR}
     ${spdlog_INCLUDE_DIR})
-target_link_libraries(myTest ${PROJECT_NAME})
+target_link_libraries(myTest ${PROJECT_NAME} spdlog::spdlog)
 
 # Specify the install location for the library
 INSTALL(TARGETS ${PROJECT_NAME})

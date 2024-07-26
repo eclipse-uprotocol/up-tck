@@ -17,13 +17,14 @@
 #include <up-cpp/datamodel/serializer/UUri.h>
 
 #include <array>
-#include <set>
-#include <thread>
 #include <cctype>
-#include <type_traits>
-#include <iostream>
-#include <sstream>
 #include <iomanip>
+#include <iostream>
+#include <set>
+#include <sstream>
+#include <thread>
+#include <type_traits>
+
 #include "SafeTupleMap.h"
 #include "WakeFd.h"
 
@@ -31,16 +32,15 @@ using namespace uprotocol::v1;
 using uprotocol::transport::UTransport;
 using namespace std;
 
-string repr(const string& input)
-{
+string repr(const string& input) {
 	stringstream ss;
 	ss << "'" << setfill('0') << hex;
 	for (auto c : input) {
-		if (isgraph(c)) ss << c;
+		if (isgraph(c))
+			ss << c;
 		else if (c == '\n') {
 			ss << "\\n";
-		}
-		else {
+		} else {
 			ss << "\\x" << setw(2) << (int(c) & 0xff);
 		}
 	}
@@ -59,21 +59,19 @@ struct SocketUTransport::Impl {
 	thread process_thread_;
 	string buffer_;
 
-	using UUriTuple = tuple<
-		optional<string>,
-		optional<uint32_t>,
-	    optional<uint32_t>,
-		optional<uint32_t>
-		>;
+	using UUriTuple = tuple<optional<string>, optional<uint32_t>,
+	                        optional<uint32_t>, optional<uint32_t> >;
 
 	using CallbackKey = tuple_cat_t<UUriTuple, UUriTuple>;
 
 	SafeTupleMap<CallbackKey, CallbackData> callback_data_;
 
 	//
-	// This function is going to map the protobuf fields for a uuri into a tuple suitable for compile time expansion
+	// This function is going to map the protobuf fields for a uuri into a tuple
+	// suitable for compile time expansion
 	//
-	static CallbackKey makeCallbackKey(const optional<UUri>& left, const optional<UUri>& right) {
+	static CallbackKey makeCallbackKey(const optional<UUri>& left,
+	                                   const optional<UUri>& right) {
 		CallbackKey key;
 		if (left) {
 			if (left->authority_name() != "*") {
@@ -150,24 +148,18 @@ struct SocketUTransport::Impl {
 	}
 
 	UStatus sendImpl(const UMessage& umsg) {
-		cout << "inside sendImpl " << umsg.ShortDebugString() << endl;
-		// spdlog::debug(
-		//     "SocketUTransport::send():{}, UMessage in string format is : {}",
-		//     __LINE__, umsg.DebugString());
-
-		// size_t serializedSize = umsg.ByteSizeLong();
-		// string umsgSerialized(serializedSize, '\0');
-		// bool ret = umsg.SerializeToArray(umsgSerialized.data(), serializedSize);
+		spdlog::debug(
+		    "SocketUTransport::send():{}, UMessage in string format is : {}",
+		    __LINE__, umsg.ShortDebugString());
 		string buf;
 		bool ret = umsg.SerializeToString(&buf);
-		// spdlog::debug("SocketUTransport::send():{}, Serialized UMessage is {}",
-		//               __LINE__, buf);
+		spdlog::debug("SocketUTransport::send():{}, Serialized UMessage is {}",
+		              __LINE__, repr(buf));
 
 		UStatus status;
 		status.set_code(UCode::OK);
 		status.set_message("OK");
 
-		// cout << "sending " << repr(buf) << endl;
 		if (wake_fd_->send(buf.c_str(), buf.size(), 0) < 0) {
 			spdlog::error("SocketUTransport::send():{}, Error sending UMessage",
 			              __LINE__);
@@ -184,13 +176,15 @@ struct SocketUTransport::Impl {
 			try {
 				if (wake_fd_->read(buffer_) == false)
 					break;
+				spdlog::debug("SocketUTransport::dispatcher:{}, Received {}",
+				              __LINE__, repr(buffer_));
 
 				// cout << "dispatcher received " << repr(buffer_) << endl;
 				UMessage umsg;
 				try {
 					if (!umsg.ParseFromString(buffer_)) {
 						spdlog::error(
-						    "SocketUTransport::listen():{}, Error parsing "
+						    "SocketUTransport::dispatcher:{}, Error parsing "
 						    "UMessage",
 						    __LINE__);
 						continue;
@@ -203,29 +197,40 @@ struct SocketUTransport::Impl {
 				}
 
 				spdlog::debug(
-				    "SocketUTransport::listen():{}, Received uMessage:{}",
-				    __LINE__, umsg.DebugString());
+				    "SocketUTransport::dispatcher:{}, Received uMessage:{}",
+				    __LINE__, umsg.ShortDebugString());
 
 				auto& attributes = umsg.attributes();
-				auto key = makeCallbackKey(attributes.source(), attributes.sink());
+				auto key =
+				    makeCallbackKey(attributes.source(), attributes.sink());
 				auto patterns = generateOptionals(key);
+				size_t match_count = 0;
 				for (const auto& pattern : patterns) {
-					// cout << "looking up " << pattern << endl;
 					auto ptr = callback_data_.find(pattern);
 					if (ptr != nullptr) {
-						cout << "matched " << key << endl;
-						cout << "to      " << pattern << endl << endl;
+						spdlog::debug(
+						    "SocketUTransport::dispatcher:{}, Matched {} to {}",
+						    __LINE__, to_string(key), to_string(pattern));
 						unique_lock<mutex> lock(ptr->mtx);
 						for (auto callback : ptr->listeners) {
 							callback(umsg);
+							match_count++;
 						}
+					}
+				}
+				if (match_count == 0) {
+					for (const auto& pattern : patterns) {
+						spdlog::debug(
+						    "SocketUTransport::dispatcher:{}, Not matched {} "
+						    "to {}",
+						    __LINE__, to_string(key), to_string(pattern));
 					}
 				}
 
 			} catch (const system_error& e) {
 				if (e.code() == errc::io_error) {
 					spdlog::error(
-					    "SocketUTransport::listen():{}, I/O error: {}",
+					    "SocketUTransport::dispatcher:{}, I/O error: {}",
 					    __LINE__, e.what());
 				} else {
 					throw;  // rethrow the exception if it's not an I/O error

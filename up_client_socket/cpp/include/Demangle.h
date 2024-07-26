@@ -12,11 +12,11 @@
 #pragma once
 
 #include <cxxabi.h>
+
 #include <string>
 
 template <typename T>
-std::string demangle(const T& t)
-{
+std::string demangle(const T& t) {
 	auto info = typeid(t).name();
 	int status;
 	auto realname = abi::__cxa_demangle(info, NULL, NULL, &status);
