@@ -349,16 +349,19 @@ UStatus APIWrapper::handleSubscriberCommand(Document& jsonData) {
 UStatus APIWrapper::handleNotificationSourceCommand(Document& jsonData) {
 	Value& data = jsonData[Constants::DATA];
 
-	auto uriSource = def_src_uuri_;
-
 	// Build attributes
 	auto attributes = ProtoConverter::distToAttributes(
 	    data[Constants::ATTRIBUTES], jsonData.GetAllocator());
+	auto uriSource = attributes.source();
 	auto uriSink = attributes.sink();
 	auto format = attributes.payload_format();
 	auto priority = attributes.priority();
 
-	// Build payload
+	spdlog::debug(
+	    "APIWrapper::handleNotificationSourceCommand(), Source URI: {}, Sink "
+	    "URI: {}",
+	    uriSource.DebugString(), uriSink.DebugString());
+
 	auto payloadValueStr = std::string(data[Constants::PAYLOAD].GetString());
 	uprotocol::datamodel::builder::Payload payload(payloadValueStr, format);
 
@@ -409,14 +412,15 @@ UStatus APIWrapper::handleNotificationSinkCommand(Document& jsonData) {
 	        std::unique_ptr<uprotocol::communication::NotificationSink>>(
 	        uriCallbackMap_, serializedUri)) {
 		status.set_code(UCode::ALREADY_EXISTS);
-		status.set_message("RPC Server already exists for the given URI.");
+		status.set_message(
+		    "Notification Sink already exists for the given URI.");
 		return status;
 	}
 
 	// Create NotificationSink object
 	auto NotificationSinkHandle =
 	    uprotocol::communication::NotificationSink::create(
-	        transportPtr_, std::move(uri), std::move(callback), std::nullopt);
+	        transportPtr_, std::move(callback), std::move(uri));
 
 	return NotificationSinkHandle.has_value()
 	           ? addHandleToUriCallbackMap(

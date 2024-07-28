@@ -343,6 +343,14 @@ def set_key_to_bytes(context, key: str, value: str):
         context.json_dict[key] = "BYTES:" + value
 
 
+@given('sets "{key}" to entity URI of "{ue}"')
+@when('sets "{key}" to entity URI of "{ue}"')
+def set_key_to_ue_uri(context: Context, key: str, ue: str):
+    ue_number = ue.replace("uE", "")
+    if key not in context.json_dict:
+        context.json_dict[key] = context.ue_tracker[int(ue_number) - 1][2]
+
+
 @given('sends "{command}" request')
 @when('sends "{command}" request')
 def send_command_request(context, command: str):
