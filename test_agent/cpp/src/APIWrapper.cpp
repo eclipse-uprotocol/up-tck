@@ -151,8 +151,6 @@ UStatus APIWrapper::handleRegisterListenerCommand(Document& jsonData) {
 	// Register the lambda function as a listener for messages on the specified
 	// URI.
 	auto result = transportPtr_->registerListener(
-	    // sink_uri =
-	    uri,
 	    // callback =
 	    [this](const UMessage& transportUMessage) {
 		    spdlog::info("APIWrapper::onReceive(), received.");
@@ -162,7 +160,9 @@ UStatus APIWrapper::handleRegisterListenerCommand(Document& jsonData) {
 		    // Send the message to the Test Manager with a predefined response.
 		    sendToTestManager(transportUMessage,
 		                      Constants::RESPONSE_ON_RECEIVE);
-	    });
+	    },
+	    // src_uri =
+	    uri);
 
 	return result.has_value()
 	           ? addHandleToUriCallbackMap(std::move(result).value(), uri)
