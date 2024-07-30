@@ -25,13 +25,13 @@ conan create --version 1.6.0 --build=missing up-core-api/release
 ### up-cpp
 
 ```
-conan create --version 1.0.0 --build=missing up-cpp/release/
+conan create --version 1.0.1-rc1 --build=missing up-cpp/release/
 ```
 
 ### up_client_socket
 
 ```
-conan create --version 1.0.0 --build=missing up-socket-cpp/developer/
+conan create --version 1.0.0-dev --build=missing up-transport-socket-cpp/developer/
 ```
 
 ## 3. Build the CPP test agent executable
