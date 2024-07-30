@@ -17,6 +17,8 @@
 #include "ProtoConverter.h"
 #include "utils.h"
 
+#define TRANSPORT_TYPE_SOCKET "socket"
+
 /// @class APIWrapper
 /// @brief Represents a wrapper class to execute up-cpp L1 and L2 apis.
 ///

@@ -18,17 +18,12 @@ find_package(up-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(fmt REQUIRED CONFIG)
 find_package(RapidJSON CONFIG REQUIRED)
-# find_package(up-client-zenoh-cpp REQUIRED)
-find_package(up_client_socket REQUIRED)
+find_package(up-transport-socket-cpp REQUIRED)
 find_package(OpenSSL REQUIRED)
-# TODO:: Remove GTest
-find_package(GTest REQUIRED)
-include(GoogleTest)
-# TODO NEEDED?
-#add_definitions(-DSPDLOG_FMT_EXTERNAL)
+# TODO: Update when zenoh transport is ready
+# find_package(up-client-zenoh-cpp REQUIRED)
 
 # This is the root CMakeLists.txt file; We can set project wide settings here
-# TODO: Is this needed?
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
 	set(CMAKE_CXX_STANDARD 17)
 	# place libraries in a lib directory and executables in a bin directory,
@@ -47,7 +42,7 @@ target_include_directories(${PROJECT_NAME}
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
-	${up_client_socket_INCLUDE_DIR}
+	${up-transport-socket-cpp_INCLUDE_DIR}
     # ${up-client-zenoh-cpp_INCLUDE_DIR}
 	${up-cpp_INCLUDE_DIR}
 	${up-core-api_INCLUDE_DIR}
@@ -58,7 +53,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
-    up_client_socket::up_client_socket
+    up-transport-socket-cpp::up-transport-socket-cpp
     # up-client-zenoh-cpp::up-client-zenoh-cpp
 	up-core-api::up-core-api
 	up-cpp::up-cpp
@@ -70,9 +65,7 @@ target_link_libraries(${PROJECT_NAME}
     rapidjson
 	spdlog::spdlog
     OpenSSL::SSL 
-    OpenSSL::Crypto
-	GTest::gtest_main
-	GTest::gmock)
+    OpenSSL::Crypto)
 
 
 INSTALL(TARGETS ${PROJECT_NAME})

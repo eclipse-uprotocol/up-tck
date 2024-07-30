@@ -353,7 +353,7 @@ void TestAgent::socketDisconnect() {
 
 int main(int argc, char* argv[]) {
 	// Uncomment this line to set log level to debug
-	spdlog::set_level(spdlog::level::level_enum::debug);
+	//spdlog::set_level(spdlog::level::level_enum::debug);
 
 	// Log the start of the Test Agent
 	spdlog::info(" *** Starting CPP Test Agent *** ");
@@ -371,10 +371,10 @@ int main(int argc, char* argv[]) {
 
 	// Iterate over command line arguments to find the transport type
 	for (auto it = args.begin(); it != args.end(); ++it) {
-		if (*it == "--transport" && (it + 1) != args.end()) {
+		if ((*it == "--transport") && ((it + 1) != args.end())) {
 			transportType = *(it + 1);
 			it++;
-		} else if (*it == "--sdkname" && (it + 1) != args.end()) {
+		} else if ((*it == "--sdkname") && ((it + 1) != args.end())) {
 			sdkNameValue = *(it + 1);
 			it++;
 		}

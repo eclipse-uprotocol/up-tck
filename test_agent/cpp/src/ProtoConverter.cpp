@@ -82,6 +82,8 @@ void ProtoConverter::processNested(Value& parentJsonObj,
 			    base64Encoded.c_str(),
 			    static_cast<rapidjson::SizeType>(base64Encoded.length()),
 			    allocator);
+		} else {
+			spdlog::debug("No BYTES: prefix in data");
 		}
 	}
 }
@@ -101,7 +103,9 @@ void ProtoConverter::dictToProto(Value& parentJsonObj, Message& parentProtoObj,
 	parentJsonObj.Accept(writer);
 	std::string strBuf = buffer.GetString();
 
-	google::protobuf::util::JsonParseOptions options;
+	google::protobuf::util::JsonParseOptions options =
+	    google::protobuf::util::JsonParseOptions();
+
 	auto status = google::protobuf::util::JsonStringToMessage(
 	    strBuf, &parentProtoObj, options);
 	if (!status.ok()) {
@@ -128,6 +132,8 @@ uprotocol::v1::UUri ProtoConverter::distToUri(
 
 std::optional<uprotocol::v1::UPayloadFormat> ProtoConverter::distToUPayFormat(
     const rapidjson::Value& formatStrValue) {
+	std::optional<uprotocol::v1::UPayloadFormat> format = std::nullopt;
+
 	if (formatStrValue.IsString()) {
 		const std::string formatStr = formatStrValue.GetString();
 		const google::protobuf::EnumDescriptor* descriptor =
@@ -135,10 +141,12 @@ std::optional<uprotocol::v1::UPayloadFormat> ProtoConverter::distToUPayFormat(
 		const google::protobuf::EnumValueDescriptor* value =
 		    descriptor->FindValueByName(formatStr);
 		if (value) {
-			return static_cast<uprotocol::v1::UPayloadFormat>(value->number());
+			format =
+			    static_cast<uprotocol::v1::UPayloadFormat>(value->number());
 		}
 	}
-	return std::nullopt;
+
+	return format;
 }
 
 Value ProtoConverter::convertMessageToJson(

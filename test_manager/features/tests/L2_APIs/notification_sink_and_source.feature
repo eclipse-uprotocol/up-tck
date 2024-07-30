@@ -22,9 +22,9 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Testing Publish and Subscribe Functionality
+Feature: Testing Notifiaction Sink and Source Functionality
 
-  Scenario Outline: To test the rpc server and client apis
+  Scenario Outline: To test the notification sink and source apis
     Given "uE1" creates data for "notificationsink"
     And sets "authority_name" to "me_authority"
     And sets "ue_id" to "65538"
