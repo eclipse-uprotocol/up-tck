@@ -2,20 +2,20 @@
     {
         "feature_name" : "uuid_validator",
         "path": "validators",
-        "ue1": ["python"],
+        "ue1": ["python", "java"],
         "transports": ["socket"]
     },
     {
         "feature_name" : "register_and_send",
         "path": "transport_rpc",
-        "ue1": ["python"],
-        "ue2": ["python"],
+        "ue1": ["python", "java"],
+        "ue2": ["python", "java"],
         "transports": ["socket"]
     },
     {
         "feature_name" : "register_and_unregister",
         "path": "transport_rpc",
-        "ue1": ["python"],
+        "ue1": ["python", "java"],
         "transports": ["socket"]
     }
 ]

@@ -23,24 +23,20 @@ jobs:
     #   with:
     #     command: build
     #     args: --manifest-path test_agent/rust/Cargo.toml
-    # - name: Set up JDK 17
-    #   uses: actions/setup-java@v3
-    #   with:
-    #     java-version: '17'
-    #     distribution: 'temurin'
-    #     cache: maven
-    #- name: Install dependencies
-    #  run: |
-    #    cd scripts
-    #    python build_up_java_latest.py
-    # - name: Build up_client_socket_java with Maven
-    #   working-directory: up_client_socket/java
-    #   run: |
-    #         mvn clean install --file pom.xml
-    # - name: Build java_test_agent with Maven
-    #   working-directory: test_agent/java
-    #   run: |
-    #         mvn clean install --file pom.xml
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+    - name: Build up_client_socket_java with Maven
+      working-directory: up_client_socket/java
+      run: |
+            mvn clean install --file pom.xml
+    - name: Build java_test_agent with Maven
+      working-directory: test_agent/java
+      run: |
+            mvn clean install --file pom.xml
     - name: Set up Python 3.8.7
       uses: actions/setup-python@v3
       with:

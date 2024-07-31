@@ -21,20 +21,24 @@
 
 package org.eclipse.uprotocol;
 
+import org.apache.commons.cli.*;
+
+
 import com.google.gson.Gson;
 import com.google.protobuf.Any;
 import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
+import org.eclipse.uprotocol.communication.UPayload;
 import org.eclipse.uprotocol.Constants.ActionCommands;
 import org.eclipse.uprotocol.Constants.Constant;
 import org.eclipse.uprotocol.transport.UListener;
-import org.eclipse.uprotocol.transport.builder.UAttributesBuilder;
+import org.eclipse.uprotocol.transport.UTransport;
+import org.eclipse.uprotocol.transport.builder.UMessageBuilder;
 import org.eclipse.uprotocol.transport.validate.UAttributesValidator;
-import org.eclipse.uprotocol.uri.serializer.LongUriSerializer;
+import org.eclipse.uprotocol.uri.serializer.UriSerializer;
 import org.eclipse.uprotocol.uri.validator.UriValidator;
 import org.eclipse.uprotocol.validation.ValidationResult;
-import org.eclipse.uprotocol.uuid.serializer.LongUuidSerializer;
-import org.eclipse.uprotocol.uri.serializer.MicroUriSerializer;
+import org.eclipse.uprotocol.uuid.serializer.UuidSerializer;
 import org.eclipse.uprotocol.uuid.factory.UuidFactory;
 import org.eclipse.uprotocol.uuid.factory.UuidUtils;
 import org.eclipse.uprotocol.uuid.validate.UuidValidator;
@@ -44,57 +48,65 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class TestAgent {
+
+    
     private static final Socket clientSocket;
-    private static final SocketUTransport transport;
+    private static UTransport transport;
     private static final Map<String, ActionHandler> actionHandlers = new HashMap<>();
     private static final Logger logger = Logger.getLogger("JavaTestAgent");
     private static final UListener listener = TestAgent::handleOnReceive;
     private static final Gson gson = new Gson();
+    private static final UUri RESPONSE_URI;
+    private static String transportName;
+    private static String sdkName;
 
     static {
         actionHandlers.put(ActionCommands.SEND_COMMAND, TestAgent::handleSendCommand);
         actionHandlers.put(ActionCommands.REGISTER_LISTENER_COMMAND, TestAgent::handleRegisterListenerCommand);
         actionHandlers.put(ActionCommands.UNREGISTER_LISTENER_COMMAND, TestAgent::handleUnregisterListenerCommand);
-        actionHandlers.put(ActionCommands.INVOKE_METHOD_COMMAND, TestAgent::handleInvokeMethodCommand);
-        actionHandlers.put(ActionCommands.SERIALIZE_URI, TestAgent::handleLongSerializeUriCommand);
-        actionHandlers.put(ActionCommands.DESERIALIZE_URI, TestAgent::handleLongDeserializeUriCommand);
+        actionHandlers.put(ActionCommands.SERIALIZE_URI, TestAgent::handleSerializeUriCommand);
+        actionHandlers.put(ActionCommands.DESERIALIZE_URI, TestAgent::handleDeserializeUriCommand);
         actionHandlers.put(ActionCommands.VALIDATE_URI, TestAgent::handleValidateUriCommand);
         actionHandlers.put(ActionCommands.VALIDATE_UUID, TestAgent::handleValidateUuidCommand);
-        actionHandlers.put(ActionCommands.SERIALIZE_UUID, TestAgent::handleLongSerializeUuidCommand);
-        actionHandlers.put(ActionCommands.DESERIALIZE_UUID, TestAgent::handleLongDeserializeUuidCommand);
+        actionHandlers.put(ActionCommands.SERIALIZE_UUID, TestAgent::handleSerializeUuidCommand);
+        actionHandlers.put(ActionCommands.DESERIALIZE_UUID, TestAgent::handleDeserializeUuidCommand);
         actionHandlers.put(ActionCommands.VALIDATE_UATTRIBUTES, TestAgent::handleUAttributesValidateCommand);
-        actionHandlers.put(ActionCommands.MICRO_SERIALIZE_URI, TestAgent::handleMicroSerializeUuriCommand);
-        actionHandlers.put(ActionCommands.MICRO_DESERIALIZE_URI, TestAgent::handleMicroDeserializeUuriCommand);
+        actionHandlers.put(ActionCommands.INITIALIZE_TRANSPORT, TestAgent::handleInitializeTransportCommand);
+    }
+
+    static {
+        RESPONSE_URI = UUri.newBuilder().setUeId(1).setUeVersionMajor(1).setResourceId(0).build();
     }
 
     static {
         try {
-            transport = new SocketUTransport();
+            transport = new SocketUTransport(RESPONSE_URI);
             clientSocket = new Socket(Constant.TEST_MANAGER_IP, Constant.TEST_MANAGER_PORT);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static void processMessage(Map<String, Object> jsonData) throws IOException {
+    public static void processMessage(Map<String, Object> jsonData) throws InterruptedException, ExecutionException {
         String action = (String) jsonData.get("action");
         if (actionHandlers.containsKey(action)) {
-            UStatus status = (UStatus) actionHandlers.get(action).handle(jsonData);
+            CompletableFuture<UStatus> status = (CompletableFuture<UStatus>) actionHandlers.get(action).handle(jsonData);
             if (status != null) {
                 String testID = (String) jsonData.get("test_id");
-                sendToTestManager(status, action, testID);
+                sendToTestManager(status.get(), action, testID);
             }
         }
     }
@@ -127,7 +139,7 @@ public class TestAgent {
 
     private static void writeDataToTMSocket(JSONObject responseDict, String action) {
         responseDict.put("action", action);
-        responseDict.put("ue", "java");
+        responseDict.put("ue", sdkName);
         try {
             OutputStream outputStream = clientSocket.getOutputStream();
             outputStream.write(responseDict.toString().getBytes(StandardCharsets.UTF_8));
@@ -139,7 +151,27 @@ public class TestAgent {
         }
     }
 
-    private static UStatus handleSendCommand(Map<String, Object> jsonData) {
+    private static Object handleInitializeTransportCommand(Map<String, Object> jsonData) {
+        UUri uri = (UUri) ProtoConverter.dictToProto((Map<String, Object>) jsonData.get("data"), UUri.newBuilder());
+        String testID = (String) jsonData.get("test_id");
+        try {
+            if (transportName.equals("socket")) {
+                transport = new SocketUTransport(uri);
+            } else {
+                UStatus status = UStatus.newBuilder().setCode(UCode.FAILED_PRECONDITION).setMessage("").build();
+                sendToTestManager(status, ActionCommands.INITIALIZE_TRANSPORT, testID);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            UStatus status = UStatus.newBuilder().setCode(UCode.FAILED_PRECONDITION).setMessage("").build();
+            sendToTestManager(status, ActionCommands.INITIALIZE_TRANSPORT, testID);
+        }
+        UStatus status = UStatus.newBuilder().setCode(UCode.OK).setMessage("").build();
+        sendToTestManager(status, ActionCommands.INITIALIZE_TRANSPORT, testID);
+        return null;
+    }
+
+    private static CompletionStage<UStatus> handleSendCommand(Map<String, Object> jsonData) {
         UMessage uMessage = (UMessage) ProtoConverter.dictToProto((Map<String, Object>) jsonData.get("data"),
                 UMessage.newBuilder());
         UAttributes uAttributesWithId = uMessage.getAttributes().toBuilder()
@@ -148,41 +180,27 @@ public class TestAgent {
         return transport.send(uMessageWithId);
     }
 
-    private static UStatus handleRegisterListenerCommand(Map<String, Object> jsonData) {
+    private static CompletionStage<UStatus> handleRegisterListenerCommand(Map<String, Object> jsonData) {
         UUri uri = (UUri) ProtoConverter.dictToProto((Map<String, Object>) jsonData.get("data"), UUri.newBuilder());
         return transport.registerListener(uri, listener);
     }
 
-    private static UStatus handleUnregisterListenerCommand(Map<String, Object> jsonData) {
+    private static CompletionStage<UStatus> handleUnregisterListenerCommand(Map<String, Object> jsonData) {
         UUri uri = (UUri) ProtoConverter.dictToProto((Map<String, Object>) jsonData.get("data"), UUri.newBuilder());
         return transport.unregisterListener(uri, listener);
     }
 
-    private static Object handleInvokeMethodCommand(Map<String, Object> jsonData) {
-        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
-        // Convert data and payload to protocol buffers
-        UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
-        UPayload payload = (UPayload) ProtoConverter.dictToProto((Map<String, Object>) data.get("payload"),
-                UPayload.newBuilder());
-        CompletionStage<UMessage> responseFuture = transport.invokeMethod(uri, payload,
-                CallOptions.newBuilder().setTtl(10000).build());
-        responseFuture.whenComplete((responseMessage, exception) -> {
-            sendToTestManager(responseMessage, ActionCommands.INVOKE_METHOD_COMMAND, (String) jsonData.get("test_id"));
-        });
-        return null;
-    }
-
-    private static Object handleLongSerializeUriCommand(Map<String, Object> jsonData) {
+    private static Object handleSerializeUriCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
-        String serializedUuri = LongUriSerializer.instance().serialize(uri);
+        String serializedUuri = UriSerializer.serialize(uri);
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(serializedUuri, ActionCommands.SERIALIZE_URI, testID);
         return null;
     }
 
-    private static Object handleLongDeserializeUriCommand(Map<String, Object> jsonData) {
-        UUri uri = LongUriSerializer.instance().deserialize(jsonData.get("data").toString());
+    private static Object handleDeserializeUriCommand(Map<String, Object> jsonData) {
+        UUri uri = UriSerializer.deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uri, ActionCommands.DESERIALIZE_URI, testID);
         return null;
@@ -195,42 +213,37 @@ public class TestAgent {
 
         UUri uri = (UUri) ProtoConverter.dictToProto(uriValue, UUri.newBuilder());
 
-        Function<UUri, ValidationResult> validatorFunc = null;
+        Function<UUri, Boolean> validatorFunc = null;
         Function<UUri, Boolean> validatorFuncBool = null;
 
         switch (valType) {
-            case "uri":
-                validatorFunc = UriValidator::validate;
-                break;
-            case "rpc_response":
-                validatorFunc = UriValidator::validateRpcResponse;
-                break;
-            case "rpc_method":
-                validatorFunc = UriValidator::validateRpcMethod;
-                break;
             case "is_empty":
-                validatorFuncBool = UriValidator::isEmpty;
+                validatorFunc = UriValidator::isEmpty;
                 break;
-            case "is_resolved":
-                validatorFuncBool = UriValidator::isResolved;
+            case "is_rpc_method":
+                validatorFunc = UriValidator::isRpcMethod;
                 break;
-            case "is_micro_form":
-                validatorFuncBool = UriValidator::isMicroForm;
+            case "is_rpc_response":
+                validatorFunc = UriValidator::isRpcResponse;
                 break;
-            case "is_long_form":
-                validatorFuncBool = UriValidator::isLongForm;
+            case "is_default_resource_id":
+                validatorFunc = UriValidator::isDefaultResourceId;
+                break;
+            case "is_topic":
+                validatorFunc = UriValidator::isTopic;
                 break;
         }
 
         String testID = (String) jsonData.get("test_id");
         if (validatorFunc != null) {
-            ValidationResult status = validatorFunc.apply(uri);
-            String result = status.isSuccess() ? "True" : "False";
-            String message = status.getMessage();
-            sendToTestManager(Map.of("result", result, "message", message), ActionCommands.VALIDATE_URI, testID);
-        } else if (validatorFuncBool != null) {
-            Boolean status = validatorFuncBool.apply(uri);
-            String result = status ? "True" : "False";
+            Boolean status = validatorFunc.apply(uri);
+            String result = status.toString().equals("true") ? "True" : "False";
+            sendToTestManager(Map.of("result", result, "message", ""), ActionCommands.VALIDATE_URI, testID);
+        } else if (valType.equals("matches")) {
+            String uriToMatch = (String) data.get("uuri_2");
+            UUri convertedMatch = UriSerializer.deserialize(uriToMatch);
+            Boolean status = UriValidator.matches(uri, convertedMatch);
+            String result = status.toString().equals("true") ? "True" : "False";
             sendToTestManager(Map.of("result", result, "message", ""), ActionCommands.VALIDATE_URI, testID);
         }
 
@@ -246,7 +259,7 @@ public class TestAgent {
         if (data.get("attributes") != null) {
             attributes = (UAttributes) ProtoConverter.dictToProto((Map<String, Object>) data.get("attributes"),
                     UAttributes.newBuilder());
-            if ("default".equals(attributes.getSink().getAuthority().getName())) {
+            if ("default".equals(attributes.getSink().getAuthorityName())) {
                 attributes = attributes.toBuilder().setSink(UUri.getDefaultInstance()).build();
             }
         } else {
@@ -455,45 +468,19 @@ public class TestAgent {
         return null;
     }
 
-    private static Object handleLongSerializeUuidCommand(Map<String, Object> jsonData) {
+    private static Object handleSerializeUuidCommand(Map<String, Object> jsonData) {
         Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
         UUID uuid = (UUID) ProtoConverter.dictToProto(data, UUID.newBuilder());
-        String serializedUUid = LongUuidSerializer.instance().serialize(uuid);
+        String serializedUUid = UuidSerializer.serialize(uuid);
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(serializedUUid, ActionCommands.SERIALIZE_UUID, testID);
         return null;
     }
 
-    private static Object handleLongDeserializeUuidCommand(Map<String, Object> jsonData) {
-        UUID uuid = LongUuidSerializer.instance().deserialize(jsonData.get("data").toString());
+    private static Object handleDeserializeUuidCommand(Map<String, Object> jsonData) {
+        UUID uuid = UuidSerializer.deserialize(jsonData.get("data").toString());
         String testID = (String) jsonData.get("test_id");
         sendToTestManager(uuid, ActionCommands.DESERIALIZE_UUID, testID);
-        return null;
-    }
-
-    private static Object handleMicroSerializeUuriCommand(Map<String, Object> jsonData) {
-        Map<String, Object> data = (Map<String, Object>) jsonData.get("data");
-        UUri uri = (UUri) ProtoConverter.dictToProto(data, UUri.newBuilder());
-        byte[] serializedUuri = MicroUriSerializer.instance().serialize(uri);
-        String serializedUuriAsStr = "";
-        try {
-            serializedUuriAsStr = new String(serializedUuri, "ISO-8859-1");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return null;
-        }
-        String testID = (String) jsonData.get("test_id");
-        sendToTestManager(serializedUuriAsStr, ActionCommands.MICRO_SERIALIZE_URI, testID);
-        return null;
-    }
-
-    private static Object handleMicroDeserializeUuriCommand(Map<String, Object> jsonData) {
-        String microSerializedUuriAsStr = (String) jsonData.get("data");
-        byte[] microSerializedUuri = microSerializedUuriAsStr.getBytes(StandardCharsets.ISO_8859_1);
-        UUri uri = MicroUriSerializer.instance().deserialize(microSerializedUuri);
-
-        String testID = (String) jsonData.get("test_id");
-        sendToTestManager(uri, ActionCommands.MICRO_DESERIALIZE_URI, testID);
         return null;
     }
 
@@ -501,15 +488,12 @@ public class TestAgent {
         logger.info("Java on_receive called: " + uMessage);
         if (uMessage.getAttributes().getType().equals(UMessageType.UMESSAGE_TYPE_REQUEST)) {
             UAttributes reqAttributes = uMessage.getAttributes();
-            UAttributes uAttributes = UAttributesBuilder.response(reqAttributes.getSink(), reqAttributes.getSource(),
-                    UPriority.UPRIORITY_CS4, reqAttributes.getId()).build();
+
             StringValue stringValue = StringValue.newBuilder().setValue("SuccessRPCResponse").build();
             Any anyObj = Any.pack(stringValue);
+            UPayload uPayload = new UPayload(anyObj.toByteString(), UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY);
+            UMessage resMsg = UMessageBuilder.response(reqAttributes).build(uPayload);
 
-            UPayload uPayload = UPayload.newBuilder().setValue(anyObj.toByteString())
-                    .setFormat(UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY).build();
-
-            UMessage resMsg = UMessage.newBuilder().setAttributes(uAttributes).setPayload(uPayload).build();
             transport.send(resMsg);
         } else {
             sendToTestManager(uMessage, ActionCommands.RESPONSE_ON_RECEIVE);
@@ -517,15 +501,51 @@ public class TestAgent {
 
     }
 
-    public static void main(String[] args) throws IOException {
-        Thread receiveThread = new Thread(TestAgent::receiveFromTM);
+    @SuppressWarnings("null")
+    public static void main(String[] args) {
+
+        Options options = new Options();
+
+        Option input = new Option("t", "transport", true, "Select Transport");
+        input.setRequired(true);
+        options.addOption(input);
+
+        Option output = new Option("s", "sdkname", true, "Select SDK Name");
+        output.setRequired(true);
+        options.addOption(output);
+
+        CommandLineParser parser = new DefaultParser();
+        HelpFormatter formatter = new HelpFormatter();
+        CommandLine cmd = null;//not a good practice, it serves it purpose
+
+        try {
+            cmd = parser.parse(options, args);
+        } catch (ParseException e) {
+            System.out.println(e.getMessage());
+            formatter.printHelp("utility-name", options);
+
+            System.exit(1);
+        }
+
+        transportName = cmd.getOptionValue("transport");
+        sdkName = cmd.getOptionValue("sdkname");
+
+        Thread receiveThread = new Thread(() -> {
+            try {
+                receiveFromTM();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+        });
         receiveThread.start();
         JSONObject obj = new JSONObject();
-        obj.put("SDK_name", "java");
+        obj.put("SDK_name", sdkName);
         sendToTestManager(obj, "initialize");
     }
 
-    public static void receiveFromTM() {
+    public static void receiveFromTM() throws InterruptedException, ExecutionException {
         try {
             while (true) {
                 byte[] buffer = new byte[Constant.BYTES_MSG_LENGTH];
