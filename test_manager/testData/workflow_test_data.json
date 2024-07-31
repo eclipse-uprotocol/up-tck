@@ -1,5 +1,42 @@
 [
     {
+        "feature_name" : "uri_serializer",
+        "path": "serializers",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "uri_deserializer",
+        "path": "serializers",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "uuid_serializer",
+        "path": "serializers",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "uuid_deserializer",
+        "path": "serializers",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "uattributes_validator",
+        "path": "validators",
+        "ue1": ["python", "java"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "uri_validator",
+        "path": "validators",
+        "ue1": ["python", "java"],
+        "ue2": ["python", "java"],
+        "transports": ["socket"]
+    },
+    {
         "feature_name" : "uuid_validator",
         "path": "validators",
         "ue1": ["python", "java"],
