@@ -10,7 +10,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.20.1)
-project(up_client_socket VERSION 0.1.0  LANGUAGES CXX DESCRIPTION "C++ socket transport")
+project(up-transport-socket-cpp VERSION 0.1.0  LANGUAGES CXX DESCRIPTION "C++ socket transport")
 
 find_package(up-cpp REQUIRED)
 find_package(protobuf REQUIRED)
@@ -30,7 +30,7 @@ endif()
 
 add_library(${PROJECT_NAME} src/SocketUTransport.cpp)
 
-add_library(up_client_socket::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+add_library(up-transport-socket-cpp::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
