@@ -66,6 +66,8 @@ constexpr static const char* PAYLOAD = "payload";
 constexpr static const char* ATTRIBUTES = "attributes";
 constexpr static const char* MESSAGE = "message";
 constexpr static const char* DETAILS = "details";
+constexpr std::string_view ZENOH_CONFIG_FILE = BUILD_REALPATH_ZENOH_CONF;
+
 };  // namespace Constants
 
 #endif  // _CONSTANTS_H_

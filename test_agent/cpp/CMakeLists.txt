@@ -21,7 +21,10 @@ find_package(RapidJSON CONFIG REQUIRED)
 find_package(up-transport-socket-cpp REQUIRED)
 find_package(OpenSSL REQUIRED)
 # TODO: Update when zenoh transport is ready
-# find_package(up-client-zenoh-cpp REQUIRED)
+find_package(up-transport-zenoh-cpp REQUIRED)
+find_package(zenohcpp REQUIRED)
+
+get_filename_component(ZENOH_CONF "./DEFAULT_CONFIG.json5" REALPATH)
 
 # This is the root CMakeLists.txt file; We can set project wide settings here
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
@@ -43,7 +46,8 @@ target_include_directories(${PROJECT_NAME}
 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
 	${up-transport-socket-cpp_INCLUDE_DIR}
-    # ${up-client-zenoh-cpp_INCLUDE_DIR}
+    ${up-transport-zenoh-cpp_INCLUDE_DIR}
+	${zenohcpp_INCLUDE_DIR}
 	${up-cpp_INCLUDE_DIR}
 	${up-core-api_INCLUDE_DIR}
 	${protobuf_INCLUDE_DIR}
@@ -51,12 +55,16 @@ target_include_directories(${PROJECT_NAME}
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE BUILD_REALPATH_ZENOH_CONF=\"${ZENOH_CONF}\")
+
+
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
     up-transport-socket-cpp::up-transport-socket-cpp
-    # up-client-zenoh-cpp::up-client-zenoh-cpp
+    up-transport-zenoh-cpp::up-transport-zenoh-cpp
 	up-core-api::up-core-api
 	up-cpp::up-cpp
+	zenohcpp::lib
 	protobuf::libprotobuf
     pthread
     rt

@@ -3,6 +3,8 @@ protobuf/[>=3.21.12]
 up-core-api/[~1.6, include_prerelease]
 up-cpp/1.0.1-rc1
 up-transport-socket-cpp/1.0.0-dev
+up-transport-zenoh-cpp/1.0.0-rc2
+zenohcpp/1.0.0-rc5
 rapidjson/cci.20230929
 spdlog/[>=1.13.0]
 fmt/10.2.1
