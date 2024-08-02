@@ -37,6 +37,10 @@ def main():
     parser.add_argument(
         '--up-client-socket-version', type=str, help='Specify the version of up_client_socket', required=False
     )
+    parser.add_argument('--zenohc-version', type=str, help='Specify the version of zenohc', required=False)
+    parser.add_argument('--zenohcpp-version', type=str, help='Specify the version of zenohcpp', required=False)
+    parser.add_argument('--up-transport-zenoh-cpp', type=str, help='Specify the version of zenohcpp', required=False)
+
     args = parser.parse_args()
 
     repo_url = "https://github.com/eclipse-uprotocol/up-conan-recipes.git"
@@ -70,6 +74,32 @@ def main():
                     "up-transport-socket-cpp/developer/",
                     "--version",
                     args.up_client_socket_version,
+                    "--build=missing",
+                ]
+            )
+
+        # Install zenohc
+        print("Install zenohc")
+        if args.zenohc_version:
+            run_command(["conan", "create", "zenohc-tmp/prebuilt", "--version", args.zenohc_version, "--build=missing"])
+
+        # Install zenohcpp
+        print("Install zenohcpp")
+        if args.zenohcpp_version:
+            run_command(
+                ["conan", "create", "zenohcpp-tmp/from-source", "--version", args.zenohcpp_version, "--build=missing"]
+            )
+
+        # Install up-transport-zenoh-cpp
+        print("Install up-transport-zenoh-cpp")
+        if args.up_transport_zenoh_cpp:
+            run_command(
+                [
+                    "conan",
+                    "create",
+                    "up-transport-zenoh-cpp/release/",
+                    "--version",
+                    args.up_transport_zenoh_cpp,
                     "--build=missing",
                 ]
             )
