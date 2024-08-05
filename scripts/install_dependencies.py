@@ -32,6 +32,7 @@ def run_command(command):
         print(e.stderr)
         sys.exit(1)
 
+
 def check_conan_version():
     try:
         # Check Conan version
@@ -50,6 +51,7 @@ def check_conan_version():
     except (subprocess.CalledProcessError, FileNotFoundError):
         print("Conan is not installed.")
         return False
+
 
 def main():
     # Define the repository and desired branch or commit
