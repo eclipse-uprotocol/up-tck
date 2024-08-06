@@ -45,14 +45,36 @@
     {
         "feature_name" : "register_and_send",
         "path": "transport_rpc",
-        "ue1": ["python", "java"],
-        "ue2": ["python", "java"],
+        "ue1": ["python", "java", "cpp"],
+        "ue2": ["python", "java", "cpp"],
         "transports": ["socket"]
     },
     {
         "feature_name" : "register_and_unregister",
         "path": "transport_rpc",
-        "ue1": ["python", "java"],
+        "ue1": ["python", "cpp", "java"],
         "transports": ["socket"]
-    }
+    },
+    {
+        "feature_name" : "notification_sink_and_source",
+        "path": "L2_APIs",
+        "ue1": ["cpp"],
+        "ue2": ["cpp"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "publish_and_subscribe",
+        "path": "L2_APIs",
+        "ue1": ["cpp"],
+        "ue2": ["cpp"],
+        "transports": ["socket"]
+    },
+    {
+        "feature_name" : "rpc_server_and_client",
+        "path": "L2_APIs",
+        "ue1": ["cpp"],
+        "ue2": ["cpp"],
+        "transports": ["socket"]
+    } 
+
 ]
