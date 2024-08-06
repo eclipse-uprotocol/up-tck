@@ -16,6 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 """
 
 import base64
+import binascii
 import codecs
 import json
 import os
@@ -169,7 +170,11 @@ def create_sdk_data(context, sdk_name: str, command: str):
             sdk_name, "initialize_transport", context.ue_tracker[int(ue_number) - 1][2]
         )
         context.logger.info(f"Response Json {command} -> {response_json}")
-        assert_that(int(response_json["data"]["code"]), equal_to(UCode.OK))
+
+        try:
+            assert_that(int(response_json["data"]["code"]), equal_to(UCode.OK))
+        except ValueError:
+            assert_that(response_json["data"]["code"], equal_to("OK"))
 
         context.logger.info(f"{sdk_name} connected to Test Manager...")
 
@@ -319,7 +324,7 @@ def verify_uuid_received_properties(context):
             if len(expected_value) > 0:
                 if field in int_type_fields:
                     expected_value: int = int(expected_value)
-                assert_that(deserialized_uuid[field], equal_to(expected_value))
+                assert_that(int(deserialized_uuid[field]), equal_to(expected_value))
     except AssertionError as ae:
         raise AssertionError(f"Assertion error. {ae}")
 
@@ -358,8 +363,12 @@ def send_command_request(context, command: str):
 def receive_status(context, field_name: str, expected_value: str):
     try:
         actual_value: str = context.response_data[field_name]
+        expected_value_string = expected_value
         expected_value: int = getattr(UCode, expected_value)
-        assert_that(expected_value, equal_to(int(actual_value)))
+        try:
+            assert_that(expected_value, equal_to(int(actual_value)))
+        except ValueError:
+            assert_that(expected_value_string, equal_to(actual_value))
     except AssertionError:
         raise AssertionError(
             f"Assertion error. Expected is {expected_value} but " f"received {context.response_data[field_name]}"
@@ -402,11 +411,20 @@ def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expec
                 decoded_string = "type.googleapis.com/" + val.split(".com/")[1]
                 rec_field_value = bytes(decoded_string, "utf-8")
             else:
-                rec_field_value: bytes = val.encode("utf-8")
-
-        assert (
-            rec_field_value.split(b"googleapis.com/")[1] == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
-        )
+                try:
+                    rec_field_value: bytes = val.encode("utf-8")
+                except Exception as e:
+                    context.logger.info(f"Exception: {e}")
+        try:
+            data_bytes = base64.b64decode(val)
+            assert (
+                data_bytes.split(b"googleapis.com/")[1] == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
+            )
+        except binascii.Error:
+            assert (
+                rec_field_value.split(b"googleapis.com/")[1]
+                == expected_value.encode("utf-8").split(b"googleapis.com/")[1]
+            )
 
     except AssertionError:
         raise AssertionError(

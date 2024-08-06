@@ -21,16 +21,20 @@
 
 package org.eclipse.uprotocol;
 
+import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.Descriptors.EnumValueDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.InvalidProtocolBufferException;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import com.google.protobuf.util.JsonFormat;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -152,40 +156,17 @@ public class ProtoConverter {
     }
 
     public static Map<String, Object> convertMessageToMap(Message message) {
-        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> map;
+        JsonFormat.Printer printer = JsonFormat.printer().includingDefaultValueFields().preservingProtoFieldNames();
+        Gson gson = new Gson();
 
-        List<FieldDescriptor> allFields = message.getDescriptorForType().getFields();
-        for (FieldDescriptor field : allFields) {
-            String fieldName = field.getName();
-            Object defaultOrSetValue = message.getField(field);
-            Object value = getattr(message, field, defaultOrSetValue);
-            if (value instanceof EnumValueDescriptor) {
-                value = ((EnumValueDescriptor) value).getNumber();
-            }
-
-            if (value instanceof ByteString) {
-                value = ((ByteString) value).toStringUtf8();
-            }
-
-            if (value instanceof Message) {
-                result.put(fieldName, convertMessageToMap((Message) value));
-            } else if (field.isRepeated()) {
-                List<Object> repeated = new ArrayList<>();
-                for (Object subMsg : (List<Object>) value) {
-                    if (subMsg instanceof Message) {
-                        repeated.add(convertMessageToMap((Message) subMsg));
-                    } else {
-                        repeated.add(subMsg);
-                    }
-                }
-                result.put(fieldName, repeated);
-
-            } else if (field.isRequired() || field.isOptional()) {
-                result.put(fieldName, value);
-            }
+        try {
+            String jsonString = printer.print(message);
+            map = gson.fromJson(jsonString, Map.class);
+        } catch (InvalidProtocolBufferException ex) {
+            map = new HashMap<>();
         }
-
-        return result;
+        return map;
     }
 
     public static Object getattr(Message message, FieldDescriptor field, Object defaultValue) {
