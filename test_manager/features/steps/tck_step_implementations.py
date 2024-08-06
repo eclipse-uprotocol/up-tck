@@ -329,6 +329,18 @@ def verify_uuid_received_properties(context):
         raise AssertionError(f"Assertion error. {ae}")
 
 
+@given('sets "{traget_key}" to entity URI of "{ue}" with updated "{sub_key}" to "{sub_val}"')
+@when('sets "{traget_key}" to entity URI of "{ue}" with updated "{sub_key}" to "{sub_val}"')
+def set_key_to_ue_uri_with_modification(context: Context, traget_key: str, ue: str, sub_key: str, sub_val: str):
+    ue_number = ue.replace("uE", "")
+    if traget_key not in context.json_dict:
+        context.json_dict[traget_key] = {}
+        context.json_dict[traget_key].update(context.ue_tracker[int(ue_number) - 1][2])
+
+        # Update or add sub_key with sub_val
+        context.json_dict[traget_key][sub_key] = sub_val
+
+
 @given('sets "{key}" to "{value}"')
 @when('sets "{key}" to "{value}"')
 def set_key_to_val(context: Context, key: str, value: str):
@@ -354,6 +366,23 @@ def set_key_to_ue_uri(context: Context, key: str, ue: str):
     ue_number = ue.replace("uE", "")
     if key not in context.json_dict:
         context.json_dict[key] = context.ue_tracker[int(ue_number) - 1][2]
+
+
+@given('sets to entity URI of "{ue}" with updated "{sub_key}" to "{sub_val}"')
+@when('sets to entity URI of "{ue}" with updated "{sub_key}" to "{sub_val}"')
+def set_to_ue_uri(context: Context, ue: str, sub_key: str, sub_val: str):
+    ue_number = ue.replace("uE", "")
+    context.json_dict.update(context.ue_tracker[int(ue_number) - 1][2])
+    # Update or add sub_key with sub_val
+    context.json_dict[sub_key] = sub_val
+
+
+@given('sets to entity URI of "{ue}"')
+@when('sets to entity URI of "{ue}"')
+def set_to_ue_uri(context: Context, ue: str):
+    ue_number = ue.replace("uE", "")
+    context.json_dict.update(context.ue_tracker[int(ue_number) - 1][2])
+    context.logger.info(f"uE Tracker with ue number: {ue_number} -> {context.ue_tracker[int(ue_number) - 1][2]}")
 
 
 @given('sends "{command}" request')
