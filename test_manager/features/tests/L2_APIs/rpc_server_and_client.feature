@@ -26,10 +26,7 @@ Feature: Testing RPC Server and Client Functionality
 
   Scenario Outline: To test the rpc server and client apis
     Given "uE1" creates data for "rpcserver"
-    And sets "attributes.sink.authority_name" to "me_authority"
-    And sets "attributes.sink.ue_id" to "65538"
-    And sets "attributes.sink.ue_version_major" to "1"
-    And sets "attributes.sink.resource_id" to "32600"
+    And sets "attributes.sink" to entity URI of "uE1" with updated "resource_id" to "32600"
     And sets "attributes.payload_format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
     And sets "payload" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
     
@@ -37,10 +34,7 @@ Feature: Testing RPC Server and Client Functionality
     Then the status received with "code" is "OK"
 
     When "uE2" creates data for "invokemethod"
-    And sets "attributes.sink.authority_name" to "me_authority"
-    And sets "attributes.sink.ue_id" to "65538"
-    And sets "attributes.sink.ue_version_major" to "1"
-    And sets "attributes.sink.resource_id" to "32600"
+    And sets "attributes.sink" to entity URI of "uE1" with updated "resource_id" to "32600"
     And sets "attributes.ttl" to "10000"
     And sets "attributes.priority" to "UPRIORITY_CS4"
     And sets "attributes.payload_format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
