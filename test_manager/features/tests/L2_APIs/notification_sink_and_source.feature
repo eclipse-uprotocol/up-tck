@@ -22,34 +22,24 @@
 #
 # -------------------------------------------------------------------------
 
-Feature: Testing Publish and Subscribe Functionality
+Feature: Testing Notifiaction Sink and Source Functionality
 
-  Scenario Outline: To test the registerlistener and send apis
-    Given "uE1" creates data for "registerlistener"
-    And sets to entity URI of "uE2" with updated "resource_id" to "32800"
-
-    When sends "registerlistener" request
+  Scenario Outline: To test the notification sink and source apis
+    Given "uE1" creates data for "notificationsink"
+    And sets to entity URI of "uE2" with updated "resource_id" to "32770"
+    
+    And sends "notificationsink" request
     Then the status received with "code" is "OK"
 
-    When "uE2" creates data for "send"
-    And sets "attributes.id.msb" to "112808788591603906"
-    And sets "attributes.id.lsb" to "11713802770567977244"
-    And sets "attributes.source" to entity URI of "uE2" with updated "resource_id" to "32800"
-    And sets "attributes.priority" to "UPRIORITY_CS1"
-    And sets "attributes.type" to "UMESSAGE_TYPE_PUBLISH"
-    And sets "attributes.traceparent" to "traceparentTest"
+    When "uE2" creates data for "notificationsource"
+    And sets "attributes.source" to entity URI of "uE2" with updated "resource_id" to "32770"
+    And sets "attributes.sink" to entity URI of "uE1"
+    And sets "attributes.payload_format" to "UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY"
     And sets "payload" to b".type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
-    And sends "send" request
+    And sends "notificationsource" request
 
     Then the status received with "code" is "OK"
       And "uE1" sends onreceive message with field "payload" as b"type.googleapis.com/google.protobuf.Int32Value\x12\x02\x08\x03"
-
-    # Unregister in the end for cleanup
-    When "uE1" creates data for "unregisterlistener"
-    And sets to entity URI of "uE2" with updated "resource_id" to "32800"
-    And sends "unregisterlistener" request
-
-    Then the status received with "code" is "OK"
 
     Examples:
       | ignore | ignore |
