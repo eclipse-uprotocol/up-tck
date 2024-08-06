@@ -16,6 +16,10 @@
 #include <google/protobuf/wrappers.pb.h>
 #include <rapidjson/document.h>
 #include <spdlog/spdlog.h>
+#include <uprotocol/v1/uattributes.pb.h>
+#include <uprotocol/v1/umessage.pb.h>
+
+#include <optional>
 
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
@@ -35,6 +39,26 @@ public:
 	                        google::protobuf::Message& parentProtoObj,
 	                        rapidjson::Document::AllocatorType& allocator);
 
+	/// @brief Convert a JSON object to a UAttributes.
+	/// @param [in,out] parentJsonObj The JSON object to convert.
+	/// data from the JSON object.
+	static uprotocol::v1::UAttributes distToAttributes(
+	    rapidjson::Value& parentJsonObj,
+	    rapidjson::Document::AllocatorType& allocator);
+
+	/// @brief Convert a JSON object to a UURI.
+	/// @param [in,out] parentJsonObj The JSON object to convert.
+	/// data from the JSON object.
+	static uprotocol::v1::UUri distToUri(
+	    rapidjson::Value& parentJsonObj,
+	    rapidjson::Document::AllocatorType& allocator);
+
+	/// @brief Convert a JSON object to a UPayload.
+	/// @param [in,out] parentJsonObj The JSON object to convert.
+	/// data from the JSON object.
+	static std::optional<uprotocol::v1::UPayloadFormat> distToUPayFormat(
+	    const rapidjson::Value& formatStrValue);
+
 	/// @brief Convert a protobuf message to a JSON object.
 	///
 	/// @param [in] message The protobuf message to convert.
@@ -42,7 +66,7 @@ public:
 	/// protobuf message.
 	/// @return The populated JSON value.
 	static rapidjson::Value convertMessageToJson(
-	    const google::protobuf::Message& message, rapidjson::Document& doc);
+	    const uprotocol::v1::UMessage& message, rapidjson::Document& doc);
 
 private:
 	/// @brief Process nested JSON objects.
