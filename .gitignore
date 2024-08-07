@@ -1,7 +1,7 @@
 # Distribution / packaging
 .Python
 __pycache__/
-scripts/up-python/**
+scripts/up-python/
 downloads/
 testing/
 lib/
@@ -23,3 +23,6 @@ MANIFEST
 **/.DS_Store
 **/target
 test_manager/reports/summary/summary.json
+scripts/up-conan-recipes/
+test_agent/cpp/build
+test_agent/cpp/CMakeUserPresets.json
