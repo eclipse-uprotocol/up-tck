@@ -63,6 +63,16 @@ def main():
 
     # Optionally, handle other dependencies via requirements.txt
     os.chdir(os.pardir)  # Move back to the root of the cloned repository directory structure
+
+    # Check if "python3-tk" is installed
+    result = subprocess.run(["dpkg", "-s", "python3-tk"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if result.returncode == 0:
+        print("Python3-tk is already installed.")
+    else:
+        print("Python3-tk is not installed. Installing...")
+        print("Please enter your sudo password:")
+        run_command("sudo apt-get install python3-tk")
+
     run_command("pip install -r requirements.txt")
 
 
