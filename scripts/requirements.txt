@@ -3,3 +3,5 @@ behave-html-formatter
 multimethod
 psutil
 PyHamcrest
+Pillow
+tkinterweb
