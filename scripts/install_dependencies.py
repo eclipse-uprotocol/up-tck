@@ -90,6 +90,16 @@ def main():
 
     os.chdir(os.pardir)  # Move back to the root of the cloned repository directory structure
 
+    # Check if "python3-tk" is installed
+    result = subprocess.run(["dpkg", "-s", "python3-tk"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if result.returncode == 0:
+        print("Python3-tk is already installed.")
+    else:
+        print("Python3-tk is not installed. Installing...")
+        print("Please enter your sudo password:")
+        run_command("sudo apt-get install python3-tk")
+
+
     run_command(
         "python install_cpp_test_agent.py "
         "--up-core-api-version 1.6.0 "
