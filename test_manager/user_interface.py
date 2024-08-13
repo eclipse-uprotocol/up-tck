@@ -8,6 +8,10 @@ from tkinter import messagebox, scrolledtext, ttk
 from PIL import Image, ImageTk  # Import PIL for image handling
 from tkinterweb import HtmlFrame
 
+# PATH Variables
+image_path = os.path.join("..", "screenshots", "uprotocol_logo.png")
+tests_main_dir = os.path.join("features", "tests")
+
 
 def list_feature_files(directory):
     feature_files = []
@@ -37,10 +41,14 @@ def run_tests():
         return
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_file = f"reports/{fname.replace('/', '_')}_{timestamp}.html"
+    report_file = os.path.join("reports", f"{fname.replace('/', '_')}_{timestamp}.html")
+
+    # Check if fname has \ and replace it with /
+    if "\\" in fname:
+        fname = fname.replace("\\", "/")
 
     command = [
-        "python3",
+        "python",
         "-m",
         "behave",
         "--define",
@@ -59,27 +67,41 @@ def run_tests():
         report_file,
     ]
 
-    print("Running command:", ' '.join(command))
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        # Clear the output box
+        output_textbox.delete('1.0', tk.END)
 
-    # Clear the output box
-    output_textbox.delete('1.0', tk.END)
+        print("Running command:", ' '.join(command))
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    for line in iter(proc.stdout.readline, ''):
-        output_textbox.insert(tk.END, line)
+        # Log to check if the process is running
+        if proc.poll() is None:
+            print("Process is running.")
+        else:
+            print("Process has failed to start.")
+
+        # Wait for the process to complete and get the output
+        stdout, stderr = proc.communicate()
+
+        # Update GUI with process output
+        output_textbox.insert(tk.END, stdout)
+        output_textbox.insert(tk.END, stderr)
         output_textbox.see(tk.END)
-    for line in iter(proc.stderr.readline, ''):
-        output_textbox.insert(tk.END, line)
-        output_textbox.see(tk.END)
 
-    proc.stdout.close()
-    proc.stderr.close()
-    proc.wait()
+        inject_css(report_file)
 
-    inject_css(report_file)
-    # Load the HTML report in the HTML viewer
-    load_html_report(report_file)
-    messagebox.showinfo("Success", "Test execution completed.")
+        # Load the HTML report in the HTML viewer
+        load_html_report(report_file)
+        messagebox.showinfo("Success", "Test execution completed.")
+
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred: {e}")
+
+    finally:
+        if proc:
+            proc.stdout.close()
+            proc.stderr.close()
+            proc.wait()
 
 
 def start_tests():
@@ -162,7 +184,7 @@ def show_feature_file_content():
         return
 
     try:
-        with open(os.path.join("features/tests", fname), 'r') as file:
+        with open(os.path.join(tests_main_dir, fname), 'r') as file:
             content = file.read()
     except Exception as e:
         messagebox.showerror("Error", f"Failed to open feature file: {e}")
@@ -186,7 +208,6 @@ root = tk.Tk()
 root.title("UP-TCK Test Runner")
 
 # Load and display the image
-image_path = "../screenshots/uprotocol_logo.png"
 image = Image.open(image_path)
 photo = ImageTk.PhotoImage(image)
 
@@ -195,7 +216,7 @@ image_label = tk.Label(root, image=photo)
 image_label.grid(column=0, row=0, columnspan=2, padx=10, pady=5)
 
 # Fetch feature files and set options
-feature_files = list_feature_files("features/tests")
+feature_files = list_feature_files(tests_main_dir)
 languages = ["python", "java", "rust", "cpp"]
 transports = ["socket", "zenoh", "someip"]
 languages_with_blank = languages + ["_blank_"]
