@@ -4,3 +4,5 @@ multimethod
 psutil
 PyHamcrest
 argparse
+Pillow
+tkinterweb

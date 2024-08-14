@@ -13,6 +13,10 @@ With Behave, users can create files called "feature files," within which a test 
 For testing interoperability between different language test agents, users can create these feature files, specifying which languages are under test.
 Specific step definitions for the test manager and test agents are located below.
 
+==== Running BDD Example Test with GUI (Windows/Linux)
+1. Go to the Test Manager Folder (cd test_manager)
+2. Run "python user_interface.py".
+
 ==== Running BDD Example Test
 
 Example scripts for TCK Interoperability are supplied under test_manager/features/tests.
