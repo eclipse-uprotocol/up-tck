@@ -19,7 +19,7 @@ Using the recipes found in [up-conan-recipes](https://github.com/eclipse-uprotoc
 ### up-core-api
 
 ```
-conan create --version 1.6.0 --build=missing up-core-api/release
+conan create --version 1.6.0-alpha2 --build=missing up-core-api/release
 ```
 
 ### up-cpp

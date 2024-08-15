@@ -102,7 +102,7 @@ def main():
 
     run_command(
         "python install_cpp_test_agent.py "
-        "--up-core-api-version 1.6.0 "
+        "--up-core-api-version 1.6.0-alpha2 "
         "--up-cpp-version 1.0.1-rc1 "
         "--up-client-socket-version 1.0.0-dev"
     )
