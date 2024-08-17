@@ -20,7 +20,6 @@ find_package(fmt REQUIRED CONFIG)
 find_package(RapidJSON CONFIG REQUIRED)
 find_package(up-transport-socket-cpp REQUIRED)
 find_package(OpenSSL REQUIRED)
-# TODO: Update when zenoh transport is ready
 find_package(up-transport-zenoh-cpp REQUIRED)
 find_package(zenohcpp REQUIRED)
 
