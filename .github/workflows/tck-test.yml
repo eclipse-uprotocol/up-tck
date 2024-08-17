@@ -89,11 +89,11 @@ jobs:
                 if ("ue2" in feature){
                   for (var language_two in feature["ue2"]){
                     var second_ue = feature["ue2"][language_two]
-                    var command_str = "behave --define uE1=" + port_language + " --define uE2=" + second_ue + " --define transport1=" + port_transport +  " --define transport2=" + port_transport + " --format json --outfile './reports/" + feature["feature_name"] + "_" + port_language + "_" + second_ue + ".json' --format html --outfile './reports/" + feature["feature_name"] + "_" + port_language + "_" + second_ue + ".html' './features/tests/" + feature["path"] + "/" + feature["feature_name"] + ".feature'"
+                    var command_str = "behave --define uE1=" + port_language + " --define uE2=" + second_ue + " --define transport1=" + port_transport +  " --define transport2=" + port_transport + " --format json --outfile './reports/" + feature["feature_name"] + "_" + port_language + "_" + second_ue + ".json' --format html --outfile './reports/" + feature["feature_name"] + "_" + port_language + "_" + second_ue + "_" + port_transport + ".html' './features/tests/" + feature["path"] + "/" + feature["feature_name"] + ".feature'"
                     command_list.push(command_str);
                   }
                 } else {
-                  var command_str = "behave --define uE1=" + port_language + " --define transport1=" + port_transport + " --format json --outfile './reports/" + feature["feature_name"] + "_" + port_language + ".json' --format html --outfile './reports/" + feature["feature_name"] + "_" + port_language + ".html' './features/tests/" + feature["path"] + "/" + feature["feature_name"] + ".feature'"
+                  var command_str = "behave --define uE1=" + port_language + " --define transport1=" + port_transport + " --format json --outfile './reports/" + feature["feature_name"] + "_" + port_language + ".json' --format html --outfile './reports/" + feature["feature_name"] + "_" + port_language + "_" + port_transport + ".html' './features/tests/" + feature["path"] + "/" + feature["feature_name"] + ".feature'"
                   command_list.push(command_str);
                 }
               }

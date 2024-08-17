@@ -13,11 +13,13 @@
 #define _API_WRAPPER_H_
 
 #include <SocketUTransport.h>
+#include <up-transport-zenoh-cpp/ZenohUTransport.h>
 
 #include "ProtoConverter.h"
 #include "utils.h"
 
 #define TRANSPORT_TYPE_SOCKET "socket"
+#define TRANSPORT_TYPE_ZENOH "zenoh"
 
 /// @class APIWrapper
 /// @brief Represents a wrapper class to execute up-cpp L1 and L2 apis.

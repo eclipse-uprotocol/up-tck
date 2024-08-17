@@ -56,25 +56,38 @@
         "transports": ["socket"]
     },
     {
+        "feature_name" : "register_and_send",
+        "path": "transport_rpc",
+        "ue1": ["cpp"],
+        "ue2": ["cpp"],
+        "transports": ["zenoh"]
+    },
+    {
+        "feature_name" : "register_and_unregister",
+        "path": "transport_rpc",
+        "ue1": ["cpp"],
+        "transports": ["zenoh"]
+    },
+    {
         "feature_name" : "notification_sink_and_source",
         "path": "L2_APIs",
         "ue1": ["cpp"],
         "ue2": ["cpp"],
-        "transports": ["socket"]
+        "transports": ["socket", "zenoh"]
     },
     {
         "feature_name" : "publish_and_subscribe",
         "path": "L2_APIs",
         "ue1": ["cpp"],
         "ue2": ["cpp"],
-        "transports": ["socket"]
+        "transports": ["socket", "zenoh"]
     },
     {
         "feature_name" : "rpc_server_and_client",
         "path": "L2_APIs",
         "ue1": ["cpp"],
         "ue2": ["cpp"],
-        "transports": ["socket"]
-    } 
+        "transports": ["socket", "zenoh"]
+    }
 
 ]

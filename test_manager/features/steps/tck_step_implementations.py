@@ -18,6 +18,7 @@ SPDX-License-Identifier: Apache-2.0
 import base64
 import binascii
 import codecs
+import datetime
 import json
 import os
 import re
@@ -67,13 +68,24 @@ def create_command(context, filepath_from_root_repo: str, transport_to_send: str
 
 
 def create_subprocess(command: List[str]) -> subprocess.Popen:
-    if sys.platform == "win32":
-        process = subprocess.Popen(command, shell=True)
-    elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
-        process = subprocess.Popen(command)
-    else:
-        print(sys.platform)
-        raise Exception("only handle Windows and Linux commands for now")
+    # Generate a unique log file name based on the current timestamp
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_filename = f"process_{timestamp}.log"
+
+    # Construct the full log file path
+    log_dir = 'logs'
+    os.makedirs(log_dir, exist_ok=True)  # Create log directory if it doesn't exist
+    log_filepath = os.path.join(log_dir, log_filename)
+
+    with open(log_filepath, 'w') as logfile:
+        if sys.platform == "win32":
+            process = subprocess.Popen(command, shell=True, stdout=logfile, stderr=logfile)
+        elif sys.platform == "linux" or sys.platform == "linux2" or sys.platform == "darwin":
+            process = subprocess.Popen(command, stdout=logfile, stderr=logfile)
+        else:
+            print(sys.platform)
+            raise Exception("only handle Windows and Linux commands for now")
+
     return process
 
 
