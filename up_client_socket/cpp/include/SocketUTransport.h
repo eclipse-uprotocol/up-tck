@@ -50,7 +50,7 @@ private:
 
 	/// @brief Unregister a previously registered callback object.
 	/// @param[in] listener Callback object to unregister.
-	void cleanupListener(CallableConn listener) override;
+	void cleanupListener(const CallableConn& listener) override;
 
 	struct Impl;
 	std::shared_ptr<Impl> pImpl;

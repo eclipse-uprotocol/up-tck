@@ -299,6 +299,6 @@ UStatus SocketUTransport::registerListenerImpl(CallableConn&& listener,
 	return pImpl->registerListenerImpl(listener, source_filter, sink_filter);
 }
 
-void SocketUTransport::cleanupListener(CallableConn listener) {
+void SocketUTransport::cleanupListener(const CallableConn& listener) {
 	pImpl->cleanupListener(listener);
 }

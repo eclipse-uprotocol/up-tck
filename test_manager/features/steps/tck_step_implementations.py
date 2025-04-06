@@ -226,7 +226,7 @@ def serialized_uri_received(context, expected_uri: str):
         actual_uri: str = context.response_data
         assert_that(expected_uri, equal_to(actual_uri))
     except AssertionError:
-        raise AssertionError(f"Assertion error. Expected is {expected_uri} but " f"received {actual_uri}")
+        raise AssertionError(f"Assertion error. Expected is {expected_uri} but received {actual_uri}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
@@ -238,7 +238,7 @@ def serialized_uuid_received(context, expected_uuid: str):
 
         assert_that(expected_uuid, equal_to(actual_uuid))
     except AssertionError:
-        raise AssertionError(f"Assertion error. Expected is {expected_uuid} but " f"received {actual_uuid}")
+        raise AssertionError(f"Assertion error. Expected is {expected_uuid} but received {actual_uuid}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
@@ -252,7 +252,7 @@ def receive_validation_result(context, expected_result):
         actual_val_res = context.response_data["result"]
         assert_that(expected_result, equal_to(actual_val_res))
     except AssertionError:
-        raise AssertionError(f"Assertion error. Expected is {expected_result} but " f"received {repr(actual_val_res)}")
+        raise AssertionError(f"Assertion error. Expected is {expected_result} but received {repr(actual_val_res)}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
@@ -264,7 +264,7 @@ def receive_validation_result(context, expected_message):
         actual_val_msg = context.response_data["message"]
         assert_that(expected_message, equal_to(actual_val_msg))
     except AssertionError:
-        raise AssertionError(f"Assertion error. Expected is {expected_message} but " f"received {repr(actual_val_msg)}")
+        raise AssertionError(f"Assertion error. Expected is {expected_message} but received {repr(actual_val_msg)}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
@@ -391,7 +391,7 @@ def receive_status(context, field_name: str, expected_value: str):
             assert_that(expected_value_string, equal_to(actual_value))
     except AssertionError:
         raise AssertionError(
-            f"Assertion error. Expected is {expected_value} but " f"received {context.response_data[field_name]}"
+            f"Assertion error. Expected is {expected_value} but received {context.response_data[field_name]}"
         )
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
@@ -448,7 +448,7 @@ def receive_value_as_bytes(context, sender_sdk_name: str, field_name: str, expec
 
     except AssertionError:
         raise AssertionError(
-            f"Assertion error. Expected is {expected_value.encode('utf-8')} but " f"received {rec_field_value}"
+            f"Assertion error. Expected is {expected_value.encode('utf-8')} but received {rec_field_value}"
         )
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
@@ -487,7 +487,7 @@ def receive_rpc_response_as_bytes(context, sdk_name, field_name: str, expected_v
         raise KeyError(f"Key error. {sdk_name} has not received rpc response.")
     except AssertionError:
         raise AssertionError(
-            f"Assertion error. Expected is {expected_value.encode('utf-8')} but " f"received {repr(actual_value)}"
+            f"Assertion error. Expected is {expected_value.encode('utf-8')} but received {repr(actual_value)}"
         )
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
@@ -517,7 +517,7 @@ def receive_micro_serialized_uuri(context, expected_bytes_as_base64_str: str):
         context.logger.info(f"actual: {actual_bytes} | expect: {expected_bytes}")
         assert_that(expected_bytes, equal_to(actual_bytes))
     except AssertionError:
-        raise AssertionError(f"Assertion error. Expected is {expected_bytes} but " f"received {actual_bytes}")
+        raise AssertionError(f"Assertion error. Expected is {expected_bytes} but received {actual_bytes}")
     except Exception as ae:
         raise ValueError(f"Exception occurred. {ae}")
 
