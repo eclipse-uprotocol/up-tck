@@ -17,14 +17,14 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
     # - name: Build Rust Test Agent
     #   uses: actions-rs/cargo@v1
     #   with:
     #     command: build
     #     args: --manifest-path test_agent/rust/Cargo.toml
     - name: Set up JDK 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@17f84c3641ba7b8f6deff6309fc4c864478f5d62 # v3.14.1
       with:
         java-version: '17'
         distribution: 'temurin'
@@ -43,7 +43,7 @@ jobs:
     - name: Create default Conan profile
       run: conan profile detect
     - name: Set up Python 3.x
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@3542bca2639a428e1796aaa6a2ffef0c0f575566 # v3.1.4
       with:
         python-version: "3.x"
     - name: Install dependencies
@@ -55,7 +55,7 @@ jobs:
         python install_dependencies.py
 
     - name: Get Behave Scripts
-      uses: actions/github-script@v6
+      uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6.4.1
       id: check-env
       with:
         result-encoding: string
@@ -112,7 +112,7 @@ jobs:
             echo "Finished Test: $obj"
         done
     - name: Read Behave Results
-      uses: actions/github-script@v6
+      uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6.4.1
       with:
         result-encoding: string
         script: |
@@ -154,7 +154,7 @@ jobs:
             core.setFailed(err)
           }
     - name: Upload Test Reports
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: behave-test-reports
         path: ./test_manager/reports/*.html
